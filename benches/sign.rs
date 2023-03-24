@@ -14,18 +14,17 @@ use ice_frost::sign::{
     generate_commitment_share_lists, PublicCommitmentShareList, SecretCommitmentShareList,
     SignatureAggregator,
 };
-use ice_frost::utils::hash_to_bytes;
+use ice_frost::testing::Secp256k1Sha256;
+use ice_frost::CipherSuite;
 
-use ark_bn254::G1Projective;
+type ParticipantDKG = Participant<Secp256k1Sha256>;
+type Coeff = Coefficients<Secp256k1Sha256>;
+type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
+type DHSkey = DiffieHellmanPrivateKey<Secp256k1Sha256>;
+type Skey = IndividualSigningKey<Secp256k1Sha256>;
 
-type ParticipantDKG = Participant<G1Projective>;
-type Coeff = Coefficients<G1Projective>;
-type Dkg<T> = DistributedKeyGeneration<T, G1Projective>;
-type DHSkey = DiffieHellmanPrivateKey<G1Projective>;
-type Skey = IndividualSigningKey<G1Projective>;
-
-type PublicCommShareList = PublicCommitmentShareList<G1Projective>;
-type SecretCommShareList = SecretCommitmentShareList<G1Projective>;
+type PublicCommShareList = PublicCommitmentShareList<Secp256k1Sha256>;
+type SecretCommShareList = SecretCommitmentShareList<Secp256k1Sha256>;
 
 const NUMBER_OF_PARTICIPANTS: u32 = 5;
 const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
@@ -45,10 +44,10 @@ fn criterion_benchmark(c: &mut Criterion) {
         dh_secret_keys.push(dh_sk);
     }
 
-    let mut participants_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<G1Projective>>> = (0
-        ..NUMBER_OF_PARTICIPANTS)
-        .map(|_| Vec::with_capacity((NUMBER_OF_PARTICIPANTS - 1) as usize))
-        .collect();
+    let mut participants_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<Secp256k1Sha256>>> =
+        (0..NUMBER_OF_PARTICIPANTS)
+            .map(|_| Vec::with_capacity((NUMBER_OF_PARTICIPANTS - 1) as usize))
+            .collect();
 
     let mut participants_states_1 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let mut participants_states_2 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
@@ -70,7 +69,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     let mut p1_my_encrypted_secret_shares =
-        Vec::<EncryptedSecretShare<G1Projective>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
+        Vec::<EncryptedSecretShare<Secp256k1Sha256>>::with_capacity(
+            NUMBER_OF_PARTICIPANTS as usize,
+        );
     for j in 0..NUMBER_OF_PARTICIPANTS {
         p1_my_encrypted_secret_shares
             .push(participants_encrypted_secret_shares[j as usize][0].clone());
@@ -84,7 +85,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
         let mut pi_my_encrypted_secret_shares =
-            Vec::<EncryptedSecretShare<G1Projective>>::with_capacity(
+            Vec::<EncryptedSecretShare<Secp256k1Sha256>>::with_capacity(
                 NUMBER_OF_PARTICIPANTS as usize,
             );
         for j in 0..NUMBER_OF_PARTICIPANTS {
@@ -119,7 +120,6 @@ fn criterion_benchmark(c: &mut Criterion) {
             .unwrap();
     }
 
-    let context = b"CONTEXT STRING STOLEN FROM DALEK TEST SUITE";
     let message = b"This is a test of the tsunami alert system. This is only a test.";
 
     let mut participants_public_comshares =
@@ -138,7 +138,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         participants_secret_comshares.push(pi_secret_comshares);
     }
 
-    let mut aggregator = SignatureAggregator::new(params, group_key, &context[..], &message[..]);
+    let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
     for i in 1..THRESHOLD_OF_PARTICIPANTS + 1 {
         aggregator.include_signer(
@@ -149,7 +149,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     let signers = aggregator.get_signers().clone();
-    let message_hash = hash_to_bytes::<G1Projective>(&context[..], &message[..]).unwrap();
+    let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
     let message_hash_copy = message_hash.clone();
 
     let p1_sk = participants_secret_keys[0].clone();

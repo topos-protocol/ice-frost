@@ -1,10 +1,12 @@
 use core::marker::PhantomData;
 
-use crate::error::Error;
 use crate::utils::Vec;
+use crate::{Error, FrostResult};
 
-use ark_ec::CurveGroup;
-use ark_ff::Field;
+use crate::ciphersuite::CipherSuite;
+
+use ark_ec::{CurveGroup, Group};
+use ark_ff::{Field, Zero};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use rand::{CryptoRng, RngCore};
@@ -19,11 +21,11 @@ use zeroize::Zeroize;
 /// A struct for holding a shard of the shared secret, in order to ensure that
 /// the shard is overwritten with zeroes when it falls out of scope.
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
-pub struct Coefficients<G: CurveGroup>(pub(crate) Vec<G::ScalarField>);
+pub struct Coefficients<C: CipherSuite>(pub(crate) Vec<<C::G as Group>::ScalarField>);
 
-impl<G: CurveGroup> Coefficients<G> {
+impl<C: CipherSuite> Coefficients<C> {
     /// Serialize this `Coefficients` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -33,12 +35,12 @@ impl<G: CurveGroup> Coefficients<G> {
     }
 
     /// Attempt to deserialize a `Coefficients` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }
 
-impl<G: CurveGroup> Drop for Coefficients<G> {
+impl<C: CipherSuite> Drop for Coefficients<C> {
     fn drop(&mut self) {
         self.0.iter_mut().zeroize();
     }
@@ -47,25 +49,25 @@ impl<G: CurveGroup> Drop for Coefficients<G> {
 /// A secret share calculated by evaluating a polynomial with secret
 /// coefficients for some indeterminant.
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
-pub struct SecretShare<G: CurveGroup> {
+pub struct SecretShare<C: CipherSuite> {
     /// The index of the share maker.
     pub sender_index: u32,
     /// The participant index that this secret share was calculated for.
     pub receiver_index: u32,
     /// The final evaluation of the polynomial for the participant-respective
     /// indeterminant.
-    pub(crate) polynomial_evaluation: G::ScalarField,
+    pub(crate) polynomial_evaluation: <C::G as Group>::ScalarField,
 }
 
-impl<G: CurveGroup> Drop for SecretShare<G> {
+impl<C: CipherSuite> Drop for SecretShare<C> {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl<G: CurveGroup> SecretShare<G> {
+impl<C: CipherSuite> SecretShare<C> {
     /// Serialize this `SecretShare` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -75,7 +77,7 @@ impl<G: CurveGroup> SecretShare<G> {
     }
 
     /// Attempt to deserialize a `SecretShare` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 
@@ -83,10 +85,10 @@ impl<G: CurveGroup> SecretShare<G> {
     pub(crate) fn evaluate_polynomial(
         sender_index: &u32,
         receiver_index: &u32,
-        coefficients: &Coefficients<G>,
-    ) -> SecretShare<G> {
-        let term: G::ScalarField = (*receiver_index).into();
-        let mut sum = G::ScalarField::ZERO;
+        coefficients: &Coefficients<C>,
+    ) -> SecretShare<C> {
+        let term: <C::G as Group>::ScalarField = (*receiver_index).into();
+        let mut sum = <C::G as Group>::ScalarField::ZERO;
 
         // Evaluate using Horner's method.
         for (receiver_index, coefficient) in coefficients.0.iter().rev().enumerate() {
@@ -108,11 +110,11 @@ impl<G: CurveGroup> SecretShare<G> {
     /// polynomial coefficients attested to by some `commitment`.
     pub(crate) fn verify(
         &self,
-        commitment: &VerifiableSecretSharingCommitment<G>,
-    ) -> Result<(), Error<G>> {
-        let lhs = G::generator() * self.polynomial_evaluation;
-        let term: G::ScalarField = self.receiver_index.into();
-        let mut rhs: G = G::zero();
+        commitment: &VerifiableSecretSharingCommitment<C>,
+    ) -> FrostResult<C, ()> {
+        let lhs = C::G::generator() * self.polynomial_evaluation;
+        let term: <C::G as Group>::ScalarField = self.receiver_index.into();
+        let mut rhs: C::G = <C as CipherSuite>::G::zero();
 
         for (index, com) in commitment.points.iter().rev().enumerate() {
             rhs += com;
@@ -131,7 +133,7 @@ impl<G: CurveGroup> SecretShare<G> {
 
 /// A secret share encrypted with a participant's public key
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
-pub struct EncryptedSecretShare<G: CurveGroup> {
+pub struct EncryptedSecretShare<C: CipherSuite> {
     /// The index of the share maker.
     pub sender_index: u32,
     /// The participant index that this secret share was calculated for.
@@ -141,16 +143,16 @@ pub struct EncryptedSecretShare<G: CurveGroup> {
     /// The encrypted polynomial evaluation.
     pub(crate) encrypted_polynomial_evaluation: Vec<u8>,
     #[zeroize(skip)]
-    _phantom: PhantomData<G>,
+    _phantom: PhantomData<C>,
 }
 
-impl<G: CurveGroup> Drop for EncryptedSecretShare<G> {
+impl<C: CipherSuite> Drop for EncryptedSecretShare<C> {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl<G: CurveGroup> EncryptedSecretShare<G> {
+impl<C: CipherSuite> EncryptedSecretShare<C> {
     pub fn new(
         sender_index: u32,
         receiver_index: u32,
@@ -167,7 +169,7 @@ impl<G: CurveGroup> EncryptedSecretShare<G> {
     }
 
     /// Serialize this `EncryptedSecretShare` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -177,7 +179,7 @@ impl<G: CurveGroup> EncryptedSecretShare<G> {
     }
 
     /// Attempt to deserialize a `EncryptedSecretShare` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }
@@ -185,16 +187,16 @@ impl<G: CurveGroup> EncryptedSecretShare<G> {
 /// A commitment to a participant's secret polynomial coefficients for Feldman's
 /// verifiable secret sharing scheme.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct VerifiableSecretSharingCommitment<G: CurveGroup> {
+pub struct VerifiableSecretSharingCommitment<C: CipherSuite> {
     /// The index of this participant.
     pub index: u32,
     /// The commitments to the participant's secret coefficients.
-    pub points: Vec<G>,
+    pub points: Vec<C::G>,
 }
 
-impl<G: CurveGroup> VerifiableSecretSharingCommitment<G> {
+impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
     /// Serialize this `VerifiableSecretSharingCommitment` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -204,12 +206,12 @@ impl<G: CurveGroup> VerifiableSecretSharingCommitment<G> {
     }
 
     /// Attempt to deserialize a `VerifiableSecretSharingCommitment` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 
     /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the Ristretto basepoint.
-    pub fn public_key(&self) -> Option<&G> {
+    pub fn public_key(&self) -> Option<&C::G> {
         if !self.points.is_empty() {
             return Some(&self.points[0]);
         }
@@ -217,8 +219,8 @@ impl<G: CurveGroup> VerifiableSecretSharingCommitment<G> {
     }
 
     /// Evaluate g^P(i) without knowing the secret coefficients of the polynomial
-    pub fn evaluate_hiding(&self, term: &G::ScalarField) -> G {
-        let mut sum = G::zero();
+    pub fn evaluate_hiding(&self, term: &<C::G as Group>::ScalarField) -> C::G {
+        let mut sum = <C as CipherSuite>::G::zero();
 
         // Evaluate using Horner's method.
         for (k, coefficient) in self.points.iter().rev().enumerate() {
@@ -234,11 +236,11 @@ impl<G: CurveGroup> VerifiableSecretSharingCommitment<G> {
     }
 }
 
-pub(crate) fn encrypt_share<G: CurveGroup>(
-    share: &SecretShare<G>,
+pub(crate) fn encrypt_share<C: CipherSuite>(
+    share: &SecretShare<C>,
     aes_key: &[u8],
     mut rng: impl RngCore + CryptoRng,
-) -> EncryptedSecretShare<G> {
+) -> EncryptedSecretShare<C> {
     let hkdf = Hkdf::<Sha256>::new(None, aes_key);
     let mut final_aes_key = [0u8; 16];
     hkdf.expand(&[], &mut final_aes_key)
@@ -260,7 +262,7 @@ pub(crate) fn encrypt_share<G: CurveGroup>(
         .unwrap();
     cipher.apply_keystream(&mut share_bytes);
 
-    EncryptedSecretShare::<G> {
+    EncryptedSecretShare::<C> {
         sender_index: share.sender_index,
         receiver_index: share.receiver_index,
         nonce: nonce_array,
@@ -269,10 +271,10 @@ pub(crate) fn encrypt_share<G: CurveGroup>(
     }
 }
 
-pub(crate) fn decrypt_share<G: CurveGroup>(
-    encrypted_share: &EncryptedSecretShare<G>,
+pub(crate) fn decrypt_share<C: CipherSuite>(
+    encrypted_share: &EncryptedSecretShare<C>,
     aes_key: &[u8],
-) -> Result<SecretShare<G>, Error<G>> {
+) -> FrostResult<C, SecretShare<C>> {
     let hkdf = Hkdf::<Sha256>::new(None, aes_key);
     let mut final_aes_key = [0u8; 16];
     hkdf.expand(&[], &mut final_aes_key)
@@ -287,8 +289,8 @@ pub(crate) fn decrypt_share<G: CurveGroup>(
     let mut bytes = encrypted_share.encrypted_polynomial_evaluation.clone();
     cipher.apply_keystream(&mut bytes);
 
-    let evaluation =
-        G::ScalarField::deserialize_compressed(&bytes[..]).map_err(|_| Error::DecryptionError)?;
+    let evaluation = <C::G as Group>::ScalarField::deserialize_compressed(&bytes[..])
+        .map_err(|_| Error::DecryptionError)?;
 
     Ok(SecretShare {
         sender_index: encrypted_share.sender_index,
@@ -300,8 +302,10 @@ pub(crate) fn decrypt_share<G: CurveGroup>(
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_bn254::{Fr, G1Projective};
+    use crate::testing::Secp256k1Sha256;
+
     use ark_ff::UniformRand;
+    use ark_secp256k1::Fr;
     use rand::{rngs::OsRng, RngCore};
 
     #[test]
@@ -309,7 +313,7 @@ mod test {
         let mut rng = OsRng;
 
         for _ in 0..100 {
-            let secret_share = SecretShare::<G1Projective> {
+            let secret_share = SecretShare::<Secp256k1Sha256> {
                 sender_index: rng.next_u32(),
                 receiver_index: rng.next_u32(),
                 polynomial_evaluation: Fr::rand(&mut rng),
@@ -327,7 +331,7 @@ mod test {
             let mut encrypted_polynomial_evaluation = vec![0u8; 16];
             rng.fill_bytes(&mut nonce);
             rng.fill_bytes(&mut encrypted_polynomial_evaluation);
-            let encrypted_secret_share = EncryptedSecretShare::<G1Projective>::new(
+            let encrypted_secret_share = EncryptedSecretShare::<Secp256k1Sha256>::new(
                 rng.next_u32(),
                 rng.next_u32(),
                 nonce,

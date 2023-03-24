@@ -1,10 +1,14 @@
 //! Precomputation for one-round signing.
 
-use crate::error::Error;
-use crate::utils::Vec;
+use core::ops::Mul;
 
-use ark_ec::CurveGroup;
-use ark_ff::PrimeField;
+use crate::utils::Vec;
+use crate::{Error, FrostResult};
+
+use crate::ciphersuite::CipherSuite;
+
+use ark_ec::{CurveGroup, Group};
+use ark_ff::{PrimeField, Zero};
 use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 
@@ -27,10 +31,10 @@ impl<F: PrimeField> NoncePair<F> {
     }
 }
 
-impl<G: CurveGroup> From<NoncePair<G::ScalarField>> for CommitmentShare<G> {
-    fn from(other: NoncePair<G::ScalarField>) -> Self {
-        let x = G::generator().mul(other.0);
-        let y = G::generator().mul(other.1);
+impl<C: CipherSuite> From<NoncePair<<C::G as Group>::ScalarField>> for CommitmentShare<C> {
+    fn from(other: NoncePair<<C::G as Group>::ScalarField>) -> Self {
+        let x = C::G::generator().mul(other.0);
+        let y = C::G::generator().mul(other.1);
 
         Self {
             hiding: Commitment {
@@ -47,31 +51,31 @@ impl<G: CurveGroup> From<NoncePair<G::ScalarField>> for CommitmentShare<G> {
 
 /// A pair of a secret and a commitment to it.
 #[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub(crate) struct Commitment<G: CurveGroup> {
+pub(crate) struct Commitment<C: CipherSuite> {
     /// The secret.
-    pub(crate) secret: G::ScalarField,
+    pub(crate) secret: <C::G as Group>::ScalarField,
     /// The commitment.
-    pub(crate) commit: G,
+    pub(crate) commit: <C as CipherSuite>::G,
 }
 
-impl<G: CurveGroup> Zeroize for Commitment<G> {
+impl<C: CipherSuite> Zeroize for Commitment<C> {
     fn zeroize(&mut self) {
         self.secret.zeroize();
         // We set the commitment to the identity point, as the Group trait
         // does not implement Zeroize.
         // Safely zeroizing of the secret component is what actually matters.
-        self.commit = G::zero();
+        self.commit = <C as CipherSuite>::G::zero();
     }
 }
 
-impl<G: CurveGroup> Drop for Commitment<G> {
+impl<C: CipherSuite> Drop for Commitment<C> {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
 /// Test equality in constant-time.
-impl<G: CurveGroup> PartialEq for Commitment<G> {
+impl<C: CipherSuite> PartialEq for Commitment<C> {
     fn eq(&self, other: &Self) -> bool {
         self.secret.eq(&other.secret) & self.commit.into_affine().eq(&other.commit.into_affine())
     }
@@ -79,20 +83,20 @@ impl<G: CurveGroup> PartialEq for Commitment<G> {
 
 /// A precomputed commitment share.
 #[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
-pub struct CommitmentShare<G: CurveGroup> {
+pub struct CommitmentShare<C: CipherSuite> {
     /// The hiding commitment.
     ///
     /// This is \\((d\_{ij}, D\_{ij})\\) in the paper.
-    pub(crate) hiding: Commitment<G>,
+    pub(crate) hiding: Commitment<C>,
     /// The binding commitment.
     ///
     /// This is \\((e\_{ij}, E\_{ij})\\) in the paper.
-    pub(crate) binding: Commitment<G>,
+    pub(crate) binding: Commitment<C>,
 }
 
-impl<G: CurveGroup> CommitmentShare<G> {
+impl<C: CipherSuite> CommitmentShare<C> {
     /// Serialize this `CommitmentShare` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -102,27 +106,27 @@ impl<G: CurveGroup> CommitmentShare<G> {
     }
 
     /// Attempt to deserialize a `CommitmentShare` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }
 
-impl<G: CurveGroup> Drop for CommitmentShare<G> {
+impl<C: CipherSuite> Drop for CommitmentShare<C> {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
 /// Test equality in constant-time.
-impl<G: CurveGroup> PartialEq for CommitmentShare<G> {
+impl<C: CipherSuite> PartialEq for CommitmentShare<C> {
     fn eq(&self, other: &Self) -> bool {
         self.hiding.eq(&other.hiding) & self.binding.eq(&other.binding)
     }
 }
 
-impl<G: CurveGroup> CommitmentShare<G> {
+impl<C: CipherSuite> CommitmentShare<C> {
     /// Publish the public commitments in this [`CommitmentShare`].
-    pub fn publish(&self) -> (G, G) {
+    pub fn publish(&self) -> (C::G, C::G) {
         (self.hiding.commit, self.binding.commit)
     }
 }
@@ -130,14 +134,14 @@ impl<G: CurveGroup> CommitmentShare<G> {
 /// A secret commitment share list, containing the revealed secrets for the
 /// hiding and binding commitments.
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct SecretCommitmentShareList<G: CurveGroup> {
+pub struct SecretCommitmentShareList<C: CipherSuite> {
     /// The secret commitment shares.
-    pub commitments: Vec<CommitmentShare<G>>,
+    pub commitments: Vec<CommitmentShare<C>>,
 }
 
-impl<G: CurveGroup> SecretCommitmentShareList<G> {
+impl<C: CipherSuite> SecretCommitmentShareList<C> {
     /// Serialize this `SecretCommitmentShareList` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -147,7 +151,7 @@ impl<G: CurveGroup> SecretCommitmentShareList<G> {
     }
 
     /// Attempt to deserialize a `SecretCommitmentShareList` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }
@@ -158,16 +162,16 @@ impl<G: CurveGroup> SecretCommitmentShareList<G> {
 /// This should be published somewhere before the signing protocol takes place
 /// for the other signing participants to obtain.
 #[derive(Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct PublicCommitmentShareList<G: CurveGroup> {
+pub struct PublicCommitmentShareList<C: CipherSuite> {
     /// The participant's index.
     pub participant_index: u32,
     /// The published commitments.
-    pub commitments: Vec<(G, G)>,
+    pub commitments: Vec<(C::G, C::G)>,
 }
 
-impl<G: CurveGroup> PublicCommitmentShareList<G> {
+impl<C: CipherSuite> PublicCommitmentShareList<C> {
     /// Serialize this `PublicCommitmentShareList` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -177,7 +181,7 @@ impl<G: CurveGroup> PublicCommitmentShareList<G> {
     }
 
     /// Attempt to deserialize a `PublicCommitmentShareList` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }
@@ -193,18 +197,18 @@ impl<G: CurveGroup> PublicCommitmentShareList<G> {
 /// # Returns
 ///
 /// A tuple of ([`PublicCommitmentShareList`], [`SecretCommitmentShareList`]).
-pub fn generate_commitment_share_lists<G: CurveGroup>(
+pub fn generate_commitment_share_lists<C: CipherSuite>(
     mut csprng: impl CryptoRng + Rng,
     participant_index: u32,
     number_of_shares: usize,
-) -> (PublicCommitmentShareList<G>, SecretCommitmentShareList<G>) {
-    let mut commitments: Vec<CommitmentShare<G>> = Vec::with_capacity(number_of_shares);
+) -> (PublicCommitmentShareList<C>, SecretCommitmentShareList<C>) {
+    let mut commitments: Vec<CommitmentShare<C>> = Vec::with_capacity(number_of_shares);
 
     for _ in 0..number_of_shares {
         commitments.push(CommitmentShare::from(NoncePair::new(&mut csprng)));
     }
 
-    let mut published: Vec<(G, G)> = Vec::with_capacity(number_of_shares);
+    let mut published: Vec<(C::G, C::G)> = Vec::with_capacity(number_of_shares);
 
     for commitment in commitments.iter() {
         published.push(commitment.publish());
@@ -219,10 +223,10 @@ pub fn generate_commitment_share_lists<G: CurveGroup>(
     )
 }
 
-impl<G: CurveGroup> SecretCommitmentShareList<G> {
+impl<C: CipherSuite> SecretCommitmentShareList<C> {
     /// Drop a used [`CommitmentShare`] from our secret commitment share list
     /// and ensure that it is wiped from memory.
-    pub fn drop_share(&mut self, share: CommitmentShare<G>) {
+    pub fn drop_share(&mut self, share: CommitmentShare<C>) {
         let mut index = -1;
 
         // This is not constant-time in that the number of commitment shares in
@@ -244,9 +248,11 @@ impl<G: CurveGroup> SecretCommitmentShareList<G> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_bn254::{Fr, G1Projective};
-    use ark_ec::Group;
+    use crate::testing::Secp256k1Sha256;
+
+    use ark_ec::{CurveGroup, Group};
     use ark_ff::UniformRand;
+    use ark_secp256k1::{Fr, Projective};
     use rand::rngs::OsRng;
 
     use core::ops::Mul;
@@ -258,7 +264,7 @@ mod test {
 
     #[test]
     fn secret_pair_into_commitment_share() {
-        let _commitment_share: CommitmentShare<G1Projective> = NoncePair::new(&mut OsRng).into();
+        let _commitment_share: CommitmentShare<Secp256k1Sha256> = NoncePair::new(&mut OsRng).into();
     }
 
     #[test]
@@ -267,8 +273,8 @@ mod test {
 
         for _ in 0..100 {
             let secret = Fr::rand(&mut rng);
-            let commit = G1Projective::generator().mul(secret);
-            let commitment = Commitment { secret, commit };
+            let commit = Projective::generator().mul(secret);
+            let commitment = Commitment::<Secp256k1Sha256> { secret, commit };
             let mut bytes = Vec::new();
 
             commitment.serialize_compressed(&mut bytes).unwrap();
@@ -280,8 +286,8 @@ mod test {
 
         for _ in 0..100 {
             let secret = Fr::rand(&mut rng);
-            let commit = G1Projective::generator().mul(secret);
-            let binding = Commitment { secret, commit };
+            let commit = Projective::generator().mul(secret);
+            let binding = Commitment::<Secp256k1Sha256> { secret, commit };
             let hiding = binding.clone();
             let commitment_share = CommitmentShare { binding, hiding };
             let mut bytes = Vec::new();
@@ -295,20 +301,20 @@ mod test {
 
         // invalid encodings
         let bytes = [255u8; 64];
-        assert!(Commitment::<G1Projective>::deserialize_compressed(&bytes[..]).is_err());
+        assert!(Commitment::<Secp256k1Sha256>::deserialize_compressed(&bytes[..]).is_err());
 
         let bytes = [255u8; 128];
-        assert!(CommitmentShare::<G1Projective>::deserialize_compressed(&bytes[..]).is_err());
+        assert!(CommitmentShare::<Secp256k1Sha256>::deserialize_compressed(&bytes[..]).is_err());
     }
 
     #[test]
     fn commitment_share_list_generate() {
         let (public_share_list, secret_share_list) =
-            generate_commitment_share_lists::<G1Projective>(&mut OsRng, 0, 5);
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 0, 5);
 
         assert_eq!(
             public_share_list.commitments[0].0.into_affine(),
-            (G1Projective::generator().mul(secret_share_list.commitments[0].hiding.secret))
+            (Projective::generator().mul(secret_share_list.commitments[0].hiding.secret))
                 .into_affine()
         );
     }
@@ -320,7 +326,7 @@ mod test {
 
         assert!(secret_share_list.commitments.len() == 8);
 
-        let used_share: CommitmentShare<G1Projective> = secret_share_list.commitments[0].clone();
+        let used_share: CommitmentShare<Secp256k1Sha256> = secret_share_list.commitments[0].clone();
 
         secret_share_list.drop_share(used_share);
 

@@ -1,11 +1,11 @@
-use ark_ec::CurveGroup;
+use crate::ciphersuite::CipherSuite;
 
 use crate::dkg::Complaint;
 use crate::utils::{String, Vec};
 
 /// Errors that may happen during Key Generation
-#[derive(Debug, PartialEq)]
-pub enum Error<G: CurveGroup> {
+#[derive(Debug, PartialEq, Eq)]
+pub enum Error<C: CipherSuite> {
     /// Serialisation error
     SerialisationError,
     /// Deserialisation error
@@ -29,7 +29,7 @@ pub enum Error<G: CurveGroup> {
     /// Could not retrieve the participant's encrypted shares
     NoEncryptedShares,
     // /// At least one complaint has been issued during to_round_two() execution
-    Complaint(Vec<Complaint<G>>),
+    Complaint(Vec<Complaint<C>>),
     /// Not all participants have been included
     InvalidNumberOfParticipants(usize, u32),
     /// The provided slices for the MSM don't match in lenth
@@ -44,11 +44,13 @@ pub enum Error<G: CurveGroup> {
     InvalidChallenge,
     /// Invalid signature
     InvalidSignature,
+    /// Misbehaving Participants
+    MisbehavingParticipants(Vec<u32>),
     /// Custom error
     Custom(String),
 }
 
-impl<G: CurveGroup> core::fmt::Display for Error<G> {
+impl<C: CipherSuite> core::fmt::Display for Error<C> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
             Error::SerialisationError => {
@@ -128,9 +130,18 @@ impl<G: CurveGroup> core::fmt::Display for Error<G> {
             Error::InvalidSignature => {
                 write!(f, "The threshold signature is not correct.")
             }
+            Error::MisbehavingParticipants(indices) => {
+                write!(
+                    f,
+                    "These participants provided invalid partial signatures: {:?}",
+                    indices
+                )
+            }
             Error::Custom(string) => {
                 write!(f, "{:?}", string)
             }
         }
     }
 }
+
+pub type FrostResult<C, T> = Result<T, Error<C>>;

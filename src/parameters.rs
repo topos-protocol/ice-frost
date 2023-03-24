@@ -1,25 +1,25 @@
 //! Configurable parameters for an instance of an ICE-FROST signing protocol.
 
-use crate::utils::Vec;
-
-use ark_ec::CurveGroup;
-use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
-
-use crate::error::Error;
 use core::marker::PhantomData;
+
+use crate::ciphersuite::CipherSuite;
+use crate::utils::Vec;
+use crate::{Error, FrostResult};
+
+use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 /// The configuration parameters for conducting the process of creating a
 /// threshold signature.
 #[derive(Copy, Clone, Debug, Eq, Hash, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct ThresholdParameters<G: CurveGroup> {
+pub struct ThresholdParameters<C: CipherSuite> {
     /// The number of participants in the scheme.
     pub n: u32,
     /// The threshold required for a successful signature.
     pub t: u32,
-    _phantom: PhantomData<G>,
+    _phantom: PhantomData<C>,
 }
 
-impl<G: CurveGroup> ThresholdParameters<G> {
+impl<C: CipherSuite> ThresholdParameters<C> {
     /// Initialize a new set of threshold parameters.
     ///
     /// Will panic if one of the following condition is met:
@@ -39,7 +39,7 @@ impl<G: CurveGroup> ThresholdParameters<G> {
     }
 
     /// Serialize this `ThresholdParameters` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -49,7 +49,7 @@ impl<G: CurveGroup> ThresholdParameters<G> {
     }
 
     /// Attempt to deserialize a `ThresholdParameters` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }
@@ -57,7 +57,7 @@ impl<G: CurveGroup> ThresholdParameters<G> {
 #[cfg(test)]
 mod test {
     use super::*;
-    use ark_bn254::G1Projective;
+    use crate::testing::Secp256k1Sha256;
     use rand::{rngs::OsRng, RngCore};
 
     #[test]
@@ -67,9 +67,9 @@ mod test {
         for _ in 0..100 {
             let n = rng.next_u32();
             let t = core::cmp::min(n, rng.next_u32());
-            let params = ThresholdParameters::<G1Projective>::new(n, t);
+            let params = ThresholdParameters::<Secp256k1Sha256>::new(n, t);
             let bytes = params.to_bytes().unwrap();
-            assert!(ThresholdParameters::<G1Projective>::from_bytes(&bytes).is_ok());
+            assert!(ThresholdParameters::<Secp256k1Sha256>::from_bytes(&bytes).is_ok());
             assert_eq!(params, ThresholdParameters::from_bytes(&bytes).unwrap());
         }
     }

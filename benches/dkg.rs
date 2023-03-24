@@ -10,13 +10,12 @@ use rand::rngs::OsRng;
 use ice_frost::dkg::{Coefficients, DistributedKeyGeneration, EncryptedSecretShare, Participant};
 use ice_frost::keys::DiffieHellmanPrivateKey;
 use ice_frost::parameters::ThresholdParameters;
+use ice_frost::testing::Secp256k1Sha256;
 
-use ark_bn254::G1Projective;
-
-type ParticipantDKG = Participant<G1Projective>;
-type Dkg<T> = DistributedKeyGeneration<T, G1Projective>;
-type DHSkey = DiffieHellmanPrivateKey<G1Projective>;
-type Coeff = Coefficients<G1Projective>;
+type ParticipantDKG = Participant<Secp256k1Sha256>;
+type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
+type DHSkey = DiffieHellmanPrivateKey<Secp256k1Sha256>;
+type Coeff = Coefficients<Secp256k1Sha256>;
 
 const NUMBER_OF_PARTICIPANTS: u32 = 5;
 const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
@@ -44,10 +43,10 @@ fn criterion_benchmark(c: &mut Criterion) {
         dh_secret_keys.push(dh_sk);
     }
 
-    let mut participants_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<G1Projective>>> = (0
-        ..NUMBER_OF_PARTICIPANTS)
-        .map(|_| Vec::with_capacity(NUMBER_OF_PARTICIPANTS as usize))
-        .collect();
+    let mut participants_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<Secp256k1Sha256>>> =
+        (0..NUMBER_OF_PARTICIPANTS)
+            .map(|_| Vec::with_capacity(NUMBER_OF_PARTICIPANTS as usize))
+            .collect();
 
     let mut participants_states_1 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let mut participants_states_2 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
@@ -89,7 +88,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     let mut p1_my_encrypted_secret_shares =
-        Vec::<EncryptedSecretShare<G1Projective>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
+        Vec::<EncryptedSecretShare<Secp256k1Sha256>>::with_capacity(
+            NUMBER_OF_PARTICIPANTS as usize,
+        );
     for j in 0..NUMBER_OF_PARTICIPANTS {
         p1_my_encrypted_secret_shares
             .push(participants_encrypted_secret_shares[j as usize][0].clone());
@@ -103,7 +104,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
         let mut pi_my_encrypted_secret_shares =
-            Vec::<EncryptedSecretShare<G1Projective>>::with_capacity(
+            Vec::<EncryptedSecretShare<Secp256k1Sha256>>::with_capacity(
                 NUMBER_OF_PARTICIPANTS as usize,
             );
         for j in 0..NUMBER_OF_PARTICIPANTS {

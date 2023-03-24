@@ -1,45 +1,49 @@
-use crate::error::Error;
 use crate::utils::Vec;
+use crate::{Error, FrostResult};
+
+use core::ops::Mul;
 
 use rand::{CryptoRng, RngCore};
 use sha2::Sha256;
 
-use ark_ec::CurveGroup;
+use crate::ciphersuite::CipherSuite;
+
+use ark_ec::Group;
 use ark_ff::field_hashers::{DefaultFieldHasher, HashToField};
 use ark_ff::UniformRand;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 /// A complaint generated when a participant receives a bad share.
-#[derive(Clone, Debug, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct Complaint<G: CurveGroup> {
+#[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
+pub struct Complaint<C: CipherSuite> {
     /// The index of the complaint maker.
     pub maker_index: u32,
     /// The index of the alleged misbehaving participant.
     pub accused_index: u32,
     /// The shared DH private key.
-    pub dh_shared_key: G,
+    pub dh_shared_key: <C as CipherSuite>::G,
     /// The complaint proof.
-    pub proof: ComplaintProof<G>,
+    pub proof: ComplaintProof<C>,
 }
 
-impl<G: CurveGroup> Complaint<G> {
+impl<C: CipherSuite> Complaint<C> {
     pub(crate) fn new(
         my_index: u32,
         accused_index: u32,
-        accused_pk: &G,
-        dh_skey: &G::ScalarField,
-        dh_pkey: &G,
-        dh_shared_key: &G,
+        accused_pk: &C::G,
+        dh_skey: &<C::G as Group>::ScalarField,
+        dh_pkey: &C::G,
+        dh_shared_key: &C::G,
         mut rng: impl RngCore + CryptoRng,
-    ) -> Result<Self, Error<G>> {
-        let r = G::ScalarField::rand(&mut rng);
+    ) -> FrostResult<C, Self> {
+        let r = <C::G as Group>::ScalarField::rand(&mut rng);
 
-        let a1 = G::generator().mul(r);
+        let a1 = C::G::generator().mul(r);
         let a2 = accused_pk.mul(r);
 
-        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<G::ScalarField>>::new(
-            "Complaint Context".as_bytes(),
-        );
+        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<
+            <C::G as Group>::ScalarField,
+        >>::new("Complaint Context".as_bytes());
 
         let mut message = my_index.to_le_bytes().to_vec();
         message.extend(&accused_index.to_le_bytes());
@@ -57,7 +61,7 @@ impl<G: CurveGroup> Complaint<G> {
         a2.serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
 
-        let h: G::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
+        let h: <C::G as Group>::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
         Ok(Self {
             maker_index: my_index,
             accused_index,
@@ -73,10 +77,10 @@ impl<G: CurveGroup> Complaint<G> {
     /// A complaint is valid if:
     /// --  a1 + h.pk_i = z.g
     /// --  a2 + h.k_il = z.pk_l
-    pub fn verify(&self, pk_i: &G, pk_l: &G) -> Result<(), Error<G>> {
-        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<G::ScalarField>>::new(
-            "Complaint Context".as_bytes(),
-        );
+    pub fn verify(&self, pk_i: &C::G, pk_l: &C::G) -> FrostResult<C, ()> {
+        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<
+            <C::G as Group>::ScalarField,
+        >>::new("Complaint Context".as_bytes());
 
         let mut message = self.maker_index.to_le_bytes().to_vec();
         message.extend(&self.accused_index.to_le_bytes());
@@ -96,9 +100,9 @@ impl<G: CurveGroup> Complaint<G> {
             .serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
 
-        let h: G::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
+        let h: <C::G as Group>::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
 
-        if self.proof.a1 + pk_i.mul(h) != G::generator() * self.proof.z {
+        if self.proof.a1 + pk_i.mul(h) != C::G::generator() * self.proof.z {
             return Err(Error::ComplaintVerificationError);
         }
 
@@ -110,7 +114,7 @@ impl<G: CurveGroup> Complaint<G> {
     }
 
     /// Serialize this `Complaint` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -120,25 +124,25 @@ impl<G: CurveGroup> Complaint<G> {
     }
 
     /// Attempt to deserialize a `Complaint` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }
 
 /// A proof that a generated complaint is valid.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct ComplaintProof<G: CurveGroup> {
+pub struct ComplaintProof<C: CipherSuite> {
     /// a1 = g^r.
-    pub a1: G,
+    pub a1: <C as CipherSuite>::G,
     /// a2 = pk_l^r.
-    pub a2: G,
+    pub a2: <C as CipherSuite>::G,
     /// z = r + H(pk_i, pk_l, k_il).sh_i
-    pub z: G::ScalarField,
+    pub z: <C::G as Group>::ScalarField,
 }
 
-impl<G: CurveGroup> ComplaintProof<G> {
+impl<C: CipherSuite> ComplaintProof<C> {
     /// Serialize this `ComplaintProof` to a vector of bytes.
-    pub fn to_bytes(&self) -> Result<Vec<u8>, Error<G>> {
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
@@ -148,7 +152,7 @@ impl<G: CurveGroup> ComplaintProof<G> {
     }
 
     /// Attempt to deserialize a `ComplaintProof` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> Result<Self, Error<G>> {
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 }

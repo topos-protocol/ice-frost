@@ -2,7 +2,7 @@
 
 use rand::rngs::OsRng;
 
-use ice_frost::utils::hash_to_bytes;
+use ice_frost::CipherSuite;
 
 use ice_frost::dkg::{DistributedKeyGeneration, Participant};
 use ice_frost::parameters::ThresholdParameters;
@@ -10,10 +10,10 @@ use ice_frost::sign::generate_commitment_share_lists;
 
 use ice_frost::sign::SignatureAggregator;
 
-use ark_bn254::G1Projective;
+use ice_frost::testing::Secp256k1Sha256;
 
-type ParticipantDKG = Participant<G1Projective>;
-type Dkg<T> = DistributedKeyGeneration<T, G1Projective>;
+type ParticipantDKG = Participant<Secp256k1Sha256>;
+type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
 
 #[test]
 fn signing_and_verification_3_out_of_5() {
@@ -150,7 +150,6 @@ fn signing_and_verification_3_out_of_5() {
     let (_, p4_sk) = p4_state.finish().unwrap();
     let (_, _) = p5_state.finish().unwrap();
 
-    let context = b"CONTEXT STRING STOLEN FROM DALEK TEST SUITE";
     let message = b"This is a test of the tsunami alert system. This is only a test.";
     let (p1_public_comshares, mut p1_secret_comshares) =
         generate_commitment_share_lists(&mut OsRng, 1, 1);
@@ -159,14 +158,14 @@ fn signing_and_verification_3_out_of_5() {
     let (p4_public_comshares, mut p4_secret_comshares) =
         generate_commitment_share_lists(&mut OsRng, 4, 1);
 
-    let mut aggregator = SignatureAggregator::new(params, group_key, &context[..], &message[..]);
+    let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
     aggregator.include_signer(1, p1_public_comshares.commitments[0], (&p1_sk).into());
     aggregator.include_signer(3, p3_public_comshares.commitments[0], (&p3_sk).into());
     aggregator.include_signer(4, p4_public_comshares.commitments[0], (&p4_sk).into());
 
     let signers = aggregator.get_signers();
-    let message_hash = hash_to_bytes::<G1Projective>(&context[..], &message[..]).unwrap();
+    let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
 
     let p1_partial = p1_sk
         .sign(
