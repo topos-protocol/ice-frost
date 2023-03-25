@@ -22,7 +22,7 @@ Please see the documentation for usage examples.
 
 ## MSRV
 
-This crate uses arkworks crates, version 0.4, as its backend, requiring the use of Rust toolchain 1.63 and higher.
+This crate requires the `generic_const_exprs` unstable feature, and thus needs to be compiled with the `nightly` toolchain.
 
 ## Note on `no_std` usage
 
