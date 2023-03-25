@@ -22,14 +22,14 @@ const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let params = ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS);
-    let mut rng = OsRng;
+    let rng = OsRng;
 
     c.bench_function("Participant creation (dealer)", move |b| {
-        b.iter(|| ParticipantDKG::new_dealer(&params, 1, "Φ", &mut rng))
+        b.iter(|| ParticipantDKG::new_dealer(&params, 1, "Φ", rng))
     });
 
     c.bench_function("Participant creation (signer)", move |b| {
-        b.iter(|| ParticipantDKG::new_signer(&params, 1, "Φ", &mut rng))
+        b.iter(|| ParticipantDKG::new_signer(&params, 1, "Φ", rng))
     });
 
     let mut participants = Vec::<ParticipantDKG>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
@@ -37,7 +37,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut dh_secret_keys = Vec::<DHSkey>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 1..NUMBER_OF_PARTICIPANTS + 1 {
-        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, "Φ", &mut rng);
+        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, "Φ", rng);
         participants.push(p);
         coefficients.push(c);
         dh_secret_keys.push(dh_sk);
@@ -66,7 +66,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 &coefficient,
                 &participants_copy,
                 "Φ",
-                &mut rng,
+                rng,
             )
         });
     });
@@ -79,7 +79,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             &coefficients[i as usize],
             &participants,
             "Φ",
-            &mut rng,
+            rng,
         )
         .unwrap();
         let pi_their_encrypted_secret_shares = pi_state.their_encrypted_secret_shares().unwrap();
@@ -98,7 +98,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     participants_states_2.push(
         participants_states_1[0]
             .clone()
-            .to_round_two(p1_my_encrypted_secret_shares.clone(), &mut rng)
+            .to_round_two(p1_my_encrypted_secret_shares.clone(), rng)
             .unwrap(),
     );
 
@@ -115,7 +115,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         participants_states_2.push(
             participants_states_1[(i - 1) as usize]
                 .clone()
-                .to_round_two(pi_my_encrypted_secret_shares, &mut rng)
+                .to_round_two(pi_my_encrypted_secret_shares, rng)
                 .unwrap(),
         );
     }
@@ -129,13 +129,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             p1_state
                 .clone()
-                .to_round_two(p1_my_encrypted_secret_shares_copy.clone(), &mut rng)
+                .to_round_two(p1_my_encrypted_secret_shares_copy.clone(), rng)
         });
     });
 
     let p1_state = participants_states_1[0]
         .clone()
-        .to_round_two(p1_my_encrypted_secret_shares.clone(), &mut rng)
+        .to_round_two(p1_my_encrypted_secret_shares.clone(), rng)
         .unwrap();
 
     c.bench_function("Finish", move |b| {
@@ -145,22 +145,22 @@ fn criterion_benchmark(c: &mut Criterion) {
     let (_group_key, p1_sk) = participants_states_2[0].clone().finish().unwrap();
 
     let mut signers = Vec::<ParticipantDKG>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
-    let (s1, s1_dh_sk) = ParticipantDKG::new_signer(&params, 1, "Φ", &mut rng);
+    let (s1, s1_dh_sk) = ParticipantDKG::new_signer(&params, 1, "Φ", rng);
     signers.push(s1.clone());
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
-        let (s, _) = ParticipantDKG::new_signer(&params, i, "Φ", &mut rng);
+        let (s, _) = ParticipantDKG::new_signer(&params, i, "Φ", rng);
         signers.push(s);
     }
 
     c.bench_function("Reshare", move |b| {
-        b.iter(|| ParticipantDKG::reshare(&params, p1_sk.clone(), &signers, "Φ", &mut rng));
+        b.iter(|| ParticipantDKG::reshare(&params, p1_sk.clone(), &signers, "Φ", rng));
     });
 
     let dealers = participants.clone();
 
     c.bench_function("Round One (signer)", move |b| {
-        b.iter(|| Dkg::<_>::new(&params, &s1_dh_sk, &s1.index, &dealers, "Φ", &mut rng));
+        b.iter(|| Dkg::<_>::new(&params, &s1_dh_sk, &s1.index, &dealers, "Φ", rng));
     });
 }
 

@@ -31,14 +31,14 @@ const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
 
 fn criterion_benchmark(c: &mut Criterion) {
     let params = ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS);
-    let mut rng = OsRng;
+    let rng = OsRng;
 
     let mut participants = Vec::<ParticipantDKG>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let mut coefficients = Vec::<Coeff>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let mut dh_secret_keys = Vec::<DHSkey>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 1..NUMBER_OF_PARTICIPANTS + 1 {
-        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, "Φ", &mut rng);
+        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, "Φ", rng);
         participants.push(p);
         coefficients.push(c);
         dh_secret_keys.push(dh_sk);
@@ -60,7 +60,7 @@ fn criterion_benchmark(c: &mut Criterion) {
             &coefficients[i as usize],
             &participants,
             "Φ",
-            &mut rng,
+            rng,
         )
         .unwrap();
         let pi_their_encrypted_secret_shares = pi_state.their_encrypted_secret_shares().unwrap();
@@ -79,7 +79,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     participants_states_2.push(
         participants_states_1[0]
             .clone()
-            .to_round_two(p1_my_encrypted_secret_shares, &mut rng)
+            .to_round_two(p1_my_encrypted_secret_shares, rng)
             .unwrap(),
     );
 
@@ -96,7 +96,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         participants_states_2.push(
             participants_states_1[(i - 1) as usize]
                 .clone()
-                .to_round_two(pi_my_encrypted_secret_shares, &mut rng)
+                .to_round_two(pi_my_encrypted_secret_shares, rng)
                 .unwrap(),
         );
     }
@@ -150,7 +150,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     let signers = aggregator.get_signers().clone();
     let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
-    let message_hash_copy = message_hash.clone();
+    let message_hash_copy = message_hash;
 
     let p1_sk = participants_secret_keys[0].clone();
 

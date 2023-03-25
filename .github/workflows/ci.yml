@@ -68,7 +68,7 @@ jobs:
         with:
           name: Clippy
           token: ${{ secrets.GITHUB_TOKEN }}
-          args: --all-targets -- -D warnings
+          args: --all-targets -- -D warnings -A incomplete-features
 
   fmt:
     name: Rustfmt

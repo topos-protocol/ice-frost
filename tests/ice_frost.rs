@@ -18,13 +18,13 @@ type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
 #[test]
 fn signing_and_verification_3_out_of_5() {
     let params = ThresholdParameters::new(5, 3);
-    let mut rng = OsRng;
+    let rng = OsRng;
 
-    let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(&params, 1, "Φ", &mut rng);
-    let (p2, p2coeffs, p2_dh_sk) = ParticipantDKG::new_dealer(&params, 2, "Φ", &mut rng);
-    let (p3, p3coeffs, p3_dh_sk) = ParticipantDKG::new_dealer(&params, 3, "Φ", &mut rng);
-    let (p4, p4coeffs, p4_dh_sk) = ParticipantDKG::new_dealer(&params, 4, "Φ", &mut rng);
-    let (p5, p5coeffs, p5_dh_sk) = ParticipantDKG::new_dealer(&params, 5, "Φ", &mut rng);
+    let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(&params, 1, "Φ", rng);
+    let (p2, p2coeffs, p2_dh_sk) = ParticipantDKG::new_dealer(&params, 2, "Φ", rng);
+    let (p3, p3coeffs, p3_dh_sk) = ParticipantDKG::new_dealer(&params, 3, "Φ", rng);
+    let (p4, p4coeffs, p4_dh_sk) = ParticipantDKG::new_dealer(&params, 4, "Φ", rng);
+    let (p5, p5coeffs, p5_dh_sk) = ParticipantDKG::new_dealer(&params, 5, "Φ", rng);
 
     let participants: Vec<ParticipantDKG> =
         vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
@@ -35,7 +35,7 @@ fn signing_and_verification_3_out_of_5() {
         &p1coeffs,
         &participants,
         "Φ",
-        &mut rng,
+        rng,
     )
     .unwrap();
     let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
@@ -47,7 +47,7 @@ fn signing_and_verification_3_out_of_5() {
         &p2coeffs,
         &participants,
         "Φ",
-        &mut rng,
+        rng,
     )
     .unwrap();
     let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
@@ -59,7 +59,7 @@ fn signing_and_verification_3_out_of_5() {
         &p3coeffs,
         &participants,
         "Φ",
-        &mut rng,
+        rng,
     )
     .unwrap();
     let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
@@ -71,7 +71,7 @@ fn signing_and_verification_3_out_of_5() {
         &p4coeffs,
         &participants,
         "Φ",
-        &mut rng,
+        rng,
     )
     .unwrap();
     let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
@@ -83,7 +83,7 @@ fn signing_and_verification_3_out_of_5() {
         &p5coeffs,
         &participants,
         "Φ",
-        &mut rng,
+        rng,
     )
     .unwrap();
     let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
@@ -129,19 +129,19 @@ fn signing_and_verification_3_out_of_5() {
     ];
 
     let p1_state = p1_state
-        .to_round_two(p1_my_encrypted_secret_shares, &mut rng)
+        .to_round_two(p1_my_encrypted_secret_shares, rng)
         .unwrap();
     let p2_state = p2_state
-        .to_round_two(p2_my_encrypted_secret_shares, &mut rng)
+        .to_round_two(p2_my_encrypted_secret_shares, rng)
         .unwrap();
     let p3_state = p3_state
-        .to_round_two(p3_my_encrypted_secret_shares, &mut rng)
+        .to_round_two(p3_my_encrypted_secret_shares, rng)
         .unwrap();
     let p4_state = p4_state
-        .to_round_two(p4_my_encrypted_secret_shares, &mut rng)
+        .to_round_two(p4_my_encrypted_secret_shares, rng)
         .unwrap();
     let p5_state = p5_state
-        .to_round_two(p5_my_encrypted_secret_shares, &mut rng)
+        .to_round_two(p5_my_encrypted_secret_shares, rng)
         .unwrap();
 
     let (group_key, p1_sk) = p1_state.finish().unwrap();

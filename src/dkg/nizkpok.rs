@@ -156,8 +156,7 @@ mod test {
         let pk = Projective::generator().mul(sk);
         let context = "This is a context string".to_string();
 
-        let nizk =
-            NizkPokOfSecretKey::<Secp256k1Sha256>::prove(index, &sk, &pk, &context, &mut rng);
+        let nizk = NizkPokOfSecretKey::<Secp256k1Sha256>::prove(index, &sk, &pk, &context, rng);
         assert!(nizk.is_ok());
         let nizk = nizk.unwrap();
         assert!(nizk.verify(index, &pk, &context).is_ok());
