@@ -25,11 +25,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     let rng = OsRng;
 
     c.bench_function("Participant creation (dealer)", move |b| {
-        b.iter(|| ParticipantDKG::new_dealer(&params, 1, "Φ", rng))
+        b.iter(|| ParticipantDKG::new_dealer(&params, 1, rng))
     });
 
     c.bench_function("Participant creation (signer)", move |b| {
-        b.iter(|| ParticipantDKG::new_signer(&params, 1, "Φ", rng))
+        b.iter(|| ParticipantDKG::new_signer(&params, 1, rng))
     });
 
     let mut participants = Vec::<ParticipantDKG>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
@@ -37,7 +37,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut dh_secret_keys = Vec::<DHSkey>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 1..NUMBER_OF_PARTICIPANTS + 1 {
-        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, "Φ", rng);
+        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, rng);
         participants.push(p);
         coefficients.push(c);
         dh_secret_keys.push(dh_sk);
@@ -65,7 +65,6 @@ fn criterion_benchmark(c: &mut Criterion) {
                 &p1.index,
                 &coefficient,
                 &participants_copy,
-                "Φ",
                 rng,
             )
         });
@@ -78,7 +77,6 @@ fn criterion_benchmark(c: &mut Criterion) {
             &participants[i as usize].index.clone(),
             &coefficients[i as usize],
             &participants,
-            "Φ",
             rng,
         )
         .unwrap();
@@ -145,22 +143,22 @@ fn criterion_benchmark(c: &mut Criterion) {
     let (_group_key, p1_sk) = participants_states_2[0].clone().finish().unwrap();
 
     let mut signers = Vec::<ParticipantDKG>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
-    let (s1, s1_dh_sk) = ParticipantDKG::new_signer(&params, 1, "Φ", rng);
+    let (s1, s1_dh_sk) = ParticipantDKG::new_signer(&params, 1, rng);
     signers.push(s1.clone());
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
-        let (s, _) = ParticipantDKG::new_signer(&params, i, "Φ", rng);
+        let (s, _) = ParticipantDKG::new_signer(&params, i, rng);
         signers.push(s);
     }
 
     c.bench_function("Reshare", move |b| {
-        b.iter(|| ParticipantDKG::reshare(&params, p1_sk.clone(), &signers, "Φ", rng));
+        b.iter(|| ParticipantDKG::reshare(&params, p1_sk.clone(), &signers, rng));
     });
 
     let dealers = participants.clone();
 
     c.bench_function("Round One (signer)", move |b| {
-        b.iter(|| Dkg::<_>::new(&params, &s1_dh_sk, &s1.index, &dealers, "Φ", rng));
+        b.iter(|| Dkg::<_>::new(&params, &s1_dh_sk, &s1.index, &dealers, rng));
     });
 }
 

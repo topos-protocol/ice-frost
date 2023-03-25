@@ -1,15 +1,10 @@
 use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
-use ark_ff::{
-    field_hashers::{DefaultFieldHasher, HashToField},
-    UniformRand,
-};
+use ark_ff::UniformRand;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use crate::ciphersuite::CipherSuite;
 use crate::utils::Vec;
 use crate::{Error, FrostResult};
-
-use sha2::Sha256;
 
 use rand::CryptoRng;
 use rand::Rng;
@@ -36,7 +31,10 @@ pub struct NizkPokOfSecretKey<C: CipherSuite> {
     r: <C::G as Group>::ScalarField,
 }
 
-impl<C: CipherSuite> NizkPokOfSecretKey<C> {
+impl<C: CipherSuite> NizkPokOfSecretKey<C>
+where
+    [(); C::HASH_SEC_PARAM]:,
+{
     /// Serialize this `NizkPokOfSecretKey` to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
@@ -57,15 +55,10 @@ impl<C: CipherSuite> NizkPokOfSecretKey<C> {
         index: u32,
         secret_key: &<C::G as Group>::ScalarField,
         public_key: &C::G,
-        context_string: &str,
         mut csprng: impl Rng + CryptoRng,
     ) -> FrostResult<C, Self> {
         let k = <C::G as Group>::ScalarField::rand(&mut csprng);
         let M: C::G = C::G::generator() * k;
-
-        let h = <DefaultFieldHasher<Sha256, 128> as HashToField<<C::G as Group>::ScalarField>>::new(
-            context_string.as_bytes(),
-        );
 
         let mut message = index.to_le_bytes().to_vec();
         public_key
@@ -74,19 +67,14 @@ impl<C: CipherSuite> NizkPokOfSecretKey<C> {
         M.serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
 
-        let s: <C::G as Group>::ScalarField = h.hash_to_field(&message[..], 1)[0];
+        let s = C::h0(&message)?;
         let r = k + (*secret_key * s);
 
         Ok(NizkPokOfSecretKey { s, r })
     }
 
     /// Verify that the prover does indeed know the secret key.
-    pub fn verify(
-        &self,
-        index: u32,
-        public_key: &C::G,
-        context_string: &str,
-    ) -> FrostResult<C, ()> {
+    pub fn verify(&self, index: u32, public_key: &C::G) -> FrostResult<C, ()> {
         let M_prime: C::G = <C as CipherSuite>::G::msm(
             &[
                 <C::G as CurveGroup>::Affine::generator(),
@@ -96,10 +84,6 @@ impl<C: CipherSuite> NizkPokOfSecretKey<C> {
         )
         .map_err(|_| Error::InvalidMSMParameters)?;
 
-        let h = <DefaultFieldHasher<Sha256, 128> as HashToField<<C::G as Group>::ScalarField>>::new(
-            context_string.as_bytes(),
-        );
-
         let mut message = index.to_le_bytes().to_vec();
         public_key
             .serialize_compressed(&mut message)
@@ -108,7 +92,7 @@ impl<C: CipherSuite> NizkPokOfSecretKey<C> {
             .serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
 
-        let s_prime: <C::G as Group>::ScalarField = h.hash_to_field(&message[..], 1)[0];
+        let s_prime = C::h0(&message)?;
 
         if self.s == s_prime {
             return Ok(());
@@ -127,7 +111,6 @@ mod test {
     use ark_secp256k1::{Fr, Projective};
     use core::ops::Mul;
     use rand::{rngs::OsRng, RngCore};
-    use std::string::ToString;
 
     #[test]
     fn test_serialization() {
@@ -154,11 +137,10 @@ mod test {
         let index = rng.next_u32();
         let sk = Fr::rand(&mut rng);
         let pk = Projective::generator().mul(sk);
-        let context = "This is a context string".to_string();
 
-        let nizk = NizkPokOfSecretKey::<Secp256k1Sha256>::prove(index, &sk, &pk, &context, rng);
+        let nizk = NizkPokOfSecretKey::<Secp256k1Sha256>::prove(index, &sk, &pk, rng);
         assert!(nizk.is_ok());
         let nizk = nizk.unwrap();
-        assert!(nizk.verify(index, &pk, &context).is_ok());
+        assert!(nizk.verify(index, &pk).is_ok());
     }
 }

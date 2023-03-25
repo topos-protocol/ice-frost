@@ -20,72 +20,37 @@ fn signing_and_verification_3_out_of_5() {
     let params = ThresholdParameters::new(5, 3);
     let rng = OsRng;
 
-    let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(&params, 1, "Φ", rng);
-    let (p2, p2coeffs, p2_dh_sk) = ParticipantDKG::new_dealer(&params, 2, "Φ", rng);
-    let (p3, p3coeffs, p3_dh_sk) = ParticipantDKG::new_dealer(&params, 3, "Φ", rng);
-    let (p4, p4coeffs, p4_dh_sk) = ParticipantDKG::new_dealer(&params, 4, "Φ", rng);
-    let (p5, p5coeffs, p5_dh_sk) = ParticipantDKG::new_dealer(&params, 5, "Φ", rng);
+    let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(&params, 1, rng);
+    let (p2, p2coeffs, p2_dh_sk) = ParticipantDKG::new_dealer(&params, 2, rng);
+    let (p3, p3coeffs, p3_dh_sk) = ParticipantDKG::new_dealer(&params, 3, rng);
+    let (p4, p4coeffs, p4_dh_sk) = ParticipantDKG::new_dealer(&params, 4, rng);
+    let (p5, p5coeffs, p5_dh_sk) = ParticipantDKG::new_dealer(&params, 5, rng);
 
     let participants: Vec<ParticipantDKG> =
         vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
-    let (p1_state, _participant_lists) = Dkg::<_>::new_initial(
-        &params,
-        &p1_dh_sk,
-        &p1.index,
-        &p1coeffs,
-        &participants,
-        "Φ",
-        rng,
-    )
-    .unwrap();
+    let (p1_state, _participant_lists) =
+        Dkg::<_>::new_initial(&params, &p1_dh_sk, &p1.index, &p1coeffs, &participants, rng)
+            .unwrap();
     let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
 
-    let (p2_state, _participant_lists) = Dkg::<_>::new_initial(
-        &params,
-        &p2_dh_sk,
-        &p2.index,
-        &p2coeffs,
-        &participants,
-        "Φ",
-        rng,
-    )
-    .unwrap();
+    let (p2_state, _participant_lists) =
+        Dkg::<_>::new_initial(&params, &p2_dh_sk, &p2.index, &p2coeffs, &participants, rng)
+            .unwrap();
     let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
 
-    let (p3_state, _participant_lists) = Dkg::<_>::new_initial(
-        &params,
-        &p3_dh_sk,
-        &p3.index,
-        &p3coeffs,
-        &participants,
-        "Φ",
-        rng,
-    )
-    .unwrap();
+    let (p3_state, _participant_lists) =
+        Dkg::<_>::new_initial(&params, &p3_dh_sk, &p3.index, &p3coeffs, &participants, rng)
+            .unwrap();
     let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
 
-    let (p4_state, _participant_lists) = Dkg::<_>::new_initial(
-        &params,
-        &p4_dh_sk,
-        &p4.index,
-        &p4coeffs,
-        &participants,
-        "Φ",
-        rng,
-    )
-    .unwrap();
+    let (p4_state, _participant_lists) =
+        Dkg::<_>::new_initial(&params, &p4_dh_sk, &p4.index, &p4coeffs, &participants, rng)
+            .unwrap();
     let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
 
-    let (p5_state, _participant_lists) = Dkg::<_>::new_initial(
-        &params,
-        &p5_dh_sk,
-        &p5.index,
-        &p5coeffs,
-        &participants,
-        "Φ",
-        rng,
-    )
-    .unwrap();
+    let (p5_state, _participant_lists) =
+        Dkg::<_>::new_initial(&params, &p5_dh_sk, &p5.index, &p5coeffs, &participants, rng)
+            .unwrap();
     let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
 
     let p1_my_encrypted_secret_shares = vec![

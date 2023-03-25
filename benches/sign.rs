@@ -38,7 +38,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut dh_secret_keys = Vec::<DHSkey>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 1..NUMBER_OF_PARTICIPANTS + 1 {
-        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, "Φ", rng);
+        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, rng);
         participants.push(p);
         coefficients.push(c);
         dh_secret_keys.push(dh_sk);
@@ -59,7 +59,6 @@ fn criterion_benchmark(c: &mut Criterion) {
             &participants[i as usize].index.clone(),
             &coefficients[i as usize],
             &participants,
-            "Φ",
             rng,
         )
         .unwrap();

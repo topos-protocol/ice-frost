@@ -33,6 +33,19 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
 
     // Provided methods`
 
+    /// `h0` hash for this CipherSuite.
+    /// This hash is not part of the FROST IETF specification, and is
+    /// aimed at being used during the distributed key generation.
+    ///
+    /// The context string for `h0` is this CipherSuite's CONTEXT_STRING,
+    /// concatenated with "nizkpok".
+    fn h0(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
+    where
+        [(); Self::HASH_SEC_PARAM]:,
+    {
+        crate::utils::hash_to_field::<Self>((Self::context_string() + "rho").as_bytes(), m)
+    }
+
     /// `h1` hash for this CipherSuite.
     ///
     /// The context string for `h1` is this CipherSuite's CONTEXT_STRING,

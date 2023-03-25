@@ -48,7 +48,10 @@ pub struct Participant<C: CipherSuite> {
     pub proof_of_dh_private_key: NizkPokOfSecretKey<C>,
 }
 
-impl<C: CipherSuite> Participant<C> {
+impl<C: CipherSuite> Participant<C>
+where
+    [(); C::HASH_SEC_PARAM]:,
+{
     /// Construct a new dealer for the distributed key generation protocol,
     /// who will generate shares for a group of signers (can be the group of dealers).
     ///
@@ -78,11 +81,10 @@ impl<C: CipherSuite> Participant<C> {
     pub fn new_dealer(
         parameters: &ThresholdParameters<C>,
         index: u32,
-        context_string: &str,
         mut rng: impl RngCore + CryptoRng,
     ) -> (Self, Coefficients<C>, DiffieHellmanPrivateKey<C>) {
         let (dealer, coeff_option, dh_private_key) =
-            Self::new_internal(parameters, false, index, None, context_string, &mut rng);
+            Self::new_internal(parameters, false, index, None, &mut rng);
         (dealer, coeff_option.unwrap(), dh_private_key)
     }
 
@@ -111,11 +113,10 @@ impl<C: CipherSuite> Participant<C> {
     pub fn new_signer(
         parameters: &ThresholdParameters<C>,
         index: u32,
-        context_string: &str,
         mut rng: impl RngCore + CryptoRng,
     ) -> (Self, DiffieHellmanPrivateKey<C>) {
         let (signer, _coeff_option, dh_private_key) =
-            Self::new_internal(parameters, true, index, None, context_string, &mut rng);
+            Self::new_internal(parameters, true, index, None, &mut rng);
         (signer, dh_private_key)
     }
 
@@ -124,7 +125,6 @@ impl<C: CipherSuite> Participant<C> {
         is_signer: bool,
         index: u32,
         secret_key: Option<<C::G as Group>::ScalarField>,
-        context_string: &str,
         mut rng: impl RngCore + CryptoRng,
     ) -> (Self, Option<Coefficients<C>>, DiffieHellmanPrivateKey<C>) {
         // Step 1: Every participant P_i samples t random values (a_{i0}, ..., a_{i(t-1)})
@@ -142,14 +142,9 @@ impl<C: CipherSuite> Participant<C> {
 
         // Compute a proof of knowledge of dh_secret_key
         // TODO: error
-        let proof_of_dh_private_key = NizkPokOfSecretKey::<C>::prove(
-            index,
-            &dh_private_key.0,
-            &dh_public_key,
-            context_string,
-            &mut rng,
-        )
-        .unwrap();
+        let proof_of_dh_private_key =
+            NizkPokOfSecretKey::<C>::prove(index, &dh_private_key.0, &dh_public_key, &mut rng)
+                .unwrap();
 
         if is_signer {
             // Signers don't need coefficients, commitments or proofs of secret key.
@@ -202,7 +197,6 @@ impl<C: CipherSuite> Participant<C> {
                 index,
                 &coefficients.0[0],
                 commitments.public_key().unwrap(),
-                context_string,
                 rng,
             )
             .unwrap();
@@ -248,7 +242,6 @@ impl<C: CipherSuite> Participant<C> {
         parameters: &ThresholdParameters<C>,
         secret_key: IndividualSigningKey<C>,
         signers: &[Participant<C>],
-        context_string: &str,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, Vec<EncryptedSecretShare<C>>, DKGParticipantList<C>)> {
         let (dealer, coeff_option, dh_private_key) = Self::new_internal(
@@ -256,7 +249,6 @@ impl<C: CipherSuite> Participant<C> {
             false,
             secret_key.index,
             Some(secret_key.key),
-            context_string,
             &mut rng,
         );
 
@@ -269,7 +261,6 @@ impl<C: CipherSuite> Participant<C> {
             &secret_key.index,
             Some(&coefficients),
             signers,
-            context_string,
             true,
             false,
             &mut rng,
@@ -370,7 +361,10 @@ pub struct DKGParticipantList<C: CipherSuite> {
     pub misbehaving_participants: Option<Vec<u32>>,
 }
 
-impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
+impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C>
+where
+    [(); C::HASH_SEC_PARAM]:,
+{
     /// Check the zero-knowledge proofs of knowledge of secret keys of all the
     /// other participants. When no group key has been computed by a group of
     /// participants yet, this method should be called rather than
@@ -391,7 +385,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         my_index: &u32,
         my_coefficients: &Coefficients<C>,
         participants: &[Participant<C>],
-        context_string: &str,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, DKGParticipantList<C>)> {
         Self::new_state_internal(
@@ -400,7 +393,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             my_index,
             Some(my_coefficients),
             participants,
-            context_string,
             true,
             true,
             &mut rng,
@@ -426,7 +418,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         dh_private_key: &DiffieHellmanPrivateKey<C>,
         my_index: &u32,
         dealers: &[Participant<C>],
-        context_string: &str,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, DKGParticipantList<C>)> {
         Self::new_state_internal(
@@ -435,7 +426,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             my_index,
             None,
             dealers,
-            context_string,
             false,
             true,
             &mut rng,
@@ -449,7 +439,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         my_index: &u32,
         my_coefficients: Option<&Coefficients<C>>,
         participants: &[Participant<C>],
-        context_string: &str,
         from_dealer: bool,
         from_signer: bool,
         mut rng: impl RngCore + CryptoRng,
@@ -474,10 +463,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         // Check the public keys and the DH keys of the participants.
         for p in participants.iter() {
             // Always check the DH keys of the participants
-            match p
-                .proof_of_dh_private_key
-                .verify(p.index, &p.dh_public_key, context_string)
-            {
+            match p.proof_of_dh_private_key.verify(p.index, &p.dh_public_key) {
                 Ok(_) => {
                     // Signers additionally check the public keys of the signers
                     if from_signer {
@@ -488,11 +474,12 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                                 continue;
                             }
                         };
-                        match p.proof_of_secret_key.as_ref().unwrap().verify(
-                            p.index,
-                            public_key,
-                            context_string,
-                        ) {
+                        match p
+                            .proof_of_secret_key
+                            .as_ref()
+                            .unwrap()
+                            .verify(p.index, public_key)
+                        {
                             Ok(_) => {
                                 valid_participants.push(p.clone());
                                 their_commitments.push(p.commitments.as_ref().unwrap().clone());
@@ -856,12 +843,12 @@ mod test {
         let params = ThresholdParameters::new(3, 2);
         let rng = OsRng;
 
-        let (p, _, _) = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, "Φ", rng);
-        let result =
-            p.proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(p.index, p.public_key().unwrap(), "Φ");
+        let (p, _, _) = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, rng);
+        let result = p
+            .proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p.index, p.public_key().unwrap());
 
         assert!(result.is_ok());
     }
@@ -925,13 +912,12 @@ mod test {
         let params = ThresholdParameters::new(1, 1);
         let rng = OsRng;
 
-        let (p1, p1coeffs, p1_dh_sk) =
-            Participant::<Secp256k1Sha256>::new_dealer(&params, 1, "Φ", rng);
+        let (p1, p1coeffs, p1_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
 
         p1.proof_of_secret_key
             .as_ref()
             .unwrap()
-            .verify(p1.index, p1.public_key().unwrap(), "Φ")
+            .verify(p1.index, p1.public_key().unwrap())
             .unwrap();
 
         let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone()];
@@ -942,7 +928,6 @@ mod test {
                 &p1.index,
                 &p1coeffs,
                 &participants,
-                "Φ",
                 rng,
             )
             .unwrap();
@@ -968,41 +953,36 @@ mod test {
         let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
         let rng = OsRng;
 
-        let (p1, p1coeffs, p1_dh_sk) =
-            Participant::<Secp256k1Sha256>::new_dealer(&params, 1, "Φ", rng);
-        let (p2, p2coeffs, p2_dh_sk) =
-            Participant::<Secp256k1Sha256>::new_dealer(&params, 2, "Φ", rng);
-        let (p3, p3coeffs, p3_dh_sk) =
-            Participant::<Secp256k1Sha256>::new_dealer(&params, 3, "Φ", rng);
-        let (p4, p4coeffs, p4_dh_sk) =
-            Participant::<Secp256k1Sha256>::new_dealer(&params, 4, "Φ", rng);
-        let (p5, p5coeffs, p5_dh_sk) =
-            Participant::<Secp256k1Sha256>::new_dealer(&params, 5, "Φ", rng);
+        let (p1, p1coeffs, p1_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
+        let (p2, p2coeffs, p2_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
+        let (p3, p3coeffs, p3_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
+        let (p4, p4coeffs, p4_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 4, rng);
+        let (p5, p5coeffs, p5_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 5, rng);
 
         p1.proof_of_secret_key
             .as_ref()
             .unwrap()
-            .verify(p1.index, p1.public_key().unwrap(), "Φ")
+            .verify(p1.index, p1.public_key().unwrap())
             .unwrap();
         p2.proof_of_secret_key
             .as_ref()
             .unwrap()
-            .verify(p2.index, p2.public_key().unwrap(), "Φ")
+            .verify(p2.index, p2.public_key().unwrap())
             .unwrap();
         p3.proof_of_secret_key
             .as_ref()
             .unwrap()
-            .verify(p3.index, p3.public_key().unwrap(), "Φ")
+            .verify(p3.index, p3.public_key().unwrap())
             .unwrap();
         p4.proof_of_secret_key
             .as_ref()
             .unwrap()
-            .verify(p4.index, p4.public_key().unwrap(), "Φ")
+            .verify(p4.index, p4.public_key().unwrap())
             .unwrap();
         p5.proof_of_secret_key
             .as_ref()
             .unwrap()
-            .verify(p5.index, p5.public_key().unwrap(), "Φ")
+            .verify(p5.index, p5.public_key().unwrap())
             .unwrap();
 
         let participants: Vec<Participant<Secp256k1Sha256>> =
@@ -1014,7 +994,6 @@ mod test {
                 &p1.index,
                 &p1coeffs,
                 &participants,
-                "Φ",
                 rng,
             )
             .unwrap();
@@ -1027,7 +1006,6 @@ mod test {
                 &p2.index,
                 &p2coeffs,
                 &participants,
-                "Φ",
                 rng,
             )
             .unwrap();
@@ -1040,7 +1018,6 @@ mod test {
                 &p3.index,
                 &p3coeffs,
                 &participants,
-                "Φ",
                 rng,
             )
             .unwrap();
@@ -1053,7 +1030,6 @@ mod test {
                 &p4.index,
                 &p4coeffs,
                 &participants,
-                "Φ",
                 rng,
             )
             .unwrap();
@@ -1066,7 +1042,6 @@ mod test {
                 &p5.index,
                 &p5coeffs,
                 &participants,
-                "Φ",
                 rng,
             )
             .unwrap();
@@ -1170,27 +1145,24 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, p1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
             let (p2, p2coeffs, p2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
             let (p3, p3coeffs, p3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
 
-            p1.proof_of_secret_key.as_ref().unwrap().verify(
-                p1.index,
-                p1.public_key().unwrap(),
-                "Φ",
-            )?;
-            p2.proof_of_secret_key.as_ref().unwrap().verify(
-                p2.index,
-                p2.public_key().unwrap(),
-                "Φ",
-            )?;
-            p3.proof_of_secret_key.as_ref().unwrap().verify(
-                p3.index,
-                p3.public_key().unwrap(),
-                "Φ",
-            )?;
+            p1.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p1.index, p1.public_key().unwrap())?;
+            p2.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p2.index, p2.public_key().unwrap())?;
+            p3.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p3.index, p3.public_key().unwrap())?;
 
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
@@ -1201,7 +1173,6 @@ mod test {
                     &p1.index,
                     &p1coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
@@ -1213,7 +1184,6 @@ mod test {
                     &p2.index,
                     &p2coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
@@ -1225,7 +1195,6 @@ mod test {
                     &p3.index,
                     &p3coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
@@ -1269,27 +1238,27 @@ mod test {
             let rng = OsRng;
 
             let (dealer1, dealer1coeffs, dealer1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
             let (dealer2, dealer2coeffs, dealer2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
             let (dealer3, dealer3coeffs, dealer3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
 
-            dealer1.proof_of_secret_key.as_ref().unwrap().verify(
-                dealer1.index,
-                dealer1.public_key().unwrap(),
-                "Φ",
-            )?;
-            dealer2.proof_of_secret_key.as_ref().unwrap().verify(
-                dealer2.index,
-                dealer2.public_key().unwrap(),
-                "Φ",
-            )?;
-            dealer3.proof_of_secret_key.as_ref().unwrap().verify(
-                dealer3.index,
-                dealer3.public_key().unwrap(),
-                "Φ",
-            )?;
+            dealer1
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer1.index, dealer1.public_key().unwrap())?;
+            dealer2
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer2.index, dealer2.public_key().unwrap())?;
+            dealer3
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer3.index, dealer3.public_key().unwrap())?;
 
             let dealers: Vec<Participant<Secp256k1Sha256>> =
                 vec![dealer1.clone(), dealer2.clone(), dealer3.clone()];
@@ -1300,7 +1269,6 @@ mod test {
                     &dealer1.index,
                     &dealer1coeffs,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
             let dealer1_their_encrypted_secret_shares =
@@ -1313,7 +1281,6 @@ mod test {
                     &dealer2.index,
                     &dealer2coeffs,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
             let dealer2_their_encrypted_secret_shares =
@@ -1326,7 +1293,6 @@ mod test {
                     &dealer3.index,
                     &dealer3coeffs,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
             let dealer3_their_encrypted_secret_shares =
@@ -1362,8 +1328,8 @@ mod test {
             assert!(dealer1_group_key.key.into_affine() == dealer2_group_key.key.into_affine());
             assert!(dealer2_group_key.key.into_affine() == dealer3_group_key.key.into_affine());
 
-            let (signer1, signer1_dh_sk) = Participant::new_signer(&params, 1, "Φ", rng);
-            let (signer2, signer2_dh_sk) = Participant::new_signer(&params, 2, "Φ", rng);
+            let (signer1, signer1_dh_sk) = Participant::new_signer(&params, 1, rng);
+            let (signer2, signer2_dh_sk) = Participant::new_signer(&params, 2, rng);
             // Dealer 3 is also a participant of the next set of signers
             let (signer3, signer3_dh_sk) = (dealer3, dealer3_dh_sk);
 
@@ -1371,11 +1337,11 @@ mod test {
                 vec![signer1.clone(), signer2.clone(), signer3.clone()];
 
             let (dealer1_for_signers, dealer1_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params, dealer1_secret_key, &signers, "Φ", rng)?;
+                Participant::reshare(&params, dealer1_secret_key, &signers, rng)?;
             let (dealer2_for_signers, dealer2_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params, dealer2_secret_key, &signers, "Φ", rng)?;
+                Participant::reshare(&params, dealer2_secret_key, &signers, rng)?;
             let (dealer3_for_signers, dealer3_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params, dealer3_secret_key, &signers, "Φ", rng)?;
+                Participant::reshare(&params, dealer3_secret_key, &signers, rng)?;
 
             let dealers: Vec<Participant<Secp256k1Sha256>> = vec![
                 dealer1_for_signers,
@@ -1388,7 +1354,6 @@ mod test {
                     &signer1_dh_sk,
                     &signer1.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1398,7 +1363,6 @@ mod test {
                     &signer2_dh_sk,
                     &signer2.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1408,7 +1372,6 @@ mod test {
                     &signer3_dh_sk,
                     &signer3.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1456,27 +1419,27 @@ mod test {
             let rng = OsRng;
 
             let (dealer1, dealer1coeffs, dealer1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 1, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 1, rng);
             let (dealer2, dealer2coeffs, dealer2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 2, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 2, rng);
             let (dealer3, dealer3coeffs, dealer3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 3, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 3, rng);
 
-            dealer1.proof_of_secret_key.as_ref().unwrap().verify(
-                dealer1.index,
-                dealer1.public_key().unwrap(),
-                "Φ",
-            )?;
-            dealer2.proof_of_secret_key.as_ref().unwrap().verify(
-                dealer2.index,
-                dealer2.public_key().unwrap(),
-                "Φ",
-            )?;
-            dealer3.proof_of_secret_key.as_ref().unwrap().verify(
-                dealer3.index,
-                dealer3.public_key().unwrap(),
-                "Φ",
-            )?;
+            dealer1
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer1.index, dealer1.public_key().unwrap())?;
+            dealer2
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer2.index, dealer2.public_key().unwrap())?;
+            dealer3
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer3.index, dealer3.public_key().unwrap())?;
 
             let dealers: Vec<Participant<Secp256k1Sha256>> =
                 vec![dealer1.clone(), dealer2.clone(), dealer3.clone()];
@@ -1487,7 +1450,6 @@ mod test {
                     &dealer1.index,
                     &dealer1coeffs,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
             let dealer1_their_encrypted_secret_shares =
@@ -1500,7 +1462,6 @@ mod test {
                     &dealer2.index,
                     &dealer2coeffs,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
             let dealer2_their_encrypted_secret_shares =
@@ -1513,7 +1474,6 @@ mod test {
                     &dealer3.index,
                     &dealer3coeffs,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
             let dealer3_their_encrypted_secret_shares =
@@ -1550,11 +1510,11 @@ mod test {
             assert!(dealer2_group_key.key.into_affine() == dealer3_group_key.key.into_affine());
 
             let params_signers = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
-            let (signer1, signer1_dh_sk) = Participant::new_signer(&params_signers, 1, "Φ", rng);
-            let (signer2, signer2_dh_sk) = Participant::new_signer(&params_signers, 2, "Φ", rng);
-            let (signer3, signer3_dh_sk) = Participant::new_signer(&params_signers, 3, "Φ", rng);
-            let (signer4, signer4_dh_sk) = Participant::new_signer(&params_signers, 4, "Φ", rng);
-            let (signer5, signer5_dh_sk) = Participant::new_signer(&params_signers, 5, "Φ", rng);
+            let (signer1, signer1_dh_sk) = Participant::new_signer(&params_signers, 1, rng);
+            let (signer2, signer2_dh_sk) = Participant::new_signer(&params_signers, 2, rng);
+            let (signer3, signer3_dh_sk) = Participant::new_signer(&params_signers, 3, rng);
+            let (signer4, signer4_dh_sk) = Participant::new_signer(&params_signers, 4, rng);
+            let (signer5, signer5_dh_sk) = Participant::new_signer(&params_signers, 5, rng);
 
             let signers: Vec<Participant<Secp256k1Sha256>> = vec![
                 signer1.clone(),
@@ -1565,11 +1525,11 @@ mod test {
             ];
 
             let (dealer1_for_signers, dealer1_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params_signers, dealer1_secret_key, &signers, "Φ", rng)?;
+                Participant::reshare(&params_signers, dealer1_secret_key, &signers, rng)?;
             let (dealer2_for_signers, dealer2_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params_signers, dealer2_secret_key, &signers, "Φ", rng)?;
+                Participant::reshare(&params_signers, dealer2_secret_key, &signers, rng)?;
             let (dealer3_for_signers, dealer3_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params_signers, dealer3_secret_key, &signers, "Φ", rng)?;
+                Participant::reshare(&params_signers, dealer3_secret_key, &signers, rng)?;
 
             let dealers: Vec<Participant<Secp256k1Sha256>> = vec![
                 dealer1_for_signers,
@@ -1582,7 +1542,6 @@ mod test {
                     &signer1_dh_sk,
                     &signer1.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1592,7 +1551,6 @@ mod test {
                     &signer2_dh_sk,
                     &signer2.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1602,7 +1560,6 @@ mod test {
                     &signer3_dh_sk,
                     &signer3.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1612,7 +1569,6 @@ mod test {
                     &signer4_dh_sk,
                     &signer4.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1622,7 +1578,6 @@ mod test {
                     &signer5_dh_sk,
                     &signer5.index,
                     &dealers,
-                    "Φ",
                     rng,
                 )?;
 
@@ -1710,27 +1665,24 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, dh_sk1) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
             let (p2, p2coeffs, dh_sk2) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
             let (p3, p3coeffs, dh_sk3) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
 
-            p1.proof_of_secret_key.as_ref().unwrap().verify(
-                p1.index,
-                p1.public_key().unwrap(),
-                "Φ",
-            )?;
-            p2.proof_of_secret_key.as_ref().unwrap().verify(
-                p2.index,
-                p2.public_key().unwrap(),
-                "Φ",
-            )?;
-            p3.proof_of_secret_key.as_ref().unwrap().verify(
-                p3.index,
-                p3.public_key().unwrap(),
-                "Φ",
-            )?;
+            p1.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p1.index, p1.public_key().unwrap())?;
+            p2.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p2.index, p2.public_key().unwrap())?;
+            p3.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p3.index, p3.public_key().unwrap())?;
 
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
@@ -1741,7 +1693,6 @@ mod test {
                     &p1.index,
                     &p1coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
@@ -1753,7 +1704,6 @@ mod test {
                     &p2.index,
                     &p2coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
@@ -1765,7 +1715,6 @@ mod test {
                     &p3.index,
                     &p3coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
@@ -1809,27 +1758,24 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, dh_sk1) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
             let (p2, p2coeffs, dh_sk2) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
             let (p3, p3coeffs, dh_sk3) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
 
-            p1.proof_of_secret_key.as_ref().unwrap().verify(
-                p1.index,
-                p1.public_key().unwrap(),
-                "Φ",
-            )?;
-            p2.proof_of_secret_key.as_ref().unwrap().verify(
-                p2.index,
-                p2.public_key().unwrap(),
-                "Φ",
-            )?;
-            p3.proof_of_secret_key.as_ref().unwrap().verify(
-                p3.index,
-                p3.public_key().unwrap(),
-                "Φ",
-            )?;
+            p1.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p1.index, p1.public_key().unwrap())?;
+            p2.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p2.index, p2.public_key().unwrap())?;
+            p3.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p3.index, p3.public_key().unwrap())?;
 
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
@@ -1840,7 +1786,6 @@ mod test {
                     &p1.index,
                     &p1coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
@@ -1852,7 +1797,6 @@ mod test {
                     &p2.index,
                     &p2coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
@@ -1864,7 +1808,6 @@ mod test {
                     &p3.index,
                     &p3coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
@@ -2069,27 +2012,24 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, p1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
             let (p2, p2coeffs, p2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
             let (p3, p3coeffs, p3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, "Φ", rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
 
-            p1.proof_of_secret_key.as_ref().unwrap().verify(
-                p1.index,
-                p1.public_key().unwrap(),
-                "Φ",
-            )?;
-            p2.proof_of_secret_key.as_ref().unwrap().verify(
-                p2.index,
-                p2.public_key().unwrap(),
-                "Φ",
-            )?;
-            p3.proof_of_secret_key.as_ref().unwrap().verify(
-                p3.index,
-                p3.public_key().unwrap(),
-                "Φ",
-            )?;
+            p1.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p1.index, p1.public_key().unwrap())?;
+            p2.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p2.index, p2.public_key().unwrap())?;
+            p3.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p3.index, p3.public_key().unwrap())?;
 
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
@@ -2100,7 +2040,6 @@ mod test {
                     &p1.index,
                     &p1coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
@@ -2112,7 +2051,6 @@ mod test {
                     &p2.index,
                     &p2coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
@@ -2124,7 +2062,6 @@ mod test {
                     &p3.index,
                     &p3coeffs,
                     &participants,
-                    "Φ",
                     rng,
                 )?;
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
