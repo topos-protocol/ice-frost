@@ -24,7 +24,7 @@ use zeroize::Zeroize;
 pub struct Coefficients<C: CipherSuite>(pub(crate) Vec<<C::G as Group>::ScalarField>);
 
 impl<C: CipherSuite> Coefficients<C> {
-    /// Serialize this `Coefficients` to a vector of bytes.
+    /// Serialize this [`Coefficients`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -34,7 +34,7 @@ impl<C: CipherSuite> Coefficients<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `Coefficients` from a vector of bytes.
+    /// Attempt to deserialize a [`Coefficients`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -66,7 +66,7 @@ impl<C: CipherSuite> Drop for SecretShare<C> {
 }
 
 impl<C: CipherSuite> SecretShare<C> {
-    /// Serialize this `SecretShare` to a vector of bytes.
+    /// Serialize this [`SecretShare`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -76,12 +76,12 @@ impl<C: CipherSuite> SecretShare<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `SecretShare` from a vector of bytes.
+    /// Attempt to deserialize a [`SecretShare`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 
-    /// Evaluate the polynomial, `f(x)` for the secret coefficients at the value of `x`.
+    /// Evaluate the polynomial, [`f(x)`] for the secret coefficients at the value of [`x`] .
     pub(crate) fn evaluate_polynomial(
         sender_index: &u32,
         receiver_index: &u32,
@@ -107,7 +107,7 @@ impl<C: CipherSuite> SecretShare<C> {
     }
 
     /// Verify that this secret share was correctly computed w.r.t. some secret
-    /// polynomial coefficients attested to by some `commitment`.
+    /// polynomial coefficients attested to by some [`commitment`] .
     pub(crate) fn verify(
         &self,
         commitment: &VerifiableSecretSharingCommitment<C>,
@@ -168,7 +168,7 @@ impl<C: CipherSuite> EncryptedSecretShare<C> {
         }
     }
 
-    /// Serialize this `EncryptedSecretShare` to a vector of bytes.
+    /// Serialize this [`EncryptedSecretShare`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -178,7 +178,7 @@ impl<C: CipherSuite> EncryptedSecretShare<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `EncryptedSecretShare` from a vector of bytes.
+    /// Attempt to deserialize a [`EncryptedSecretShare`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -195,7 +195,7 @@ pub struct VerifiableSecretSharingCommitment<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
-    /// Serialize this `VerifiableSecretSharingCommitment` to a vector of bytes.
+    /// Serialize this [`VerifiableSecretSharingCommitment`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -205,7 +205,7 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `VerifiableSecretSharingCommitment` from a vector of bytes.
+    /// Attempt to deserialize a [`VerifiableSecretSharingCommitment`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }

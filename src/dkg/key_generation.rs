@@ -56,26 +56,26 @@ where
     /// who will generate shares for a group of signers (can be the group of dealers).
     ///
     /// In case of resharing/refreshing of the secret participant shares once the
-    /// Dkg has completed, a dealer can call the `reshare` method to distribute
+    /// Dkg has completed, a dealer can call the [`reshare`] method to distribute
     /// shares of her secret key to a new set of participants.
     ///
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
-    /// * This participant's `index`,
+    /// * This participant's [`index`,
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
     ///
-    /// After a new participant is constructed, the `participant.index`,
-    /// `participant.commitments`, `participant.proof_of_secret_key` and
-    /// `participant.proof_of_dh_private_key` should be sent to every
+    /// After a new participant is constructed, the [`participant.index`,
+    /// [`participant.commitments`, [`participant.proof_of_secret_key`] and
+    /// [`participant.proof_of_dh_private_key`] should be sent to every
     /// other participant in the protocol.
     ///
     /// # Returns
     ///
     /// A distributed key generation protocol [`Participant`] and that
-    /// dealer's secret polynomial `Coefficients` along the dealer's
+    /// dealer's secret polynomial [`Coefficients`] along the dealer's
     /// Diffie-Hellman private key for secret shares encryption which
     /// must be kept private.
     pub fn new_dealer(
@@ -96,13 +96,13 @@ where
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
-    /// * This participant's `index`,
+    /// * This participant's [`index`,
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
     ///
-    /// After a new participant is constructed, the `participant.index`
-    /// and `participant.proof_of_dh_private_key` should be sent to every
+    /// After a new participant is constructed, the [`participant.index`
+    /// and [`participant.proof_of_dh_private_key`] should be sent to every
     /// other participant in the protocol.
     ///
     /// # Returns
@@ -220,21 +220,21 @@ where
     /// # Inputs
     ///
     /// * The *new* protocol instance [`ThresholdParameters`],
-    /// * This participant's `secret_key`,
+    /// * This participant's [`secret_key`,
     /// * A reference to the list of new participants,
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
     ///
-    /// After a new participant is constructed, the `participant.index`,
-    /// `participant.commitments`, `participant.proof_of_secret_key` and
-    /// `participant.proof_of_dh_private_key` should be sent to every other
+    /// After a new participant is constructed, the [`participant.index`,
+    /// [`participant.commitments`, [`participant.proof_of_secret_key`] and
+    /// [`participant.proof_of_dh_private_key`] should be sent to every other
     /// participant in the protocol along with their dedicated secret share.
     ///
     /// # Returns
     ///
     /// A distributed key generation protocol [`Participant`], a
-    /// `Vec<EncryptedSecretShare::<C>>` to be sent to each participant
+    /// [`Vec<EncryptedSecretShare::<C>>`] to be sent to each participant
     /// of the new set accordingly.
     /// It also returns a list of the valid / misbehaving participants
     /// of the new set for handling outside of this crate.
@@ -275,7 +275,7 @@ where
         Ok((dealer, encrypted_shares, participant_lists))
     }
 
-    /// Serialize this `Participant` to a vector of bytes.
+    /// Serialize this [`Participant`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -285,14 +285,14 @@ where
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `Participant` from a vector of bytes.
+    /// Attempt to deserialize a [`Participant`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
 
     /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the Ristretto basepoint.
     ///
-    /// This is used to pass into the final call to `DistributedKeyGeneration::<RoundTwo>.finish()`.
+    /// This is used to pass into the final call to [`DistributedKeyGeneration::<RoundTwo>.finish()`] .
     pub fn public_key(&self) -> Option<&C::G> {
         if self.commitments.is_some() {
             return self.commitments.as_ref().unwrap().public_key();
@@ -368,11 +368,11 @@ where
     /// Check the zero-knowledge proofs of knowledge of secret keys of all the
     /// other participants. When no group key has been computed by a group of
     /// participants yet, this method should be called rather than
-    /// `DistributedKeyGeneration<RoundOne, C>::new()`.
+    /// [`DistributedKeyGeneration<RoundOne, C>::new()`] .
     ///
     /// # Note
     ///
-    /// The `participants` will be sorted by their indices.
+    /// The [`participants`] will be sorted by their indices.
     ///
     /// # Returns
     ///
@@ -406,7 +406,7 @@ where
     ///
     /// # Note
     ///
-    /// The `participants` will be sorted by their indices.
+    /// The [`participants`] will be sorted by their indices.
     ///
     /// # Returns
     ///
@@ -584,7 +584,7 @@ where
     }
 
     /// Retrieve an encrypted secret share for each other participant, to be given to them
-    /// at the end of `DistributedKeyGeneration::<RoundOne, C>`.
+    /// at the end of [`DistributedKeyGeneration::<RoundOne, C>`] .
     pub fn their_encrypted_secret_shares(&self) -> FrostResult<C, &Vec<EncryptedSecretShare<C>>> {
         self.state
             .their_encrypted_secret_shares
@@ -593,7 +593,7 @@ where
     }
 
     /// Progress to round two of the Dkg protocol once we have sent each encrypted share
-    /// from `DistributedKeyGeneration::<RoundOne, C>.their_encrypted_secret_shares()` to its
+    /// from [`DistributedKeyGeneration::<RoundOne, C>.their_encrypted_secret_shares()`] to its
     /// respective other participant, and collected our shares from the other
     /// participants in turn.
     #[allow(clippy::wrong_self_convention)]
@@ -688,9 +688,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     ///
     /// # Example
     ///
-    /// ```ignore
+    /// [```ignore
     /// let (group_key, secret_key) = state.finish()?;
-    /// ```
+    /// [```
     pub fn finish(mut self) -> FrostResult<C, (GroupKey<C>, IndividualSigningKey<C>)> {
         let secret_key = self.calculate_signing_key()?;
         let group_key = self.calculate_group_key()?;

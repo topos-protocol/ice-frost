@@ -14,7 +14,7 @@ use rand::Rng;
 ///
 /// This proof is created by making a pseudo-Schnorr signature,
 /// \\( \sigma\_i = (s\_i, r\_i) \\) using \\( a\_{i0} \\) (from
-/// `ice_frost::keygen::DistributedKeyGeneration::<RoundOne>::compute_share`)
+/// [`ice_frost::keygen::DistributedKeyGeneration::<RoundOne>::compute_share`)
 /// as the secret key, such that \\( k \stackrel{\\$}{\leftarrow} \mathbb{Z}\_q \\),
 /// \\( M\_i = g^k \\), \\( s\_i = \mathcal{H}(i, \phi, g^{a\_{i0}}, M\_i) \\),
 /// \\( r\_i = k + a\_{i0} \cdot s\_i \\).
@@ -35,7 +35,7 @@ impl<C: CipherSuite> NizkPokOfSecretKey<C>
 where
     [(); C::HASH_SEC_PARAM]:,
 {
-    /// Serialize this `NizkPokOfSecretKey` to a vector of bytes.
+    /// Serialize this [`NizkPokOfSecretKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -45,7 +45,7 @@ where
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `NizkPokOfSecretKey` from a vector of bytes.
+    /// Attempt to deserialize a [`NizkPokOfSecretKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }

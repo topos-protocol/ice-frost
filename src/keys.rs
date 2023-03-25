@@ -19,7 +19,7 @@ use zeroize::Zeroize;
 pub struct DiffieHellmanPrivateKey<C: CipherSuite>(pub(crate) <C::G as Group>::ScalarField);
 
 impl<C: CipherSuite> DiffieHellmanPrivateKey<C> {
-    /// Serialize this `DiffieHellmanPrivateKey` to a vector of bytes.
+    /// Serialize this [`DiffieHellmanPrivateKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -29,7 +29,7 @@ impl<C: CipherSuite> DiffieHellmanPrivateKey<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `DiffieHellmanPrivateKey` from a vector of bytes.
+    /// Attempt to deserialize a [`DiffieHellmanPrivateKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -49,7 +49,7 @@ pub struct DiffieHellmanPublicKey<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
-    /// Instantiates a new `DiffieHellmanPublicKey` key.
+    /// Instantiates a new [`DiffieHellmanPublicKey`] key.
     pub fn new(key: C::G) -> Self {
         Self {
             key,
@@ -57,7 +57,7 @@ impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
         }
     }
 
-    /// Serialize this `DiffieHellmanPublicKey` to a vector of bytes.
+    /// Serialize this [`DiffieHellmanPublicKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -67,7 +67,7 @@ impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `DiffieHellmanPublicKey` from a vector of bytes.
+    /// Attempt to deserialize a [`DiffieHellmanPublicKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -94,7 +94,7 @@ pub struct IndividualVerifyingKey<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> IndividualVerifyingKey<C> {
-    /// Serialize this `IndividualVerifyingKey` to a vector of bytes.
+    /// Serialize this [`IndividualVerifyingKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -104,7 +104,7 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `IndividualVerifyingKey` from a vector of bytes.
+    /// Attempt to deserialize a [`IndividualVerifyingKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -121,12 +121,12 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
     ///
     /// # Inputs
     ///
-    /// * A vector of `commitments` regarding the secret polynomial
+    /// * A vector of [`commitments`] regarding the secret polynomial
     ///   [`Coefficients`] that this [`IndividualVerifyingKey`] was generated with.
     ///
     /// # Returns
     ///
-    /// A `Result` with either an empty `Ok` or `Err` value, depending on
+    /// A [`FrostResult`] with either an empty [`Ok`] or [`Err`] value, depending on
     /// whether or not the verification was successful.
     pub fn verify(
         &self,
@@ -177,13 +177,13 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
     ///
     /// # Inputs
     ///
-    /// * A `participant_index` and
-    /// * A vector of `commitments` regarding the secret polynomial
+    /// * A [`participant_index`] and
+    /// * A vector of [`commitments`] regarding the secret polynomial
     ///   [`Coefficients`] that the [`IndividualVerifyingKey`] will be generated from.
     ///
     /// # Returns
     ///
-    /// An `IndividualVerifyingKey`.
+    /// An [`IndividualVerifyingKey`] .
     pub fn generate_from_commitments(
         participant_index: u32,
         commitments: &[VerifiableSecretSharingCommitment<C>],
@@ -228,7 +228,7 @@ pub struct IndividualSigningKey<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> IndividualSigningKey<C> {
-    /// Serialize this `IndividualSigningKey` to a vector of bytes.
+    /// Serialize this [`IndividualSigningKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -238,7 +238,7 @@ impl<C: CipherSuite> IndividualSigningKey<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `IndividualSigningKey` from a vector of bytes.
+    /// Attempt to deserialize a [`IndividualSigningKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -276,7 +276,7 @@ pub struct GroupKey<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> GroupKey<C> {
-    /// Instantiates a new `GroupKey` key.
+    /// Instantiates a new [`GroupKey`] key.
     pub fn new(key: C::G) -> Self {
         Self {
             key,
@@ -284,7 +284,7 @@ impl<C: CipherSuite> GroupKey<C> {
         }
     }
 
-    /// Serialize this `GroupKey` to a vector of bytes.
+    /// Serialize this [`GroupKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -294,7 +294,7 @@ impl<C: CipherSuite> GroupKey<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `GroupKey` from a vector of bytes.
+    /// Attempt to deserialize a [`GroupKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }

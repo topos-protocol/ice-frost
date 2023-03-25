@@ -113,7 +113,7 @@ impl<C: CipherSuite> Complaint<C> {
         Ok(())
     }
 
-    /// Serialize this `Complaint` to a vector of bytes.
+    /// Serialize this [`Complaint`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -123,7 +123,7 @@ impl<C: CipherSuite> Complaint<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `Complaint` from a vector of bytes.
+    /// Attempt to deserialize a [`Complaint`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -141,7 +141,7 @@ pub struct ComplaintProof<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> ComplaintProof<C> {
-    /// Serialize this `ComplaintProof` to a vector of bytes.
+    /// Serialize this [`ComplaintProof`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -151,7 +151,7 @@ impl<C: CipherSuite> ComplaintProof<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `ComplaintProof` from a vector of bytes.
+    /// Attempt to deserialize a [`ComplaintProof`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }

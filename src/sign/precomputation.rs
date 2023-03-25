@@ -95,7 +95,7 @@ pub struct CommitmentShare<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> CommitmentShare<C> {
-    /// Serialize this `CommitmentShare` to a vector of bytes.
+    /// Serialize this [`CommitmentShare`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -105,7 +105,7 @@ impl<C: CipherSuite> CommitmentShare<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `CommitmentShare` from a vector of bytes.
+    /// Attempt to deserialize a [`CommitmentShare`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -140,7 +140,7 @@ pub struct SecretCommitmentShareList<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> SecretCommitmentShareList<C> {
-    /// Serialize this `SecretCommitmentShareList` to a vector of bytes.
+    /// Serialize this [`SecretCommitmentShareList`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -150,7 +150,7 @@ impl<C: CipherSuite> SecretCommitmentShareList<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `SecretCommitmentShareList` from a vector of bytes.
+    /// Attempt to deserialize a [`SecretCommitmentShareList`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -170,7 +170,7 @@ pub struct PublicCommitmentShareList<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> PublicCommitmentShareList<C> {
-    /// Serialize this `PublicCommitmentShareList` to a vector of bytes.
+    /// Serialize this [`PublicCommitmentShareList`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -180,7 +180,7 @@ impl<C: CipherSuite> PublicCommitmentShareList<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `PublicCommitmentShareList` from a vector of bytes.
+    /// Attempt to deserialize a [`PublicCommitmentShareList`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -190,9 +190,9 @@ impl<C: CipherSuite> PublicCommitmentShareList<C> {
 ///
 /// # Inputs
 ///
-/// * `participant_index` is the index of the threshold signing
+/// * [`participant_index`] is the index of the threshold signing
 ///   participant who is publishing this share.
-/// * `number_of_shares` denotes the number of commitments published at a time.
+/// * [`number_of_shares`] denotes the number of commitments published at a time.
 ///
 /// # Returns
 ///

@@ -60,7 +60,7 @@ pub struct PartialThresholdSignature<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> PartialThresholdSignature<C> {
-    /// Serialize this `PartialThresholdSignature` to a vector of bytes.
+    /// Serialize this [`PartialThresholdSignature`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -70,7 +70,7 @@ impl<C: CipherSuite> PartialThresholdSignature<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `PartialThresholdSignature` from a vector of bytes.
+    /// Attempt to deserialize a [`PartialThresholdSignature`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -84,7 +84,7 @@ pub struct ThresholdSignature<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> ThresholdSignature<C> {
-    /// Serialize this `ThresholdSignature` to a vector of bytes.
+    /// Serialize this [`ThresholdSignature`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -94,7 +94,7 @@ impl<C: CipherSuite> ThresholdSignature<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `ThresholdSignature` from a vector of bytes.
+    /// Attempt to deserialize a [`ThresholdSignature`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }
@@ -213,7 +213,7 @@ where
     }
 
     let encoded_comm_hash = C::h5(&encode_group_commitment_list::<C>(&commitment_list))?;
-    // `extend` operates in place, hence msg_hash is now equal to `rho_input_prefix`.
+    // [`extend`] operates in place, hence msg_hash is now equal to [`rho_input_prefix`] .
     msg_hash.extend(encoded_comm_hash.as_ref());
 
     for (identifier, _, _) in commitment_list.iter() {
@@ -264,7 +264,7 @@ where
     }
 
     let encoded_comm_hash = C::h5(&encode_group_commitment_list::<C>(&commitment_list))?;
-    // `extend` operates in place, hence msg_hash is now equal to `rho_input_prefix`.
+    // [`extend`] operates in place, hence msg_hash is now equal to [`rho_input_prefix`] .
     msg_hash.extend(encoded_comm_hash.as_ref());
 
     let mut rho_input = msg_hash.clone();
@@ -319,29 +319,27 @@ where
     [(); C::HASH_SEC_PARAM]:,
 {
     /// Compute an individual signer's [`PartialThresholdSignature`] contribution to
-    /// a [`ThresholdSignature`] on a `message`.
+    /// a [`ThresholdSignature`] on a [`message`] .
     ///
     /// # Inputs
     ///
-    /// * The `message_hash` to be signed by every individual signer, this should be
-    ///   the `Sha256` digest of the message, optionally along with some application-specific
-    ///   context string, and can be calculated with the helper function
-    ///   [`compute_challenge`].
+    /// * The [`message_hash`] to be signed by every individual signer. This can be computed
+    ///   with the [`h4`] hasher of this instantiation's CipherSuite.
     /// * The public [`GroupKey`] for this group of signing participants,
     /// * This signer's [`SecretCommitmentShareList`] being used in this instantiation and
-    /// * The index of the particular `CommitmentShare` being used, and
+    /// * The index of the particular [`CommitmentShare`] being used, and
     /// * The list of all the currently participating [`Signer`]s (including ourself).
     ///
     /// # Warning
     ///
-    /// The secret share `index` here **must** be the same secret share
+    /// The secret share [`index`] here **must** be the same secret share
     /// corresponding to its public commitment which is passed to
-    /// `SignatureAggregrator.include_signer()`.
+    /// [`SignatureAggregrator.include_signer()`] .
     ///
     /// # Returns
     ///
-    /// A Result whose `Ok` value contains a [`PartialThresholdSignature`], which
-    /// should be sent to the [`SignatureAggregator`].  Otherwise, its `Err` value contains
+    /// A Result whose [`Ok`] value contains a [`PartialThresholdSignature`], which
+    /// should be sent to the [`SignatureAggregator`].  Otherwise, its [`Err`] value contains
     /// a string describing the error which occurred.
     pub fn sign(
         &self,
@@ -449,18 +447,18 @@ impl<C: CipherSuite> Aggregator for Finalized<C> {}
 
 impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// Construct a new signature aggregator from some protocol instantiation
-    /// `parameters` and a `message` to be signed.
+    /// [`parameters`] and a [`message`] to be signed.
     ///
     /// # Inputs
     ///
     /// * The [`ThresholdParameters`] for this threshold signing operation,
     /// * The public [`GroupKey`] for the intended sets of signers,
-    /// * An optional `context` string for computing the message hash,
-    /// * The `message` to be signed.
+    /// * An optional [`context`] string for computing the message hash,
+    /// * The [`message`] to be signed.
     ///
     /// # Notes
     ///
-    /// The `context` and the `message` string should be given to the aggregator
+    /// The [`context`] and the [`message`] string should be given to the aggregator
     /// so that all signers can query them before deciding whether or not to
     /// sign.
     ///
@@ -500,7 +498,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     ///
     /// # Panics
     ///
-    /// If the `signer.participant_index` doesn't match the `public_key.index`.
+    /// If the [`signer.participant_index`] doesn't match the [`public_key.index`] .
     pub fn include_signer(
         &mut self,
         participant_index: u32,
@@ -524,7 +522,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     ///
     /// # Returns
     ///
-    /// A `&Vec<Signer>` of the participating signers in this round.
+    /// A [`&Vec<Signer>`] of the participating signers in this round.
     pub fn get_signers(&'_ mut self) -> &'_ Vec<Signer<C>> {
         self.state.signers.sort();
         self.state.signers.dedup();
@@ -545,7 +543,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     ///
     /// # Returns
     ///
-    /// A sorted `Vec` of unique [`Signer`]s who have yet to contribute their
+    /// A sorted [`Vec`] of unique [`Signer`]s who have yet to contribute their
     /// partial signatures.
     pub fn get_remaining_signers(&self) -> Vec<Signer<C>> {
         let mut remaining_signers: Vec<Signer<C>> = Vec::new();
@@ -577,10 +575,10 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// # Returns
     ///
     /// A Result whose Ok() value is a finalized aggregator, otherwise a
-    /// `BTreeMap<u32, &'static str>` containing the participant indices of the misbehaving
+    /// [`BTreeMap<u32, &'static str>`] containing the participant indices of the misbehaving
     /// signers and a description of their misbehaviour.
     ///
-    /// If the `BTreeMap` contains a key for `0`, this indicates that
+    /// If the [`BTreeMap`] contains a key for [`0`, this indicates that
     /// the aggregator did not have \(( t' \)) partial signers
     /// s.t. \(( t \le t' \le n \)).
     pub fn finalize(mut self) -> FrostResult<C, SignatureAggregator<C, Finalized<C>>> {
@@ -635,7 +633,7 @@ where
     /// # Returns
     ///
     /// A Result whose Ok() value is a [`ThresholdSignature`], otherwise a
-    /// `BTreeMap<u32, &'static str>` containing the participant indices of the misbehaving
+    /// [`BTreeMap<u32, &'static str>`] containing the participant indices of the misbehaving
     /// signers and a description of their misbehaviour.
     pub fn aggregate(&self) -> FrostResult<C, ThresholdSignature<C>> {
         let binding_factor_list =
@@ -736,9 +734,7 @@ where
     ///
     /// # Returns
     ///
-    /// A `Result` whose `Ok` value is an empty tuple if the threshold signature
-    /// was successfully verified, otherwise a vector of the participant indices
-    /// of any misbehaving participants.
+    /// A [`FrostResult`] whose [`Ok`] value indicates that the signature was computed correctly.
     pub fn verify(&self, group_key: &GroupKey<C>, message_hash: &[u8]) -> FrostResult<C, ()> {
         let challenge = compute_challenge::<C>(&self.R, group_key, message_hash).unwrap();
 

@@ -38,7 +38,7 @@ impl<C: CipherSuite> ThresholdParameters<C> {
         }
     }
 
-    /// Serialize this `ThresholdParameters` to a vector of bytes.
+    /// Serialize this [`ThresholdParameters`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -48,7 +48,7 @@ impl<C: CipherSuite> ThresholdParameters<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a `ThresholdParameters` from a vector of bytes.
+    /// Attempt to deserialize a [`ThresholdParameters`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
     }

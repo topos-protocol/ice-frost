@@ -14,7 +14,7 @@ pub struct RoundOne {}
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct RoundTwo {}
 
-/// Module to implement trait sealing so that `DkgState` cannot be
+/// Module to implement trait sealing so that [`DkgState`] cannot be
 /// implemented for externally declared types.
 mod private {
     pub trait Sealed {}
