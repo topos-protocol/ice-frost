@@ -1,8 +1,7 @@
 //! A Rust implementation of Static **[ICE-FROST]**: **I**dentifiable **C**heating **E**ntity **F**lexible **R**ound-**O**ptimised **S**chnorr **T**hreshold signatures.
 
-#![no_std]
+#![cfg_attr(not(feature = "std"), no_std)]
 #![warn(future_incompatible)]
-// #![deny(missing_docs)]
 #![allow(clippy::type_complexity)]
 #![feature(generic_const_exprs)]
 
@@ -27,7 +26,7 @@ pub mod utils;
 pub mod dkg;
 pub mod sign;
 
-/// This module provides a concrete implementation of a FROST CipherSuite over Secp256k1,
+/// This module provides a concrete implementation of an ICE-FROST CipherSuite over Secp256k1,
 /// with SHA-256 as underlying base hash function.
 /// It is made available for testing and benchmarking purposes.
 pub mod testing {
