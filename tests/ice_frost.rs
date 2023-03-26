@@ -1,4 +1,4 @@
-//! Integration tests for FROST.
+//! Integration tests for ICE-FROST.
 
 use rand::rngs::OsRng;
 

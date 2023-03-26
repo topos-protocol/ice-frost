@@ -211,7 +211,7 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
-    /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the Ristretto basepoint.
+    /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the prime-order basepoint.
     pub fn public_key(&self) -> Option<&C::G> {
         if !self.points.is_empty() {
             return Some(&self.points[0]);

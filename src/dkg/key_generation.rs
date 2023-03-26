@@ -265,9 +265,9 @@ where
             ));
         }
 
-        // [DIFFERENT_TO_PAPER] We pre-calculate the secret shares from Round 2
-        // Step 1 here since it doesn't require additional online activity.
-        // RICE-FROST: We also encrypt them into their_encrypted_secret_shares.
+        // We pre-calculate the secret shares from Round 2 - Step 1 here since
+        // it doesn't require additional online activity.
+        // ICE-FROST also requires to encrypt them into `their_encrypted_secret_shares`.
         //
         // Round 2
         // Step 1: Each P_i securely sends to each other participant P_l a secret share
@@ -329,7 +329,7 @@ where
     }
 
     /// Progress to round two of the Dkg protocol once we have sent each encrypted share
-    /// from [`DistributedKeyGeneration::<RoundOne, C>.their_encrypted_secret_shares()`] to its
+    /// from [`DistributedKeyGeneration::<RoundOne, C>::their_encrypted_secret_shares()`] to its
     /// respective other participant, and collected our shares from the other
     /// participants in turn.
     pub fn to_round_two(
@@ -344,8 +344,6 @@ where
         if self.state.their_encrypted_secret_shares.is_some() {
             self.state.their_encrypted_secret_shares = None;
         }
-
-        // RICE-FROST
 
         let mut complaints: Vec<Complaint<C>> = Vec::new();
 

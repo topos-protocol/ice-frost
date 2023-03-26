@@ -1,4 +1,4 @@
-//! Benchmarks for FROST.
+//! Benchmarks for ICE-FROST signing sessions.
 
 #[macro_use]
 extern crate criterion;

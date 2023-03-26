@@ -5,7 +5,7 @@ authors = [
     "Toposware Developers <dev@toposware.com>"
 ]
 edition = "2021"
-description = "Static ICE-FROST: Identifiable Cheating Entity Flexible Round-Optimised Threshold Signature using the Ristretto group"
+description = "Modular Static ICE-FROST: Identifiable Cheating Entity Flexible Round-Optimised Threshold Signature"
 readme = "README.md"
 license = "MIT/Apache-2"
 repository = "https://github.com/Toposware/ice_frost"
@@ -44,5 +44,4 @@ harness = false
 [features]
 default = ["std"]
 asm = ["ark-ff/asm", "std"]
-
 std = ["ark-ec/std", "ark-ff/std", "ark-serialize/std"]

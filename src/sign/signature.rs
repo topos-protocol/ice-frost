@@ -1,4 +1,4 @@
-//! FROST signatures and their creation.
+//! ICE-FROST signatures.
 
 use crate::ciphersuite::CipherSuite;
 
@@ -657,7 +657,7 @@ where
         // We first combine all partial signatures together, to remove the need for individual
         // signature verification in case the final group signature is valid.
         for signer in self.state.signers.iter() {
-            // This unwrap() cannot fail, because SignatureAggregator<Initial>.finalize()
+            // This unwrap() cannot fail, because [`SignatureAggregator<Initial>::finalize()`]
             // checks that we have partial signature for every expected signer.
             let partial_sig = self
                 .state
@@ -683,7 +683,7 @@ where
                     // This unwrap() cannot fail, since the attempted division by zero in
                     // the calculation of the Lagrange interpolation cannot happen,
                     // because we use the typestate pattern,
-                    // i.e. SignatureAggregator<Initial>.finalize(), to ensure that
+                    // i.e. [`SignatureAggregator<Initial>::finalize()`], to ensure that
                     // there are no duplicate signers, which is the only thing that
                     // would cause a denominator of zero.
                     let lambda = calculate_lagrange_coefficients::<C>(

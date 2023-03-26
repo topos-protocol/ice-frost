@@ -127,10 +127,9 @@ where
         //         ZZ_q.
         let t: usize = parameters.t as usize;
 
-        // RICE-FROST: Every participant samples a random pair of keys (dh_private_key, dh_public_key)
-        // and generates a proof of knowledge of dh_private_key. This will be used for secret shares
-        // encryption and for complaint generation.
-
+        // Every participant samples a random pair of keys (dh_private_key, dh_public_key)
+        // and generates a proof of knowledge of dh_private_key.
+        // This will be used for secret shares encryption and for complaint generation.
         let dh_private_key = DiffieHellmanPrivateKey(<C::G as Group>::ScalarField::rand(&mut rng));
         let dh_public_key = DiffieHellmanPublicKey::new(C::G::generator().mul(dh_private_key.0));
 
@@ -181,9 +180,7 @@ where
             // The steps are out of order, in order to save one scalar multiplication.
 
             // Step 2: Every dealer computes a proof of knowledge to the corresponding secret
-            //         a_{i0} by calculating a Schnorr signature \alpha_i = (s, group_commitment).  (In
-            //         the FROST paper: \alpha_i = (\mu_i, c_i), but we stick with Schnorr's
-            //         original notation here.)
+            //         a_{i0} by calculating a Schnorr signature \alpha_i = (s, group_commitment).
             let proof_of_secret_key: NizkPokOfSecretKey<C> = NizkPokOfSecretKey::prove(
                 index,
                 &coefficients.0[0],
@@ -280,9 +277,9 @@ where
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
-    /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the Ristretto basepoint.
+    /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the prime-order basepoint.
     ///
-    /// This is used to pass into the final call to [`DistributedKeyGeneration::<RoundTwo>.finish()`] .
+    /// This is used to pass into the final call to [`DistributedKeyGeneration::<RoundTwo, C>::finish()`] .
     pub fn public_key(&self) -> Option<&C::G> {
         if self.commitments.is_some() {
             return self.commitments.as_ref().unwrap().public_key();

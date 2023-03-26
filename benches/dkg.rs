@@ -1,4 +1,4 @@
-//! Benchmarks for FROST.
+//! Benchmarks for ICE-FROST distributed key generation with static resharing.
 
 #[macro_use]
 extern crate criterion;
