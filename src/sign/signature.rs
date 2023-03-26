@@ -755,51 +755,204 @@ where
 mod test {
     use super::*;
 
-    use crate::dkg::Participant;
+    use crate::dkg::{Coefficients, EncryptedSecretShare, Participant};
     use crate::dkg::{DistributedKeyGeneration, RoundOne};
+    use crate::keys::DiffieHellmanPrivateKey;
     use crate::sign::{generate_commitment_share_lists, PublicCommitmentShareList};
     use crate::testing::Secp256k1Sha256;
 
     use ark_secp256k1::{Fr, Projective};
 
-    use ark_ec::CurveGroup;
     use ark_ff::{UniformRand, Zero};
     use rand::rngs::OsRng;
 
-    #[test]
-    fn signing_and_verification_single_party() {
-        let params = ThresholdParameters::<Secp256k1Sha256>::new(1, 1);
+    fn do_keygen(
+        n1: u32,
+        t1: u32,
+        n2: Option<u32>,
+        t2: Option<u32>,
+    ) -> FrostResult<
+        Secp256k1Sha256,
+        (
+            ThresholdParameters<Secp256k1Sha256>,
+            Vec<IndividualSigningKey<Secp256k1Sha256>>,
+            GroupKey<Secp256k1Sha256>,
+            Option<ThresholdParameters<Secp256k1Sha256>>,
+            Option<Vec<IndividualSigningKey<Secp256k1Sha256>>>,
+        ),
+    > {
+        type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
+
+        let params = ThresholdParameters::new(n1, t1);
         let rng = OsRng;
 
-        let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
+        let mut participants = Vec::<Participant<Secp256k1Sha256>>::new();
+        let mut coefficients = Vec::<Coefficients<Secp256k1Sha256>>::new();
+        let mut dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
 
-        p1.proof_of_secret_key
-            .as_ref()
-            .unwrap()
-            .verify(p1.index, p1.public_key().unwrap())
-            .unwrap();
+        for i in 1..n1 + 1 {
+            let (p, c, dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, i, rng);
+            participants.push(p);
+            coefficients.push(c);
+            dh_secret_keys.push(dh_sk);
+        }
 
-        let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone()];
-        let (p1_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+        let mut participants_encrypted_secret_shares: Vec<
+            Vec<EncryptedSecretShare<Secp256k1Sha256>>,
+        > = (0..n1)
+            .map(|_| Vec::with_capacity((n1 - 1) as usize))
+            .collect();
+
+        let mut participants_states_1 = Vec::<Dkg<_>>::new();
+        let mut participants_states_2 = Vec::<Dkg<_>>::new();
+
+        for i in 0..n1 {
+            let (pi_state, _participant_lists) = Dkg::<_>::new_initial(
                 &params,
-                &p1_dh_sk,
-                &p1.index,
-                &p1coeffs,
+                &dh_secret_keys[i as usize],
+                &participants[i as usize].index.clone(),
+                &coefficients[i as usize],
                 &participants,
                 rng,
             )
             .unwrap();
-        let p1_my_encrypted_secret_shares =
-            p1_state.their_encrypted_secret_shares().unwrap().clone();
-        let p1_state = p1_state
-            .to_round_two(p1_my_encrypted_secret_shares, rng)
-            .unwrap();
-        let result = p1_state.finish();
+            let pi_their_encrypted_secret_shares =
+                pi_state.their_encrypted_secret_shares().unwrap();
+            participants_encrypted_secret_shares[i as usize] =
+                pi_their_encrypted_secret_shares.clone();
+            participants_states_1.push(pi_state);
+        }
 
-        assert!(result.is_ok());
+        let mut p1_my_encrypted_secret_shares = Vec::<EncryptedSecretShare<Secp256k1Sha256>>::new();
+        for j in 0..n1 {
+            p1_my_encrypted_secret_shares
+                .push(participants_encrypted_secret_shares[j as usize][0].clone());
+        }
+        participants_states_2.push(
+            participants_states_1[0]
+                .clone()
+                .to_round_two(p1_my_encrypted_secret_shares, rng)
+                .unwrap(),
+        );
 
-        let (group_key, p1_sk) = result.unwrap();
+        for i in 2..n1 + 1 {
+            let mut pi_my_encrypted_secret_shares =
+                Vec::<EncryptedSecretShare<Secp256k1Sha256>>::new();
+            for j in 0..n1 {
+                pi_my_encrypted_secret_shares.push(
+                    participants_encrypted_secret_shares[j as usize][(i - 1) as usize].clone(),
+                );
+            }
+
+            participants_states_2.push(
+                participants_states_1[(i - 1) as usize]
+                    .clone()
+                    .to_round_two(pi_my_encrypted_secret_shares, rng)
+                    .unwrap(),
+            );
+        }
+
+        let mut participants_secret_keys = Vec::<IndividualSigningKey<Secp256k1Sha256>>::new();
+        let (group_key, p1_sk) = participants_states_2[0].clone().finish().unwrap();
+        participants_secret_keys.push(p1_sk);
+
+        for i in 2..n1 + 1 {
+            let (_, pi_sk) = participants_states_2[(i - 1) as usize]
+                .clone()
+                .finish()
+                .unwrap();
+            participants_secret_keys.push(pi_sk);
+        }
+
+        if let (Some(n2), Some(t2)) = (n2, t2) {
+            let new_params = ThresholdParameters::new(n2, t2);
+
+            let mut signers = Vec::<Participant<Secp256k1Sha256>>::new();
+            let mut signers_dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
+
+            for i in 1..n2 + 1 {
+                let (p, dh_sk) = Participant::<Secp256k1Sha256>::new_signer(&params, i, rng);
+                signers.push(p);
+                signers_dh_secret_keys.push(dh_sk);
+            }
+
+            let mut signers_encrypted_secret_shares: Vec<
+                Vec<EncryptedSecretShare<Secp256k1Sha256>>,
+            > = (0..n2).map(|_| Vec::new()).collect();
+
+            let mut signers_states_1 = Vec::<Dkg<_>>::new();
+            let mut signers_states_2 = Vec::<Dkg<_>>::new();
+
+            let mut dealers = Vec::new();
+            let mut dealers_encrypted_secret_shares_for_signers: Vec<
+                Vec<EncryptedSecretShare<Secp256k1Sha256>>,
+            > = (0..n1).map(|_| Vec::new()).collect();
+
+            for i in 0..n1 as usize {
+                let (dealer_for_signers, dealer_encrypted_shares_for_signers, _participant_lists) =
+                    Participant::reshare(
+                        &new_params,
+                        participants_secret_keys[i].clone(),
+                        &signers,
+                        rng,
+                    )?;
+                dealers.push(dealer_for_signers);
+                dealers_encrypted_secret_shares_for_signers[i] =
+                    dealer_encrypted_shares_for_signers;
+            }
+
+            for i in 0..n2 as usize {
+                let (signer_state, _participant_lists) =
+                    DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
+                        &params,
+                        &signers_dh_secret_keys[i],
+                        &signers[i].index,
+                        &dealers,
+                        rng,
+                    )?;
+                signers_states_1.push(signer_state);
+            }
+
+            for i in 0..n2 as usize {
+                let shares_for_signer = dealers_encrypted_secret_shares_for_signers
+                    .iter()
+                    .map(|v| v[i].clone())
+                    .collect::<Vec<EncryptedSecretShare<Secp256k1Sha256>>>();
+                signers_encrypted_secret_shares[i] = shares_for_signer;
+            }
+
+            for i in 0..n2 as usize {
+                signers_states_2.push(
+                    signers_states_1[i]
+                        .clone()
+                        .to_round_two(signers_encrypted_secret_shares[i].clone(), rng)
+                        .unwrap(),
+                );
+            }
+
+            let mut signers_secret_keys = Vec::<IndividualSigningKey<Secp256k1Sha256>>::new();
+
+            for signers_state in signers_states_2.iter() {
+                let (_, pi_sk) = signers_state.clone().finish().unwrap();
+                signers_secret_keys.push(pi_sk);
+            }
+
+            return Ok((
+                params,
+                participants_secret_keys,
+                group_key,
+                Some(new_params),
+                Some(signers_secret_keys),
+            ));
+        }
+
+        Ok((params, participants_secret_keys, group_key, None, None))
+    }
+
+    #[test]
+    fn signing_and_verification_single_party() {
+        let (params, signing_keys, group_key, _, _) = do_keygen(1, 1, None, None).unwrap();
+        let p1_sk = signing_keys[0].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
@@ -832,36 +985,13 @@ mod test {
         let threshold_signature = signing_result.unwrap();
         let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-        println!("{:?}", verification_result);
-
         assert!(verification_result.is_ok());
     }
 
     #[test]
     fn signing_and_verification_1_out_of_1() {
-        let params = ThresholdParameters::<Secp256k1Sha256>::new(1, 1);
-        let rng = OsRng;
-
-        let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
-
-        let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone()];
-        let (p1_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p1_dh_sk,
-                &p1.index,
-                &p1coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p1_my_encrypted_secret_shares =
-            p1_state.their_encrypted_secret_shares().unwrap().clone();
-        let p1_state = p1_state
-            .to_round_two(p1_my_encrypted_secret_shares, rng)
-            .unwrap();
-
-        let (group_key, p1_sk) = p1_state.finish().unwrap();
+        let (params, signing_keys, group_key, _, _) = do_keygen(1, 1, None, None).unwrap();
+        let p1_sk = signing_keys[0].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
@@ -895,55 +1025,8 @@ mod test {
 
     #[test]
     fn signing_and_verification_1_out_of_2() {
-        let params = ThresholdParameters::<Secp256k1Sha256>::new(2, 1);
-        let rng = OsRng;
-
-        let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
-        let (p2, p2coeffs, p2_dh_sk) = Participant::new_dealer(&params, 2, rng);
-
-        let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone(), p2.clone()];
-        let (p1_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p1_dh_sk,
-                &p1.index,
-                &p1coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
-
-        let (p2_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p2_dh_sk,
-                &p2.index,
-                &p2coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
-
-        let p1_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[0].clone(),
-            p2_their_encrypted_secret_shares[0].clone(),
-        ];
-        let p2_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[1].clone(),
-            p2_their_encrypted_secret_shares[1].clone(),
-        ];
-
-        let p1_state = p1_state
-            .to_round_two(p1_my_encrypted_secret_shares, rng)
-            .unwrap();
-        let p2_state = p2_state
-            .to_round_two(p2_my_encrypted_secret_shares, rng)
-            .unwrap();
-
-        let (group_key, p1_sk) = p1_state.finish().unwrap();
-        let (_, _p2_sk) = p2_state.finish().unwrap();
+        let (params, signing_keys, group_key, _, _) = do_keygen(2, 1, None, None).unwrap();
+        let p1_sk = signing_keys[0].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
@@ -977,138 +1060,10 @@ mod test {
 
     #[test]
     fn signing_and_verification_3_out_of_5() {
-        let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
-        let rng = OsRng;
-
-        let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
-        let (p2, p2coeffs, p2_dh_sk) = Participant::new_dealer(&params, 2, rng);
-        let (p3, p3coeffs, p3_dh_sk) = Participant::new_dealer(&params, 3, rng);
-        let (p4, p4coeffs, p4_dh_sk) = Participant::new_dealer(&params, 4, rng);
-        let (p5, p5coeffs, p5_dh_sk) = Participant::new_dealer(&params, 5, rng);
-
-        let participants: Vec<Participant<Secp256k1Sha256>> =
-            vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
-        let (p1_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p1_dh_sk,
-                &p1.index,
-                &p1coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
-
-        let (p2_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p2_dh_sk,
-                &p2.index,
-                &p2coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
-
-        let (p3_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p3_dh_sk,
-                &p3.index,
-                &p3coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
-
-        let (p4_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p4_dh_sk,
-                &p4.index,
-                &p4coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
-
-        let (p5_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                &params,
-                &p5_dh_sk,
-                &p5.index,
-                &p5coeffs,
-                &participants,
-                rng,
-            )
-            .unwrap();
-        let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
-
-        let p1_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[0].clone(),
-            p2_their_encrypted_secret_shares[0].clone(),
-            p3_their_encrypted_secret_shares[0].clone(),
-            p4_their_encrypted_secret_shares[0].clone(),
-            p5_their_encrypted_secret_shares[0].clone(),
-        ];
-
-        let p2_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[1].clone(),
-            p2_their_encrypted_secret_shares[1].clone(),
-            p3_their_encrypted_secret_shares[1].clone(),
-            p4_their_encrypted_secret_shares[1].clone(),
-            p5_their_encrypted_secret_shares[1].clone(),
-        ];
-
-        let p3_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[2].clone(),
-            p2_their_encrypted_secret_shares[2].clone(),
-            p3_their_encrypted_secret_shares[2].clone(),
-            p4_their_encrypted_secret_shares[2].clone(),
-            p5_their_encrypted_secret_shares[2].clone(),
-        ];
-
-        let p4_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[3].clone(),
-            p2_their_encrypted_secret_shares[3].clone(),
-            p3_their_encrypted_secret_shares[3].clone(),
-            p4_their_encrypted_secret_shares[3].clone(),
-            p5_their_encrypted_secret_shares[3].clone(),
-        ];
-
-        let p5_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[4].clone(),
-            p2_their_encrypted_secret_shares[4].clone(),
-            p3_their_encrypted_secret_shares[4].clone(),
-            p4_their_encrypted_secret_shares[4].clone(),
-            p5_their_encrypted_secret_shares[4].clone(),
-        ];
-
-        let p1_state = p1_state
-            .to_round_two(p1_my_encrypted_secret_shares, rng)
-            .unwrap();
-        let p2_state = p2_state
-            .to_round_two(p2_my_encrypted_secret_shares, rng)
-            .unwrap();
-        let p3_state = p3_state
-            .to_round_two(p3_my_encrypted_secret_shares, rng)
-            .unwrap();
-        let p4_state = p4_state
-            .to_round_two(p4_my_encrypted_secret_shares, rng)
-            .unwrap();
-        let p5_state = p5_state
-            .to_round_two(p5_my_encrypted_secret_shares, rng)
-            .unwrap();
-
-        let (group_key, p1_sk) = p1_state.finish().unwrap();
-        let (_, _) = p2_state.finish().unwrap();
-        let (_, p3_sk) = p3_state.finish().unwrap();
-        let (_, p4_sk) = p4_state.finish().unwrap();
-        let (_, _) = p5_state.finish().unwrap();
+        let (params, signing_keys, group_key, _, _) = do_keygen(5, 3, None, None).unwrap();
+        let p1_sk = signing_keys[0].clone();
+        let p3_sk = signing_keys[2].clone();
+        let p4_sk = signing_keys[3].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
@@ -1168,109 +1123,9 @@ mod test {
 
     #[test]
     fn signing_and_verification_2_out_of_3() {
-        // TODO: refactor to generic function to use in all tests
-        fn do_keygen() -> FrostResult<
-            Secp256k1Sha256,
-            (
-                ThresholdParameters<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                GroupKey<Secp256k1Sha256>,
-            ),
-        > {
-            let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2);
-            let rng = OsRng;
-
-            let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
-            let (p2, p2coeffs, p2_dh_sk) = Participant::new_dealer(&params, 2, rng);
-            let (p3, p3coeffs, p3_dh_sk) = Participant::new_dealer(&params, 3, rng);
-
-            p2.proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(p2.index, p2.public_key().unwrap())?;
-            p3.proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(p3.index, p3.public_key().unwrap())?;
-
-            let participants: Vec<Participant<Secp256k1Sha256>> =
-                vec![p1.clone(), p2.clone(), p3.clone()];
-            let (p1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &p1_dh_sk,
-                    &p1.index,
-                    &p1coeffs,
-                    &participants,
-                    rng,
-                )?;
-            let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
-
-            let (p2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &p2_dh_sk,
-                    &p2.index,
-                    &p2coeffs,
-                    &participants,
-                    rng,
-                )?;
-            let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
-
-            let (p3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &p3_dh_sk,
-                    &p3.index,
-                    &p3coeffs,
-                    &participants,
-                    rng,
-                )?;
-            let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
-
-            let p1_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[0].clone(),
-                p2_their_encrypted_secret_shares[0].clone(),
-                p3_their_encrypted_secret_shares[0].clone(),
-            ];
-            let p2_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[1].clone(),
-                p2_their_encrypted_secret_shares[1].clone(),
-                p3_their_encrypted_secret_shares[1].clone(),
-            ];
-            let p3_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[2].clone(),
-                p2_their_encrypted_secret_shares[2].clone(),
-                p3_their_encrypted_secret_shares[2].clone(),
-            ];
-
-            let p1_state = p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
-
-            let (p1_group_key, p1_secret_key) = p1_state.finish()?;
-            let (p2_group_key, p2_secret_key) = p2_state.finish()?;
-            let (p3_group_key, p3_secret_key) = p3_state.finish()?;
-
-            assert!(p1_group_key.key.into_affine() == p2_group_key.key.into_affine());
-            assert!(p2_group_key.key.into_affine() == p3_group_key.key.into_affine());
-
-            Ok((
-                params,
-                p1_secret_key,
-                p2_secret_key,
-                p3_secret_key,
-                p1_group_key,
-            ))
-        }
-
-        let keygen_protocol = do_keygen();
-
-        assert!(keygen_protocol.is_ok());
-
-        let (params, p1_sk, p2_sk, _p3_sk, group_key) = keygen_protocol.unwrap();
+        let (params, signing_keys, group_key, _, _) = do_keygen(3, 2, None, None).unwrap();
+        let p1_sk = signing_keys[0].clone();
+        let p2_sk = signing_keys[1].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
@@ -1323,206 +1178,13 @@ mod test {
 
     #[test]
     fn signing_and_verification_static_2_out_of_3() {
-        #[allow(clippy::type_complexity)]
-        fn do_keygen() -> FrostResult<
-            Secp256k1Sha256,
-            (
-                ThresholdParameters<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                GroupKey<Secp256k1Sha256>,
-            ),
-        > {
-            let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2);
-            let rng = OsRng;
+        let (params, dealers_signing_keys, group_key, _, Some(signers_signing_keys)) =
+            do_keygen(3, 2, Some(3), Some(2)).unwrap() else { panic!()};
+        let d1_sk = dealers_signing_keys[0].clone();
+        let d2_sk = dealers_signing_keys[1].clone();
 
-            let (dealer1, dealer1coeffs, dealer1_dh_sk) = Participant::new_dealer(&params, 1, rng);
-            let (dealer2, dealer2coeffs, dealer2_dh_sk) = Participant::new_dealer(&params, 2, rng);
-            let (dealer3, dealer3coeffs, dealer3_dh_sk) = Participant::new_dealer(&params, 3, rng);
-
-            dealer1
-                .proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(dealer1.index, dealer1.public_key().unwrap())?;
-            dealer2
-                .proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(dealer2.index, dealer2.public_key().unwrap())?;
-            dealer3
-                .proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(dealer3.index, dealer3.public_key().unwrap())?;
-
-            let dealers: Vec<Participant<Secp256k1Sha256>> =
-                vec![dealer1.clone(), dealer2.clone(), dealer3.clone()];
-            let (dealer1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &dealer1_dh_sk,
-                    &dealer1.index,
-                    &dealer1coeffs,
-                    &dealers,
-                    rng,
-                )?;
-            let dealer1_their_encrypted_secret_shares =
-                dealer1_state.their_encrypted_secret_shares()?;
-
-            let (dealer2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &dealer2_dh_sk,
-                    &dealer2.index,
-                    &dealer2coeffs,
-                    &dealers,
-                    rng,
-                )?;
-            let dealer2_their_encrypted_secret_shares =
-                dealer2_state.their_encrypted_secret_shares()?;
-
-            let (dealer3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &dealer3_dh_sk,
-                    &dealer3.index,
-                    &dealer3coeffs,
-                    &dealers,
-                    rng,
-                )?;
-            let dealer3_their_encrypted_secret_shares =
-                dealer3_state.their_encrypted_secret_shares()?;
-
-            let dealer1_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[0].clone(),
-                dealer2_their_encrypted_secret_shares[0].clone(),
-                dealer3_their_encrypted_secret_shares[0].clone(),
-            ];
-            let dealer2_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[1].clone(),
-                dealer2_their_encrypted_secret_shares[1].clone(),
-                dealer3_their_encrypted_secret_shares[1].clone(),
-            ];
-            let dealer3_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[2].clone(),
-                dealer2_their_encrypted_secret_shares[2].clone(),
-                dealer3_their_encrypted_secret_shares[2].clone(),
-            ];
-
-            let dealer1_state =
-                dealer1_state.to_round_two(dealer1_my_encrypted_secret_shares, rng)?;
-            let dealer2_state =
-                dealer2_state.to_round_two(dealer2_my_encrypted_secret_shares, rng)?;
-            let dealer3_state =
-                dealer3_state.to_round_two(dealer3_my_encrypted_secret_shares, rng)?;
-
-            let (dealer1_group_key, dealer1_secret_key) = dealer1_state.finish()?;
-            let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
-            let (dealer3_group_key, dealer3_secret_key) = dealer3_state.finish()?;
-
-            assert!(dealer1_group_key.key.into_affine() == dealer2_group_key.key.into_affine());
-            assert!(dealer2_group_key.key.into_affine() == dealer3_group_key.key.into_affine());
-
-            let (signer1, signer1_dh_sk) = Participant::new_signer(&params, 1, rng);
-            let (signer2, signer2_dh_sk) = Participant::new_signer(&params, 2, rng);
-            let (signer3, signer3_dh_sk) = Participant::new_signer(&params, 3, rng);
-
-            let signers: Vec<Participant<Secp256k1Sha256>> =
-                vec![signer1.clone(), signer2.clone(), signer3.clone()];
-
-            let (dealer1_for_signers, dealer1_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params, dealer1_secret_key.clone(), &signers, rng)?;
-            let (dealer2_for_signers, dealer2_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params, dealer2_secret_key.clone(), &signers, rng)?;
-            let (dealer3_for_signers, dealer3_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params, dealer3_secret_key.clone(), &signers, rng)?;
-
-            let dealers: Vec<Participant<Secp256k1Sha256>> = vec![
-                dealer1_for_signers,
-                dealer2_for_signers,
-                dealer3_for_signers,
-            ];
-            let (signer1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params,
-                    &signer1_dh_sk,
-                    &signer1.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let (signer2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params,
-                    &signer2_dh_sk,
-                    &signer2.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let (signer3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params,
-                    &signer3_dh_sk,
-                    &signer3.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let signer1_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[0].clone(),
-                dealer2_encrypted_shares_for_signers[0].clone(),
-                dealer3_encrypted_shares_for_signers[0].clone(),
-            ];
-            let signer2_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[1].clone(),
-                dealer2_encrypted_shares_for_signers[1].clone(),
-                dealer3_encrypted_shares_for_signers[1].clone(),
-            ];
-            let signer3_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[2].clone(),
-                dealer2_encrypted_shares_for_signers[2].clone(),
-                dealer3_encrypted_shares_for_signers[2].clone(),
-            ];
-
-            let signer1_state =
-                signer1_state.to_round_two(signer1_my_encrypted_secret_shares, rng)?;
-            let signer2_state =
-                signer2_state.to_round_two(signer2_my_encrypted_secret_shares, rng)?;
-            let signer3_state =
-                signer3_state.to_round_two(signer3_my_encrypted_secret_shares, rng)?;
-
-            let (signer1_group_key, signer1_secret_key) = signer1_state.finish()?;
-            let (signer2_group_key, signer2_secret_key) = signer2_state.finish()?;
-            let (signer3_group_key, signer3_secret_key) = signer3_state.finish()?;
-
-            assert!(signer1_group_key.key.into_affine() == signer2_group_key.key.into_affine());
-            assert!(signer2_group_key.key.into_affine() == signer3_group_key.key.into_affine());
-
-            assert!(signer1_group_key.key.into_affine() == dealer1_group_key.key.into_affine());
-
-            Ok((
-                params,
-                dealer1_secret_key,
-                dealer2_secret_key,
-                dealer3_secret_key,
-                signer1_secret_key,
-                signer2_secret_key,
-                signer3_secret_key,
-                dealer1_group_key,
-            ))
-        }
-        let keygen_protocol = do_keygen();
-
-        assert!(keygen_protocol.is_ok());
-
-        let (params, d1_sk, d2_sk, _d3_sk, s1_sk, s2_sk, _s3_sk, group_key) =
-            keygen_protocol.unwrap();
+        let s1_sk = signers_signing_keys[0].clone();
+        let s2_sk = signers_signing_keys[1].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (d1_public_comshares, mut d1_secret_comshares) =
@@ -1621,270 +1283,15 @@ mod test {
 
     #[test]
     fn signing_and_verification_static_2_out_of_3_into_3_out_of_5() {
-        #[allow(clippy::type_complexity)]
-        fn do_keygen() -> FrostResult<
-            Secp256k1Sha256,
-            (
-                ThresholdParameters<Secp256k1Sha256>,
-                ThresholdParameters<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                GroupKey<Secp256k1Sha256>,
-            ),
-        > {
-            let params_dealers = ThresholdParameters::<Secp256k1Sha256>::new(3, 2);
-            let rng = OsRng;
+        let (d_params, dealers_signing_keys, group_key, Some(s_params), Some(signers_signing_keys)) =
+            do_keygen(3, 2, Some(5), Some(3)).unwrap() else { panic!()};
 
-            let (dealer1, dealer1coeffs, dealer1_dh_sk) =
-                Participant::new_dealer(&params_dealers, 1, rng);
-            let (dealer2, dealer2coeffs, dealer2_dh_sk) =
-                Participant::new_dealer(&params_dealers, 2, rng);
-            let (dealer3, dealer3coeffs, dealer3_dh_sk) =
-                Participant::new_dealer(&params_dealers, 3, rng);
+        let d1_sk = dealers_signing_keys[0].clone();
+        let d2_sk = dealers_signing_keys[1].clone();
 
-            dealer1
-                .proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(dealer1.index, dealer1.public_key().unwrap())?;
-            dealer2
-                .proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(dealer2.index, dealer2.public_key().unwrap())?;
-            dealer3
-                .proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(dealer3.index, dealer3.public_key().unwrap())?;
-
-            let dealers: Vec<Participant<Secp256k1Sha256>> =
-                vec![dealer1.clone(), dealer2.clone(), dealer3.clone()];
-            let (dealer1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params_dealers,
-                    &dealer1_dh_sk,
-                    &dealer1.index,
-                    &dealer1coeffs,
-                    &dealers,
-                    rng,
-                )?;
-            let dealer1_their_encrypted_secret_shares =
-                dealer1_state.their_encrypted_secret_shares()?;
-
-            let (dealer2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params_dealers,
-                    &dealer2_dh_sk,
-                    &dealer2.index,
-                    &dealer2coeffs,
-                    &dealers,
-                    rng,
-                )?;
-            let dealer2_their_encrypted_secret_shares =
-                dealer2_state.their_encrypted_secret_shares()?;
-
-            let (dealer3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params_dealers,
-                    &dealer3_dh_sk,
-                    &dealer3.index,
-                    &dealer3coeffs,
-                    &dealers,
-                    rng,
-                )?;
-            let dealer3_their_encrypted_secret_shares =
-                dealer3_state.their_encrypted_secret_shares()?;
-
-            let dealer1_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[0].clone(),
-                dealer2_their_encrypted_secret_shares[0].clone(),
-                dealer3_their_encrypted_secret_shares[0].clone(),
-            ];
-            let dealer2_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[1].clone(),
-                dealer2_their_encrypted_secret_shares[1].clone(),
-                dealer3_their_encrypted_secret_shares[1].clone(),
-            ];
-            let dealer3_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[2].clone(),
-                dealer2_their_encrypted_secret_shares[2].clone(),
-                dealer3_their_encrypted_secret_shares[2].clone(),
-            ];
-
-            let dealer1_state =
-                dealer1_state.to_round_two(dealer1_my_encrypted_secret_shares, rng)?;
-            let dealer2_state =
-                dealer2_state.to_round_two(dealer2_my_encrypted_secret_shares, rng)?;
-            let dealer3_state =
-                dealer3_state.to_round_two(dealer3_my_encrypted_secret_shares, rng)?;
-
-            let (dealer1_group_key, dealer1_secret_key) = dealer1_state.finish()?;
-            let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
-            let (dealer3_group_key, dealer3_secret_key) = dealer3_state.finish()?;
-
-            assert!(dealer1_group_key.key.into_affine() == dealer2_group_key.key.into_affine());
-            assert!(dealer2_group_key.key.into_affine() == dealer3_group_key.key.into_affine());
-
-            let params_signers = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
-            let (signer1, signer1_dh_sk) = Participant::new_signer(&params_signers, 1, rng);
-            let (signer2, signer2_dh_sk) = Participant::new_signer(&params_signers, 2, rng);
-            let (signer3, signer3_dh_sk) = Participant::new_signer(&params_signers, 3, rng);
-            let (signer4, signer4_dh_sk) = Participant::new_signer(&params_signers, 4, rng);
-            let (signer5, signer5_dh_sk) = Participant::new_signer(&params_signers, 5, rng);
-
-            let signers: Vec<Participant<Secp256k1Sha256>> = vec![
-                signer1.clone(),
-                signer2.clone(),
-                signer3.clone(),
-                signer4.clone(),
-                signer5.clone(),
-            ];
-
-            let (dealer1_for_signers, dealer1_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params_signers, dealer1_secret_key.clone(), &signers, rng)?;
-            let (dealer2_for_signers, dealer2_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params_signers, dealer2_secret_key.clone(), &signers, rng)?;
-            let (dealer3_for_signers, dealer3_encrypted_shares_for_signers, _participant_lists) =
-                Participant::reshare(&params_signers, dealer3_secret_key.clone(), &signers, rng)?;
-
-            let dealers: Vec<Participant<Secp256k1Sha256>> = vec![
-                dealer1_for_signers,
-                dealer2_for_signers,
-                dealer3_for_signers,
-            ];
-            let (signer1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params_dealers,
-                    &signer1_dh_sk,
-                    &signer1.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let (signer2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params_dealers,
-                    &signer2_dh_sk,
-                    &signer2.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let (signer3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params_dealers,
-                    &signer3_dh_sk,
-                    &signer3.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let (signer4_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params_dealers,
-                    &signer4_dh_sk,
-                    &signer4.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let (signer5_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
-                    &params_dealers,
-                    &signer5_dh_sk,
-                    &signer5.index,
-                    &dealers,
-                    rng,
-                )?;
-
-            let signer1_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[0].clone(),
-                dealer2_encrypted_shares_for_signers[0].clone(),
-                dealer3_encrypted_shares_for_signers[0].clone(),
-            ];
-            let signer2_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[1].clone(),
-                dealer2_encrypted_shares_for_signers[1].clone(),
-                dealer3_encrypted_shares_for_signers[1].clone(),
-            ];
-            let signer3_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[2].clone(),
-                dealer2_encrypted_shares_for_signers[2].clone(),
-                dealer3_encrypted_shares_for_signers[2].clone(),
-            ];
-            let signer4_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[3].clone(),
-                dealer2_encrypted_shares_for_signers[3].clone(),
-                dealer3_encrypted_shares_for_signers[3].clone(),
-            ];
-            let signer5_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[4].clone(),
-                dealer2_encrypted_shares_for_signers[4].clone(),
-                dealer3_encrypted_shares_for_signers[4].clone(),
-            ];
-
-            let signer1_state =
-                signer1_state.to_round_two(signer1_my_encrypted_secret_shares, rng)?;
-            let signer2_state =
-                signer2_state.to_round_two(signer2_my_encrypted_secret_shares, rng)?;
-            let signer3_state =
-                signer3_state.to_round_two(signer3_my_encrypted_secret_shares, rng)?;
-            let signer4_state =
-                signer4_state.to_round_two(signer4_my_encrypted_secret_shares, rng)?;
-            let signer5_state =
-                signer5_state.to_round_two(signer5_my_encrypted_secret_shares, rng)?;
-
-            let (signer1_group_key, signer1_secret_key) = signer1_state.finish()?;
-            let (signer2_group_key, signer2_secret_key) = signer2_state.finish()?;
-            let (signer3_group_key, signer3_secret_key) = signer3_state.finish()?;
-            let (signer4_group_key, signer4_secret_key) = signer4_state.finish()?;
-            let (signer5_group_key, signer5_secret_key) = signer5_state.finish()?;
-
-            assert!(signer1_group_key.key.into_affine() == signer2_group_key.key.into_affine());
-            assert!(signer2_group_key.key.into_affine() == signer3_group_key.key.into_affine());
-            assert!(signer3_group_key.key.into_affine() == signer4_group_key.key.into_affine());
-            assert!(signer4_group_key.key.into_affine() == signer5_group_key.key.into_affine());
-
-            assert!(signer1_group_key.key.into_affine() == dealer1_group_key.key.into_affine());
-
-            Ok((
-                params_dealers,
-                params_signers,
-                dealer1_secret_key,
-                dealer2_secret_key,
-                dealer3_secret_key,
-                signer1_secret_key,
-                signer2_secret_key,
-                signer3_secret_key,
-                signer4_secret_key,
-                signer5_secret_key,
-                dealer1_group_key,
-            ))
-        }
-        let keygen_protocol = do_keygen();
-
-        assert!(keygen_protocol.is_ok());
-
-        let (
-            d_params,
-            s_params,
-            d1_sk,
-            d2_sk,
-            _d3_sk,
-            s1_sk,
-            s2_sk,
-            s3_sk,
-            _s4_sk,
-            _s5_sk,
-            group_key,
-        ) = keygen_protocol.unwrap();
+        let s1_sk = signers_signing_keys[0].clone();
+        let s2_sk = signers_signing_keys[1].clone();
+        let s3_sk = signers_signing_keys[2].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (d1_public_comshares, mut d1_secret_comshares) =
@@ -2040,108 +1447,10 @@ mod test {
 
     #[test]
     fn test_serialization() {
-        fn do_keygen() -> FrostResult<
-            Secp256k1Sha256,
-            (
-                ThresholdParameters<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                IndividualSigningKey<Secp256k1Sha256>,
-                GroupKey<Secp256k1Sha256>,
-            ),
-        > {
-            let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2);
-            let rng = OsRng;
+        let (params, dealers_signing_keys, group_key, _, _) = do_keygen(3, 2, None, None).unwrap();
 
-            let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
-            let (p2, p2coeffs, p2_dh_sk) = Participant::new_dealer(&params, 2, rng);
-            let (p3, p3coeffs, p3_dh_sk) = Participant::new_dealer(&params, 3, rng);
-
-            p2.proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(p2.index, p2.public_key().unwrap())?;
-            p3.proof_of_secret_key
-                .as_ref()
-                .unwrap()
-                .verify(p3.index, p3.public_key().unwrap())?;
-
-            let participants: Vec<Participant<Secp256k1Sha256>> =
-                vec![p1.clone(), p2.clone(), p3.clone()];
-            let (p1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &p1_dh_sk,
-                    &p1.index,
-                    &p1coeffs,
-                    &participants,
-                    rng,
-                )?;
-            let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
-
-            let (p2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &p2_dh_sk,
-                    &p2.index,
-                    &p2coeffs,
-                    &participants,
-                    rng,
-                )?;
-            let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
-
-            let (p3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
-                    &params,
-                    &p3_dh_sk,
-                    &p3.index,
-                    &p3coeffs,
-                    &participants,
-                    rng,
-                )?;
-            let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
-
-            let p1_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[0].clone(),
-                p2_their_encrypted_secret_shares[0].clone(),
-                p3_their_encrypted_secret_shares[0].clone(),
-            ];
-            let p2_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[1].clone(),
-                p2_their_encrypted_secret_shares[1].clone(),
-                p3_their_encrypted_secret_shares[1].clone(),
-            ];
-            let p3_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[2].clone(),
-                p2_their_encrypted_secret_shares[2].clone(),
-                p3_their_encrypted_secret_shares[2].clone(),
-            ];
-
-            let p1_state = p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
-
-            let (p1_group_key, p1_secret_key) = p1_state.finish()?;
-            let (p2_group_key, p2_secret_key) = p2_state.finish()?;
-            let (p3_group_key, p3_secret_key) = p3_state.finish()?;
-
-            assert!(p1_group_key.key.into_affine() == p2_group_key.key.into_affine());
-            assert!(p2_group_key.key.into_affine() == p3_group_key.key.into_affine());
-
-            Ok((
-                params,
-                p1_secret_key,
-                p2_secret_key,
-                p3_secret_key,
-                p1_group_key,
-            ))
-        }
-
-        let keygen_protocol = do_keygen();
-
-        assert!(keygen_protocol.is_ok());
-
-        let (params, p1_sk, p2_sk, _p3_sk, group_key) = keygen_protocol.unwrap();
+        let p1_sk = dealers_signing_keys[0].clone();
+        let p2_sk = dealers_signing_keys[1].clone();
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =

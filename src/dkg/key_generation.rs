@@ -62,13 +62,13 @@ where
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
-    /// * This participant's [`index`,
+    /// * This participant's [`index`],
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
     ///
-    /// After a new participant is constructed, the [`participant.index`,
-    /// [`participant.commitments`, [`participant.proof_of_secret_key`] and
+    /// After a new participant is constructed, the [`participant.index`],
+    /// [`participant.commitments`], [`participant.proof_of_secret_key`] and
     /// [`participant.proof_of_dh_private_key`] should be sent to every
     /// other participant in the protocol.
     ///
@@ -96,7 +96,7 @@ where
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
-    /// * This participant's [`index`,
+    /// * This participant's [`index`],
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
@@ -220,14 +220,14 @@ where
     /// # Inputs
     ///
     /// * The *new* protocol instance [`ThresholdParameters`],
-    /// * This participant's [`secret_key`,
+    /// * This participant's [`secret_key`],
     /// * A reference to the list of new participants,
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
     ///
-    /// After a new participant is constructed, the [`participant.index`,
-    /// [`participant.commitments`, [`participant.proof_of_secret_key`] and
+    /// After a new participant is constructed, the [`participant.index`],
+    /// [`participant.commitments`], [`participant.proof_of_secret_key`] and
     /// [`participant.proof_of_dh_private_key`] should be sent to every other
     /// participant in the protocol along with their dedicated secret share.
     ///
