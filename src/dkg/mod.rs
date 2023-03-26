@@ -8,5 +8,6 @@ pub(crate) mod secret_share;
 pub use complaint::{Complaint, ComplaintProof};
 pub use key_generation::*;
 pub use nizkpok::NizkPokOfSecretKey;
+pub use participant::Participant;
 pub use round_types::{RoundOne, RoundTwo};
 pub use secret_share::{Coefficients, EncryptedSecretShare, SecretShare};
