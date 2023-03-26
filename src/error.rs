@@ -7,9 +7,9 @@ use crate::utils::{String, Vec};
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error<C: CipherSuite> {
     /// Serialisation error
-    SerialisationError,
+    SerializationError,
     /// Deserialisation error
-    DeserialisationError,
+    DeserializationError,
     /// Point compression error
     PointCompressionError,
     /// Point decompression error
@@ -53,11 +53,11 @@ pub enum Error<C: CipherSuite> {
 impl<C: CipherSuite> core::fmt::Display for Error<C> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
-            Error::SerialisationError => {
-                write!(f, "An error happened while serialising.")
+            Error::SerializationError => {
+                write!(f, "An error happened while serializing.")
             }
-            Error::DeserialisationError => {
-                write!(f, "An error happened while deserialising.")
+            Error::DeserializationError => {
+                write!(f, "An error happened while deserializing.")
             }
             Error::PointCompressionError => {
                 write!(f, "An error happened while compressing a point.")

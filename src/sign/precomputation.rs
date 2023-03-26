@@ -100,14 +100,14 @@ impl<C: CipherSuite> CommitmentShare<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`CommitmentShare`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -145,14 +145,14 @@ impl<C: CipherSuite> SecretCommitmentShareList<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`SecretCommitmentShareList`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -175,14 +175,14 @@ impl<C: CipherSuite> PublicCommitmentShareList<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`PublicCommitmentShareList`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 

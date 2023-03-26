@@ -280,14 +280,14 @@ where
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`Participant`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
     /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the Ristretto basepoint.
@@ -365,6 +365,33 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C>
 where
     [(); C::HASH_SEC_PARAM]:,
 {
+    /// Serialize this [`DistributedKeyGeneration<RoundOne, _>`] to a vector of bytes.
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
+        let mut bytes = Vec::new();
+
+        self.state
+            .serialize_compressed(&mut bytes)
+            .map_err(|_| Error::SerializationError)?;
+
+        self.data
+            .serialize_compressed(&mut bytes)
+            .map_err(|_| Error::SerializationError)?;
+
+        Ok(bytes)
+    }
+
+    /// Attempt to deserialize a [`DistributedKeyGeneration<RoundOne, _>`] from a vector of bytes.
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
+        let state = Box::new(
+            ActualState::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?,
+        );
+
+        let data =
+            RoundOne::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?;
+
+        Ok(Self { state, data })
+    }
+
     /// Check the zero-knowledge proofs of knowledge of secret keys of all the
     /// other participants. When no group key has been computed by a group of
     /// participants yet, this method should be called rather than
@@ -683,6 +710,33 @@ where
 }
 
 impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
+    /// Serialize this [`DistributedKeyGeneration<RoundTwo, _>`] to a vector of bytes.
+    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
+        let mut bytes = Vec::new();
+
+        self.state
+            .serialize_compressed(&mut bytes)
+            .map_err(|_| Error::SerializationError)?;
+
+        self.data
+            .serialize_compressed(&mut bytes)
+            .map_err(|_| Error::SerializationError)?;
+
+        Ok(bytes)
+    }
+
+    /// Attempt to deserialize a [`DistributedKeyGeneration<RoundTwo, _>`] from a vector of bytes.
+    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
+        let state = Box::new(
+            ActualState::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?,
+        );
+
+        let data =
+            RoundTwo::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?;
+
+        Ok(Self { state, data })
+    }
+
     /// Calculate this threshold signing protocol participant's long-lived
     /// secret signing keyshare and the group's public verification key.
     ///
@@ -829,10 +883,11 @@ mod test {
     use core::ops::Mul;
 
     use super::*;
+    use crate::dkg::ComplaintProof;
     use crate::keys::IndividualVerifyingKey;
     use crate::testing::Secp256k1Sha256;
 
-    use ark_ec::{CurveGroup, Group};
+    use ark_ec::Group;
     use ark_secp256k1::{Fr, Projective};
 
     use rand::rngs::OsRng;
@@ -942,10 +997,7 @@ mod test {
 
         let (p1_group_key, p1_secret_key) = result.unwrap();
 
-        assert!(
-            p1_group_key.key.into_affine()
-                == Projective::generator().mul(p1_secret_key.key).into_affine()
-        );
+        assert!(p1_group_key.key == Projective::generator().mul(p1_secret_key.key));
     }
 
     #[test]
@@ -1109,10 +1161,10 @@ mod test {
         let (p4_group_key, p4_secret_key) = p4_state.finish().unwrap();
         let (p5_group_key, p5_secret_key) = p5_state.finish().unwrap();
 
-        assert!(p1_group_key.key.into_affine() == p2_group_key.key.into_affine());
-        assert!(p2_group_key.key.into_affine() == p3_group_key.key.into_affine());
-        assert!(p3_group_key.key.into_affine() == p4_group_key.key.into_affine());
-        assert!(p4_group_key.key.into_affine() == p5_group_key.key.into_affine());
+        assert!(p1_group_key == p2_group_key);
+        assert!(p2_group_key == p3_group_key);
+        assert!(p3_group_key == p4_group_key);
+        assert!(p4_group_key == p5_group_key);
 
         let mut group_secret_key = Fr::ZERO;
         let indices = [1, 2, 3, 4, 5];
@@ -1133,9 +1185,9 @@ mod test {
             .unwrap()
             * p5_secret_key.key;
 
-        let group_key = Projective::generator().mul(group_secret_key);
+        let group_key = GroupKey::new(Projective::generator().mul(group_secret_key));
 
-        assert!(p5_group_key.key.into_affine() == group_key.into_affine())
+        assert!(p5_group_key == group_key)
     }
 
     #[test]
@@ -1223,8 +1275,8 @@ mod test {
             let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
             let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-            assert!(p1_group_key.key.into_affine() == p2_group_key.key.into_affine());
-            assert!(p2_group_key.key.into_affine() == p3_group_key.key.into_affine());
+            assert!(p1_group_key == p2_group_key);
+            assert!(p2_group_key == p3_group_key);
 
             Ok(())
         }
@@ -1325,8 +1377,8 @@ mod test {
             let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
             let (dealer3_group_key, dealer3_secret_key) = dealer3_state.finish()?;
 
-            assert!(dealer1_group_key.key.into_affine() == dealer2_group_key.key.into_affine());
-            assert!(dealer2_group_key.key.into_affine() == dealer3_group_key.key.into_affine());
+            assert!(dealer1_group_key == dealer2_group_key);
+            assert!(dealer2_group_key == dealer3_group_key);
 
             let (signer1, signer1_dh_sk) = Participant::new_signer(&params, 1, rng);
             let (signer2, signer2_dh_sk) = Participant::new_signer(&params, 2, rng);
@@ -1402,10 +1454,10 @@ mod test {
             let (signer2_group_key, _signer2_secret_key) = signer2_state.finish()?;
             let (signer3_group_key, _signer3_secret_key) = signer3_state.finish()?;
 
-            assert!(signer1_group_key.key.into_affine() == signer2_group_key.key.into_affine());
-            assert!(signer2_group_key.key.into_affine() == signer3_group_key.key.into_affine());
+            assert!(signer1_group_key == signer2_group_key);
+            assert!(signer2_group_key == signer3_group_key);
 
-            assert!(signer1_group_key.key.into_affine() == dealer1_group_key.key.into_affine());
+            assert!(signer1_group_key == dealer1_group_key);
 
             Ok(())
         }
@@ -1506,8 +1558,8 @@ mod test {
             let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
             let (dealer3_group_key, dealer3_secret_key) = dealer3_state.finish()?;
 
-            assert!(dealer1_group_key.key.into_affine() == dealer2_group_key.key.into_affine());
-            assert!(dealer2_group_key.key.into_affine() == dealer3_group_key.key.into_affine());
+            assert!(dealer1_group_key == dealer2_group_key);
+            assert!(dealer2_group_key == dealer3_group_key);
 
             let params_signers = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
             let (signer1, signer1_dh_sk) = Participant::new_signer(&params_signers, 1, rng);
@@ -1624,12 +1676,12 @@ mod test {
             let (signer4_group_key, _signer4_secret_key) = signer4_state.finish()?;
             let (signer5_group_key, _signer5_secret_key) = signer5_state.finish()?;
 
-            assert!(signer1_group_key.key.into_affine() == signer2_group_key.key.into_affine());
-            assert!(signer2_group_key.key.into_affine() == signer3_group_key.key.into_affine());
-            assert!(signer3_group_key.key.into_affine() == signer4_group_key.key.into_affine());
-            assert!(signer4_group_key.key.into_affine() == signer5_group_key.key.into_affine());
+            assert!(signer1_group_key == signer2_group_key);
+            assert!(signer2_group_key == signer3_group_key);
+            assert!(signer3_group_key == signer4_group_key);
+            assert!(signer4_group_key == signer5_group_key);
 
-            assert!(signer1_group_key.key.into_affine() == dealer1_group_key.key.into_affine());
+            assert!(signer1_group_key == dealer1_group_key);
 
             Ok(())
         }
@@ -1743,8 +1795,8 @@ mod test {
             let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
             let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-            assert!(p1_group_key.key.into_affine() == p2_group_key.key.into_affine());
-            assert!(p2_group_key.key.into_affine() == p3_group_key.key.into_affine());
+            assert!(p1_group_key == p2_group_key);
+            assert!(p2_group_key == p3_group_key);
 
             Ok(())
         }
@@ -1856,7 +1908,7 @@ mod test {
                     let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                     let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key.key.into_affine() == p3_group_key.key.into_affine());
+                    assert!(p1_group_key == p3_group_key);
 
                     // Copy for next test and change dh_key
                     complaint = complaints[0].clone();
@@ -1908,7 +1960,7 @@ mod test {
                     let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                     let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key.key.into_affine() == p3_group_key.key.into_affine());
+                    assert!(p1_group_key == p3_group_key);
                 } else {
                     return Err(Error::Custom("Unexpected error".to_string()));
                 }
@@ -1966,7 +2018,7 @@ mod test {
                     let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                     let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key.key.into_affine() == p3_group_key.key.into_affine());
+                    assert!(p1_group_key == p3_group_key);
                 } else {
                     return Err(Error::Custom("Unexpected error".to_string()));
                 }
@@ -2003,7 +2055,203 @@ mod test {
         assert!(do_test().is_ok());
     }
 
-    // TODO: check serialisation
+    #[test]
+    fn test_serialization() {
+        fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+            let params = ThresholdParameters::new(3, 2);
+            let rng = OsRng;
+
+            let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
+            let (p2, p2coeffs, p2_dh_sk) = Participant::new_dealer(&params, 2, rng);
+            let (p3, p3coeffs, p3_dh_sk) = Participant::new_dealer(&params, 3, rng);
+
+            p1.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p1.index, p1.public_key().unwrap())?;
+            p2.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p2.index, p2.public_key().unwrap())?;
+            p3.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p3.index, p3.public_key().unwrap())?;
+
+            let participants: Vec<Participant<Secp256k1Sha256>> =
+                vec![p1.clone(), p2.clone(), p3.clone()];
+            let (p1_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                    &params,
+                    &p1_dh_sk,
+                    &p1.index,
+                    &p1coeffs,
+                    &participants,
+                    rng,
+                )?;
+            let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
+
+            let (p2_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                    &params,
+                    &p2_dh_sk,
+                    &p2.index,
+                    &p2coeffs,
+                    &participants,
+                    rng,
+                )?;
+            let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
+
+            let (p3_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                    &params,
+                    &p3_dh_sk,
+                    &p3.index,
+                    &p3coeffs,
+                    &participants,
+                    rng,
+                )?;
+            let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
+
+            {
+                let p1_my_encrypted_secret_shares = vec![
+                    p1_their_encrypted_secret_shares[0].clone(),
+                    p2_their_encrypted_secret_shares[0].clone(),
+                    p3_their_encrypted_secret_shares[0].clone(),
+                ];
+                let p2_my_encrypted_secret_shares = vec![
+                    p1_their_encrypted_secret_shares[1].clone(),
+                    p2_their_encrypted_secret_shares[1].clone(),
+                    p3_their_encrypted_secret_shares[1].clone(),
+                ];
+                let p3_my_encrypted_secret_shares = vec![
+                    p1_their_encrypted_secret_shares[2].clone(),
+                    p2_their_encrypted_secret_shares[2].clone(),
+                    p3_their_encrypted_secret_shares[2].clone(),
+                ];
+
+                // Check serialisation
+
+                let bytes = p1.to_bytes()?;
+                assert_eq!(p1, Participant::from_bytes(&bytes)?);
+
+                let bytes = p1coeffs.to_bytes()?;
+                let p1coeffs_deserialised = Coefficients::from_bytes(&bytes)?;
+                assert_eq!(p1coeffs.0.len(), p1coeffs_deserialised.0.len());
+                for i in 0..p1coeffs.0.len() {
+                    assert_eq!(p1coeffs.0[i], p1coeffs_deserialised.0[i]);
+                }
+
+                let bytes = p1_dh_sk.to_bytes()?;
+                assert_eq!(p1_dh_sk, DiffieHellmanPrivateKey::from_bytes(&bytes)?);
+
+                let bytes = p1.proof_of_secret_key.as_ref().unwrap().to_bytes()?;
+                assert_eq!(
+                    p1.proof_of_secret_key.unwrap(),
+                    NizkPokOfSecretKey::from_bytes(&bytes)?
+                );
+
+                let bytes = p1_state.their_encrypted_secret_shares()?[0].to_bytes()?;
+                assert_eq!(
+                    p1_state.their_encrypted_secret_shares()?[0],
+                    EncryptedSecretShare::from_bytes(&bytes)?
+                );
+
+                let bytes = p1_state.to_bytes()?;
+                assert_eq!(
+                    *p1_state.state,
+                    *DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::from_bytes(&bytes)?
+                        .state
+                );
+
+                // Continue KeyGen
+
+                let p1_state = p1_state
+                    .clone()
+                    .to_round_two(p1_my_encrypted_secret_shares, rng)?;
+                let p2_state = p2_state
+                    .clone()
+                    .to_round_two(p2_my_encrypted_secret_shares, rng)?;
+                let p3_state = p3_state
+                    .clone()
+                    .to_round_two(p3_my_encrypted_secret_shares, rng)?;
+
+                let (p1_group_key, _p1_secret_key) = p1_state.clone().finish()?;
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+
+                assert!(p1_group_key.key == p2_group_key.key);
+                assert!(p2_group_key.key == p3_group_key.key);
+
+                // Check serialisation
+                let bytes = p1_group_key.to_bytes()?;
+                assert_eq!(p1_group_key, GroupKey::from_bytes(&bytes)?);
+
+                let bytes = p1_state.to_bytes()?;
+                assert_eq!(
+                    *p1_state.state,
+                    *DistributedKeyGeneration::<RoundTwo, Secp256k1Sha256>::from_bytes(&bytes)?
+                        .state
+                );
+            }
+
+            {
+                let wrong_encrypted_secret_share =
+                    EncryptedSecretShare::new(1, 2, [0; 16], vec![0]);
+
+                let p1_my_encrypted_secret_shares = vec![
+                    p1_their_encrypted_secret_shares[0].clone(),
+                    p2_their_encrypted_secret_shares[0].clone(),
+                    p3_their_encrypted_secret_shares[0].clone(),
+                ];
+                let p2_my_encrypted_secret_shares = vec![
+                    wrong_encrypted_secret_share.clone(),
+                    p2_their_encrypted_secret_shares[1].clone(),
+                    p3_their_encrypted_secret_shares[1].clone(),
+                ];
+                let p3_my_encrypted_secret_shares = vec![
+                    p1_their_encrypted_secret_shares[2].clone(),
+                    p2_their_encrypted_secret_shares[2].clone(),
+                    p3_their_encrypted_secret_shares[2].clone(),
+                ];
+
+                let p1_state = p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
+                let p3_state = p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+
+                let complaints = p2_state.to_round_two(p2_my_encrypted_secret_shares, rng);
+                assert!(complaints.is_err());
+                let complaints = complaints.unwrap_err();
+                if let Error::Complaint(complaints) = complaints {
+                    assert!(complaints.len() == 1);
+
+                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+
+                    assert!(bad_index == 1);
+
+                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+
+                    assert!(p1_group_key == p3_group_key);
+
+                    // Check serialisation
+
+                    let bytes = complaints[0].proof.to_bytes()?;
+                    assert_eq!(complaints[0].proof, ComplaintProof::from_bytes(&bytes)?);
+
+                    let bytes = complaints[0].to_bytes()?;
+                    assert_eq!(complaints[0], Complaint::from_bytes(&bytes)?);
+
+                    Ok(())
+                } else {
+                    Err(Error::Custom("Unexpected error".to_string()))
+                }
+            }
+        }
+
+        println!("{:?}", do_test());
+
+        assert!(do_test().is_ok());
+    }
 
     #[test]
     fn individual_public_key_share() {
@@ -2090,8 +2338,8 @@ mod test {
             let (p2_group_key, p2_secret_key) = p2_state.finish()?;
             let (p3_group_key, p3_secret_key) = p3_state.finish()?;
 
-            assert!(p1_group_key.key.into_affine() == p2_group_key.key.into_affine());
-            assert!(p2_group_key.key.into_affine() == p3_group_key.key.into_affine());
+            assert!(p1_group_key == p2_group_key);
+            assert!(p2_group_key == p3_group_key);
 
             // Check the validity of each IndividualVerifyingKey
 

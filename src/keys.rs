@@ -24,14 +24,14 @@ impl<C: CipherSuite> DiffieHellmanPrivateKey<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`DiffieHellmanPrivateKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -62,14 +62,14 @@ impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`DiffieHellmanPublicKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -99,14 +99,14 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`IndividualVerifyingKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
     /// Any participant can compute the public verification share of any other participant.
@@ -233,14 +233,14 @@ impl<C: CipherSuite> IndividualSigningKey<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`IndividualSigningKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -289,13 +289,13 @@ impl<C: CipherSuite> GroupKey<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`GroupKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }

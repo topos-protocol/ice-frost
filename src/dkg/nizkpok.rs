@@ -40,14 +40,14 @@ where
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`NizkPokOfSecretKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
     /// Prove knowledge of a secret key.

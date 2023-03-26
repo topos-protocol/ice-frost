@@ -29,14 +29,14 @@ impl<C: CipherSuite> Coefficients<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`Coefficients`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -71,14 +71,14 @@ impl<C: CipherSuite> SecretShare<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`SecretShare`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
     /// Evaluate the polynomial, [`f(x)`] for the secret coefficients at the value of [`x`] .
@@ -173,14 +173,14 @@ impl<C: CipherSuite> EncryptedSecretShare<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`EncryptedSecretShare`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -200,14 +200,14 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
         let mut bytes = Vec::new();
 
         self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerialisationError)?;
+            .map_err(|_| Error::SerializationError)?;
 
         Ok(bytes)
     }
 
     /// Attempt to deserialize a [`VerifiableSecretSharingCommitment`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserialisationError)
+        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
     /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the Ristretto basepoint.
