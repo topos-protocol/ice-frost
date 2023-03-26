@@ -11,9 +11,9 @@ pub enum Error<C: CipherSuite> {
     /// Deserialisation error
     DeserializationError,
     /// Point compression error
-    PointCompressionError,
+    CompressionError,
     /// Point decompression error
-    PointDecompressionError,
+    DecompressionError,
     /// Encrypted secret share decryption failure
     DecryptionError,
     /// Secret share verification failure
@@ -59,10 +59,10 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
             Error::DeserializationError => {
                 write!(f, "An error happened while deserializing.")
             }
-            Error::PointCompressionError => {
+            Error::CompressionError => {
                 write!(f, "An error happened while compressing a point.")
             }
-            Error::PointDecompressionError => {
+            Error::DecompressionError => {
                 write!(f, "An error happened while decompressing a point.")
             }
             Error::DecryptionError => {

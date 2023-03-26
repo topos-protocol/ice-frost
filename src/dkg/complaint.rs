@@ -49,17 +49,17 @@ impl<C: CipherSuite> Complaint<C> {
         message.extend(&accused_index.to_le_bytes());
         dh_pkey
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         accused_pk
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         dh_shared_key
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         a1.serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         a2.serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
 
         let h: <C::G as Group>::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
         Ok(Self {
@@ -85,20 +85,20 @@ impl<C: CipherSuite> Complaint<C> {
         let mut message = self.maker_index.to_le_bytes().to_vec();
         message.extend(&self.accused_index.to_le_bytes());
         pk_i.serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         pk_l.serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         self.dh_shared_key
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         self.proof
             .a1
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         self.proof
             .a2
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
 
         let h: <C::G as Group>::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
 

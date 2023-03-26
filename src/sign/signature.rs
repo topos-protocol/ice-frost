@@ -305,10 +305,10 @@ where
     let mut challenge_input = Vec::new();
     group_commitment
         .serialize_compressed(&mut challenge_input)
-        .map_err(|_| Error::PointCompressionError)?;
+        .map_err(|_| Error::CompressionError)?;
     group_key
         .serialize_compressed(&mut challenge_input)
-        .map_err(|_| Error::PointCompressionError)?;
+        .map_err(|_| Error::CompressionError)?;
     challenge_input.extend(message_hash);
 
     Ok(C::h2(&challenge_input).unwrap())
@@ -792,7 +792,8 @@ mod test {
         let mut dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
 
         for i in 1..n1 + 1 {
-            let (p, c, dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, i, rng);
+            let (p, c, dh_sk) =
+                Participant::<Secp256k1Sha256>::new_dealer(&params, i, rng).unwrap();
             participants.push(p);
             coefficients.push(c);
             dh_secret_keys.push(dh_sk);
@@ -872,7 +873,8 @@ mod test {
             let mut signers_dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
 
             for i in 1..n2 + 1 {
-                let (p, dh_sk) = Participant::<Secp256k1Sha256>::new_signer(&params, i, rng);
+                let (p, dh_sk) =
+                    Participant::<Secp256k1Sha256>::new_signer(&params, i, rng).unwrap();
                 signers.push(p);
                 signers_dh_secret_keys.push(dh_sk);
             }

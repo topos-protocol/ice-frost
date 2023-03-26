@@ -216,6 +216,7 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
         if !self.points.is_empty() {
             return Some(&self.points[0]);
         }
+
         None
     }
 
@@ -241,11 +242,11 @@ pub(crate) fn encrypt_share<C: CipherSuite>(
     share: &SecretShare<C>,
     aes_key: &[u8],
     mut rng: impl RngCore + CryptoRng,
-) -> EncryptedSecretShare<C> {
+) -> FrostResult<C, EncryptedSecretShare<C>> {
     let hkdf = Hkdf::<Sha256>::new(None, aes_key);
     let mut final_aes_key = [0u8; 16];
     hkdf.expand(&[], &mut final_aes_key)
-        .expect("KDF expansion failed unexpectedly");
+        .map_err(|_| Error::Custom("KDF expansion failed unexpectedly".to_string()))?;
 
     let mut nonce_array = [0u8; 16];
     rng.fill_bytes(&mut nonce_array);
@@ -256,20 +257,19 @@ pub(crate) fn encrypt_share<C: CipherSuite>(
     let mut cipher = Aes128Ctr::from_block_cipher(cipher, nonce);
 
     let mut share_bytes = Vec::new();
-    // TODO: replace by error
     share
         .polynomial_evaluation
         .serialize_compressed(&mut share_bytes)
-        .unwrap();
+        .map_err(|_| Error::CompressionError)?;
     cipher.apply_keystream(&mut share_bytes);
 
-    EncryptedSecretShare::<C> {
+    Ok(EncryptedSecretShare::<C> {
         sender_index: share.sender_index,
         receiver_index: share.receiver_index,
         nonce: nonce_array,
         encrypted_polynomial_evaluation: share_bytes,
         _phantom: PhantomData,
-    }
+    })
 }
 
 pub(crate) fn decrypt_share<C: CipherSuite>(

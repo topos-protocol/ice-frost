@@ -63,9 +63,9 @@ where
         let mut message = index.to_le_bytes().to_vec();
         public_key
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         m.serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
 
         let s = C::h0(&message)?;
         let r = k + (*secret_key * s);
@@ -87,10 +87,10 @@ where
         let mut message = index.to_le_bytes().to_vec();
         public_key
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
         retrieved_m
             .serialize_compressed(&mut message)
-            .map_err(|_| Error::PointCompressionError)?;
+            .map_err(|_| Error::CompressionError)?;
 
         let s_prime = C::h0(&message)?;
 

@@ -76,10 +76,10 @@ where
         parameters: &ThresholdParameters<C>,
         index: u32,
         mut rng: impl RngCore + CryptoRng,
-    ) -> (Self, Coefficients<C>, DiffieHellmanPrivateKey<C>) {
+    ) -> FrostResult<C, (Self, Coefficients<C>, DiffieHellmanPrivateKey<C>)> {
         let (dealer, coeff_option, dh_private_key) =
-            Self::new_internal(parameters, false, index, None, &mut rng);
-        (dealer, coeff_option.unwrap(), dh_private_key)
+            Self::new_internal(parameters, false, index, None, &mut rng)?;
+        Ok((dealer, coeff_option.unwrap(), dh_private_key))
     }
 
     /// Construct a new signer for the distributed key generation protocol.
@@ -108,10 +108,10 @@ where
         parameters: &ThresholdParameters<C>,
         index: u32,
         mut rng: impl RngCore + CryptoRng,
-    ) -> (Self, DiffieHellmanPrivateKey<C>) {
+    ) -> FrostResult<C, (Self, DiffieHellmanPrivateKey<C>)> {
         let (signer, _coeff_option, dh_private_key) =
-            Self::new_internal(parameters, true, index, None, &mut rng);
-        (signer, dh_private_key)
+            Self::new_internal(parameters, true, index, None, &mut rng)?;
+        Ok((signer, dh_private_key))
     }
 
     fn new_internal(
@@ -120,7 +120,7 @@ where
         index: u32,
         secret_key: Option<<C::G as Group>::ScalarField>,
         mut rng: impl RngCore + CryptoRng,
-    ) -> (Self, Option<Coefficients<C>>, DiffieHellmanPrivateKey<C>) {
+    ) -> FrostResult<C, (Self, Option<Coefficients<C>>, DiffieHellmanPrivateKey<C>)> {
         // Step 1: Every participant P_i samples t random values (a_{i0}, ..., a_{i(t-1)})
         //         uniformly in ZZ_q, and uses these values as coefficients to define a
         //         polynomial f_i(x) = \sum_{j=0}^{t-1} a_{ij} x^{j} of degree t-1 over
@@ -135,14 +135,12 @@ where
         let dh_public_key = DiffieHellmanPublicKey::new(C::G::generator().mul(dh_private_key.0));
 
         // Compute a proof of knowledge of dh_secret_key
-        // TODO: error
         let proof_of_dh_private_key =
-            NizkPokOfSecretKey::<C>::prove(index, &dh_private_key.0, &dh_public_key, &mut rng)
-                .unwrap();
+            NizkPokOfSecretKey::<C>::prove(index, &dh_private_key.0, &dh_public_key, &mut rng)?;
 
         if is_signer {
             // Signers don't need coefficients, commitments or proofs of secret key.
-            (
+            Ok((
                 Participant {
                     index,
                     dh_public_key,
@@ -152,7 +150,7 @@ where
                 },
                 None,
                 dh_private_key,
-            )
+            ))
         } else {
             let mut coefficients: Vec<<C::G as Group>::ScalarField> = Vec::with_capacity(t);
             let mut commitments = VerifiableSecretSharingCommitment {
@@ -186,16 +184,14 @@ where
             //         a_{i0} by calculating a Schnorr signature \alpha_i = (s, group_commitment).  (In
             //         the FROST paper: \alpha_i = (\mu_i, c_i), but we stick with Schnorr's
             //         original notation here.)
-            // TODO: error
             let proof_of_secret_key: NizkPokOfSecretKey<C> = NizkPokOfSecretKey::prove(
                 index,
                 &coefficients.0[0],
                 commitments.public_key().unwrap(),
                 rng,
-            )
-            .unwrap();
+            )?;
 
-            (
+            Ok((
                 Participant {
                     index,
                     dh_public_key,
@@ -205,7 +201,7 @@ where
                 },
                 Some(coefficients),
                 dh_private_key,
-            )
+            ))
         }
     }
 
@@ -244,7 +240,7 @@ where
             secret_key.index,
             Some(secret_key.key),
             &mut rng,
-        );
+        )?;
 
         // Unwrapping cannot panic here
         let coefficients = coeff_option.unwrap();

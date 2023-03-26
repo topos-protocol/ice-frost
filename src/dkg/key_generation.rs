@@ -283,9 +283,9 @@ where
             let mut dh_key_bytes = Vec::new();
             dh_key
                 .serialize_compressed(&mut dh_key_bytes)
-                .map_err(|_| Error::PointCompressionError)?;
+                .map_err(|_| Error::CompressionError)?;
 
-            their_encrypted_secret_shares.push(encrypt_share(&share, &dh_key_bytes[..], &mut rng));
+            their_encrypted_secret_shares.push(encrypt_share(&share, &dh_key_bytes[..], &mut rng)?);
         }
 
         let state = ActualState {
@@ -364,7 +364,7 @@ where
                     let mut dh_key_bytes = Vec::new();
                     dh_shared_key
                         .serialize_compressed(&mut dh_key_bytes)
-                        .map_err(|_| Error::PointCompressionError)?;
+                        .map_err(|_| Error::CompressionError)?;
 
                     // Step 2.2: Each share is verified by calculating:
                     //           g^{f_l(i)} ?= \Prod_{k=0}^{t-1} \phi_{lk}^{i^{k} mod q},
@@ -607,7 +607,7 @@ mod test {
         let params = ThresholdParameters::new(3, 2);
         let rng = OsRng;
 
-        let (p, _, _) = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, rng);
+        let (p, _, _) = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, rng).unwrap();
         let result = p
             .proof_of_secret_key
             .as_ref()
@@ -676,7 +676,8 @@ mod test {
         let params = ThresholdParameters::new(1, 1);
         let rng = OsRng;
 
-        let (p1, p1coeffs, p1_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
 
         p1.proof_of_secret_key
             .as_ref()
@@ -714,11 +715,16 @@ mod test {
         let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
         let rng = OsRng;
 
-        let (p1, p1coeffs, p1_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
-        let (p2, p2coeffs, p2_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
-        let (p3, p3coeffs, p3_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
-        let (p4, p4coeffs, p4_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 4, rng);
-        let (p5, p5coeffs, p5_dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, 5, rng);
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
+        let (p2, p2coeffs, p2_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
+        let (p3, p3coeffs, p3_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng).unwrap();
+        let (p4, p4coeffs, p4_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 4, rng).unwrap();
+        let (p5, p5coeffs, p5_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 5, rng).unwrap();
 
         p1.proof_of_secret_key
             .as_ref()
@@ -906,11 +912,11 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, p1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
             let (p2, p2coeffs, p2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
             let (p3, p3coeffs, p3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng).unwrap();
 
             p1.proof_of_secret_key
                 .as_ref()
@@ -999,11 +1005,11 @@ mod test {
             let rng = OsRng;
 
             let (dealer1, dealer1coeffs, dealer1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
             let (dealer2, dealer2coeffs, dealer2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
             let (dealer3, dealer3coeffs, dealer3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng).unwrap();
 
             dealer1
                 .proof_of_secret_key
@@ -1089,8 +1095,8 @@ mod test {
             assert!(dealer1_group_key == dealer2_group_key);
             assert!(dealer2_group_key == dealer3_group_key);
 
-            let (signer1, signer1_dh_sk) = Participant::new_signer(&params, 1, rng);
-            let (signer2, signer2_dh_sk) = Participant::new_signer(&params, 2, rng);
+            let (signer1, signer1_dh_sk) = Participant::new_signer(&params, 1, rng).unwrap();
+            let (signer2, signer2_dh_sk) = Participant::new_signer(&params, 2, rng).unwrap();
             // Dealer 3 is also a participant of the next set of signers
             let (signer3, signer3_dh_sk) = (dealer3, dealer3_dh_sk);
 
@@ -1180,11 +1186,11 @@ mod test {
             let rng = OsRng;
 
             let (dealer1, dealer1coeffs, dealer1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 1, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 1, rng).unwrap();
             let (dealer2, dealer2coeffs, dealer2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 2, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 2, rng).unwrap();
             let (dealer3, dealer3coeffs, dealer3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 3, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params_dealers, 3, rng).unwrap();
 
             dealer1
                 .proof_of_secret_key
@@ -1271,11 +1277,16 @@ mod test {
             assert!(dealer2_group_key == dealer3_group_key);
 
             let params_signers = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
-            let (signer1, signer1_dh_sk) = Participant::new_signer(&params_signers, 1, rng);
-            let (signer2, signer2_dh_sk) = Participant::new_signer(&params_signers, 2, rng);
-            let (signer3, signer3_dh_sk) = Participant::new_signer(&params_signers, 3, rng);
-            let (signer4, signer4_dh_sk) = Participant::new_signer(&params_signers, 4, rng);
-            let (signer5, signer5_dh_sk) = Participant::new_signer(&params_signers, 5, rng);
+            let (signer1, signer1_dh_sk) =
+                Participant::new_signer(&params_signers, 1, rng).unwrap();
+            let (signer2, signer2_dh_sk) =
+                Participant::new_signer(&params_signers, 2, rng).unwrap();
+            let (signer3, signer3_dh_sk) =
+                Participant::new_signer(&params_signers, 3, rng).unwrap();
+            let (signer4, signer4_dh_sk) =
+                Participant::new_signer(&params_signers, 4, rng).unwrap();
+            let (signer5, signer5_dh_sk) =
+                Participant::new_signer(&params_signers, 5, rng).unwrap();
 
             let signers: Vec<Participant<Secp256k1Sha256>> = vec![
                 signer1.clone(),
@@ -1410,7 +1421,7 @@ mod test {
         let mut key = [0u8; 32];
         rng.fill(&mut key);
 
-        let encrypted_share = encrypt_share(&original_share, &key, rng);
+        let encrypted_share = encrypt_share(&original_share, &key, rng).unwrap();
         let decrypted_share = decrypt_share::<Secp256k1Sha256>(&encrypted_share, &key);
 
         assert!(decrypted_share.is_ok());
@@ -1426,11 +1437,11 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, dh_sk1) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
             let (p2, p2coeffs, dh_sk2) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
             let (p3, p3coeffs, dh_sk3) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng).unwrap();
 
             p1.proof_of_secret_key
                 .as_ref()
@@ -1519,11 +1530,11 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, dh_sk1) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
             let (p2, p2coeffs, dh_sk2) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
             let (p3, p3coeffs, dh_sk3) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng).unwrap();
 
             p1.proof_of_secret_key
                 .as_ref()
@@ -1688,7 +1699,8 @@ mod test {
                     },
                     &dh_key_bytes[..],
                     rng,
-                );
+                )
+                .unwrap();
                 let p1_my_encrypted_secret_shares = vec![
                     p1_their_encrypted_secret_shares[0].clone(),
                     p2_their_encrypted_secret_shares[0].clone(),
@@ -1770,9 +1782,9 @@ mod test {
             let params = ThresholdParameters::new(3, 2);
             let rng = OsRng;
 
-            let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng);
-            let (p2, p2coeffs, p2_dh_sk) = Participant::new_dealer(&params, 2, rng);
-            let (p3, p3coeffs, p3_dh_sk) = Participant::new_dealer(&params, 3, rng);
+            let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(&params, 1, rng).unwrap();
+            let (p2, p2coeffs, p2_dh_sk) = Participant::new_dealer(&params, 2, rng).unwrap();
+            let (p3, p3coeffs, p3_dh_sk) = Participant::new_dealer(&params, 3, rng).unwrap();
 
             p1.proof_of_secret_key
                 .as_ref()
@@ -1969,11 +1981,11 @@ mod test {
             let rng = OsRng;
 
             let (p1, p1coeffs, p1_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
             let (p2, p2coeffs, p2_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
             let (p3, p3coeffs, p3_dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng);
+                Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng).unwrap();
 
             p1.proof_of_secret_key
                 .as_ref()

@@ -20,11 +20,11 @@ fn signing_and_verification_3_out_of_5() {
     let params = ThresholdParameters::new(5, 3);
     let rng = OsRng;
 
-    let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(&params, 1, rng);
-    let (p2, p2coeffs, p2_dh_sk) = ParticipantDKG::new_dealer(&params, 2, rng);
-    let (p3, p3coeffs, p3_dh_sk) = ParticipantDKG::new_dealer(&params, 3, rng);
-    let (p4, p4coeffs, p4_dh_sk) = ParticipantDKG::new_dealer(&params, 4, rng);
-    let (p5, p5coeffs, p5_dh_sk) = ParticipantDKG::new_dealer(&params, 5, rng);
+    let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(&params, 1, rng).unwrap();
+    let (p2, p2coeffs, p2_dh_sk) = ParticipantDKG::new_dealer(&params, 2, rng).unwrap();
+    let (p3, p3coeffs, p3_dh_sk) = ParticipantDKG::new_dealer(&params, 3, rng).unwrap();
+    let (p4, p4coeffs, p4_dh_sk) = ParticipantDKG::new_dealer(&params, 4, rng).unwrap();
+    let (p5, p5coeffs, p5_dh_sk) = ParticipantDKG::new_dealer(&params, 5, rng).unwrap();
 
     let participants: Vec<ParticipantDKG> =
         vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
