@@ -20,6 +20,15 @@ A modular Rust implementation of [ICE-FROST: Identifiable Cheating Entity Flexib
 
 Please see the documentation for usage examples.
 
+## Modular Backend
+
+This library has a modular backend supporting
+
+- arbitrary curves defined with the arkworks library suite;
+- arbitrary hash functions for the internal random oracles of the ICE-FROST ciphersuite.
+
+It provides by default an example instantiation over the Secp256k1 curve with SHA-256, to be used in tests and benchmarks.
+
 ## MSRV
 
 This crate requires the `generic_const_exprs` unstable feature, and thus needs to be compiled with the `nightly` toolchain.
