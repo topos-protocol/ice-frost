@@ -58,13 +58,13 @@ where
         mut csprng: impl Rng + CryptoRng,
     ) -> FrostResult<C, Self> {
         let k = <C::G as Group>::ScalarField::rand(&mut csprng);
-        let M: C::G = C::G::generator() * k;
+        let m = C::G::generator() * k;
 
         let mut message = index.to_le_bytes().to_vec();
         public_key
             .serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
-        M.serialize_compressed(&mut message)
+        m.serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
 
         let s = C::h0(&message)?;
@@ -75,7 +75,7 @@ where
 
     /// Verify that the prover does indeed know the secret key.
     pub fn verify(&self, index: u32, public_key: &C::G) -> FrostResult<C, ()> {
-        let M_prime: C::G = <C as CipherSuite>::G::msm(
+        let retrieved_m: C::G = <C as CipherSuite>::G::msm(
             &[
                 <C::G as CurveGroup>::Affine::generator(),
                 public_key.into_affine(),
@@ -88,7 +88,7 @@ where
         public_key
             .serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
-        M_prime
+        retrieved_m
             .serialize_compressed(&mut message)
             .map_err(|_| Error::PointCompressionError)?;
 

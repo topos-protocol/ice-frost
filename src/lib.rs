@@ -3,7 +3,6 @@
 #![no_std]
 #![warn(future_incompatible)]
 // #![deny(missing_docs)]
-#![allow(non_snake_case)]
 #![allow(clippy::type_complexity)]
 #![feature(generic_const_exprs)]
 

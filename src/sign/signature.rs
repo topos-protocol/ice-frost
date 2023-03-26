@@ -79,7 +79,7 @@ impl<C: CipherSuite> PartialThresholdSignature<C> {
 /// A complete, aggregated threshold signature.
 #[derive(Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ThresholdSignature<C: CipherSuite> {
-    pub(crate) R: <C as CipherSuite>::G,
+    pub(crate) group_commitment: C::G,
     pub(crate) z: <C::G as Group>::ScalarField,
 }
 
@@ -670,7 +670,7 @@ where
 
         let signature = ThresholdSignature {
             z,
-            R: group_commitment,
+            group_commitment,
         };
 
         // Verify the obtained signature, listing malicious participants
@@ -700,7 +700,7 @@ where
                         .unwrap();
 
                     // This cannot fail, as it is checked when calling finalize().
-                    let Y_i = self
+                    let pk_i = self
                         .state
                         .public_keys
                         .get(&signer.participant_index)
@@ -716,7 +716,7 @@ where
                     )
                     .unwrap();
 
-                    if check != participant_commitment + (Y_i.mul(challenge * lambda)) {
+                    if check != participant_commitment + (pk_i.mul(challenge * lambda)) {
                         misbehaving_participants.push(signer.participant_index);
                     }
                 }
@@ -736,15 +736,16 @@ where
     ///
     /// A [`FrostResult`] whose [`Ok`] value indicates that the signature was computed correctly.
     pub fn verify(&self, group_key: &GroupKey<C>, message_hash: &[u8]) -> FrostResult<C, ()> {
-        let challenge = compute_challenge::<C>(&self.R, group_key, message_hash).unwrap();
+        let challenge =
+            compute_challenge::<C>(&self.group_commitment, group_key, message_hash).unwrap();
 
-        let R_prime: C::G = <C as CipherSuite>::G::msm(
+        let retrieved_commitment: C::G = <C as CipherSuite>::G::msm(
             &[C::G::generator().into(), (-group_key.key).into()],
             &[self.z, challenge],
         )
         .map_err(|_| Error::InvalidSignature)?;
 
-        match self.R == R_prime {
+        match self.group_commitment == retrieved_commitment {
             true => Ok(()),
             false => Err(Error::InvalidSignature),
         }

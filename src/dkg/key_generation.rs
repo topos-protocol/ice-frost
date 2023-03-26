@@ -189,7 +189,7 @@ where
             // The steps are out of order, in order to save one scalar multiplication.
 
             // Step 2: Every dealer computes a proof of knowledge to the corresponding secret
-            //         a_{i0} by calculating a Schnorr signature \alpha_i = (s, R).  (In
+            //         a_{i0} by calculating a Schnorr signature \alpha_i = (s, group_commitment).  (In
             //         the FROST paper: \alpha_i = (\mu_i, c_i), but we stick with Schnorr's
             //         original notation here.)
             // TODO: error
@@ -623,7 +623,6 @@ where
     /// from [`DistributedKeyGeneration::<RoundOne, C>.their_encrypted_secret_shares()`] to its
     /// respective other participant, and collected our shares from the other
     /// participants in turn.
-    #[allow(clippy::wrong_self_convention)]
     pub fn to_round_two(
         mut self,
         my_encrypted_secret_shares: Vec<EncryptedSecretShare<C>>,
