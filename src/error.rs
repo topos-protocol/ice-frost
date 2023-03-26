@@ -28,7 +28,7 @@ pub enum Error<C: CipherSuite> {
     MissingShares,
     /// Could not retrieve the participant's encrypted shares
     NoEncryptedShares,
-    // /// At least one complaint has been issued during to_round_two() execution
+    /// At least one complaint has been issued during to_round_two() execution
     Complaint(Vec<Complaint<C>>),
     /// Not all participants have been included
     InvalidNumberOfParticipants(usize, u32),
@@ -144,4 +144,5 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
     }
 }
 
+/// Type alias for a Result returning an ICE-FROST-related error on failure.
 pub type FrostResult<C, T> = Result<T, Error<C>>;

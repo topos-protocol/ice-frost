@@ -153,6 +153,7 @@ impl<C: CipherSuite> Drop for EncryptedSecretShare<C> {
 }
 
 impl<C: CipherSuite> EncryptedSecretShare<C> {
+    /// Constructs a new [`EncryptedSecretShare`] from the provided inputs.
     pub fn new(
         sender_index: u32,
         receiver_index: u32,
