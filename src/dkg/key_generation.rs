@@ -12,7 +12,7 @@ use zeroize::Zeroize;
 
 use crate::ciphersuite::CipherSuite;
 use crate::dkg::{
-    rounds::{DkgState, RoundOne, RoundTwo},
+    round_types::{DkgState, RoundOne, RoundTwo},
     secret_share::{
         decrypt_share, encrypt_share, Coefficients, EncryptedSecretShare, SecretShare,
         VerifiableSecretSharingCommitment,
