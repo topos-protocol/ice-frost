@@ -2,13 +2,14 @@ use core::marker::PhantomData;
 use core::ops::{Deref, Mul};
 
 use crate::dkg::secret_share::VerifiableSecretSharingCommitment;
+use crate::sign::{compute_challenge, ThresholdSignature};
 use crate::utils::calculate_lagrange_coefficients;
 use crate::utils::{ToString, Vec};
 use crate::{Error, FrostResult};
 
 use crate::ciphersuite::CipherSuite;
 
-use ark_ec::{CurveGroup, Group};
+use ark_ec::{CurveGroup, Group, VariableBaseMSM};
 use ark_ff::Zero;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
@@ -281,6 +282,30 @@ impl<C: CipherSuite> GroupKey<C> {
         Self {
             key,
             _phantom: PhantomData,
+        }
+    }
+
+    /// Verifies a [`ThresholdSignature`] for a given message.
+    pub fn verify_signature(
+        &self,
+        signature: &ThresholdSignature<C>,
+        message_hash: &[u8],
+    ) -> FrostResult<C, ()>
+    where
+        [(); C::HASH_SEC_PARAM]:,
+    {
+        let challenge =
+            compute_challenge::<C>(&signature.group_commitment, self, message_hash).unwrap();
+
+        let retrieved_commitment: C::G = <C as CipherSuite>::G::msm(
+            &[C::G::generator().into(), (-self.key).into()],
+            &[signature.z, challenge],
+        )
+        .map_err(|_| Error::InvalidSignature)?;
+
+        match signature.group_commitment == retrieved_commitment {
+            true => Ok(()),
+            false => Err(Error::InvalidSignature),
         }
     }
 

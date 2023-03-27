@@ -166,7 +166,9 @@ fn signing_and_verification_3_out_of_5() {
 
     let aggregator = aggregator.finalize().unwrap();
     let threshold_signature = aggregator.aggregate().unwrap();
-    let verification_result = threshold_signature.verify(&group_key, &message_hash);
+    let verification_result1 = threshold_signature.verify(&group_key, &message_hash);
+    let verification_result2 = group_key.verify_signature(&threshold_signature, &message_hash);
 
-    assert!(verification_result.is_ok());
+    assert!(verification_result1.is_ok());
+    assert!(verification_result2.is_ok());
 }

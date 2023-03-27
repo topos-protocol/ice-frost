@@ -294,7 +294,7 @@ fn compute_group_commitment<C: CipherSuite>(
     group_commitment
 }
 
-fn compute_challenge<C: CipherSuite>(
+pub(crate) fn compute_challenge<C: CipherSuite>(
     group_commitment: &C::G,
     group_key: &GroupKey<C>,
     message_hash: &[u8],
@@ -986,9 +986,11 @@ mod test {
         assert!(signing_result.is_ok());
 
         let threshold_signature = signing_result.unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result1 = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result2 = group_key.verify_signature(&threshold_signature, &message_hash);
 
-        assert!(verification_result.is_ok());
+        assert!(verification_result1.is_ok());
+        assert!(verification_result2.is_ok());
     }
 
     #[test]
@@ -1021,9 +1023,11 @@ mod test {
 
         let aggregator = aggregator.finalize().unwrap();
         let threshold_signature = aggregator.aggregate().unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result1 = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result2 = group_key.verify_signature(&threshold_signature, &message_hash);
 
-        assert!(verification_result.is_ok());
+        assert!(verification_result1.is_ok());
+        assert!(verification_result2.is_ok());
     }
 
     #[test]
@@ -1056,9 +1060,11 @@ mod test {
 
         let aggregator = aggregator.finalize().unwrap();
         let threshold_signature = aggregator.aggregate().unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result1 = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result2 = group_key.verify_signature(&threshold_signature, &message_hash);
 
-        assert!(verification_result.is_ok());
+        assert!(verification_result1.is_ok());
+        assert!(verification_result2.is_ok());
     }
 
     #[test]
@@ -1119,9 +1125,11 @@ mod test {
 
         let aggregator = aggregator.finalize().unwrap();
         let threshold_signature = aggregator.aggregate().unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result1 = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result2 = group_key.verify_signature(&threshold_signature, &message_hash);
 
-        assert!(verification_result.is_ok());
+        assert!(verification_result1.is_ok());
+        assert!(verification_result2.is_ok());
     }
 
     #[test]
@@ -1519,9 +1527,11 @@ mod test {
         assert!(signing_result.is_ok());
 
         let threshold_signature = signing_result.unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result1 = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result2 = group_key.verify_signature(&threshold_signature, &message_hash);
 
-        assert!(verification_result.is_ok());
+        assert!(verification_result1.is_ok());
+        assert!(verification_result2.is_ok());
 
         // Check serialization
 
