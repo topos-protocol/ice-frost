@@ -1,6 +1,6 @@
 use core::marker::PhantomData;
 
-use crate::utils::Vec;
+use crate::utils::{ToString, Vec};
 use crate::{Error, FrostResult};
 
 use crate::ciphersuite::CipherSuite;
