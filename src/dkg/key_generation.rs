@@ -101,21 +101,29 @@ where
         Ok(Self { state, data })
     }
 
-    /// Check the zero-knowledge proofs of knowledge of secret keys of all the
-    /// other participants. When no group key has been computed by a group of
-    /// participants yet, this method should be called rather than
-    /// [`DistributedKeyGeneration<RoundOne, C>::new()`] .
+    /// Bootstrap the very first ICE-FROST DKG session for a group of participants. This assumes that no
+    /// prior DKG has been performed, from which previous participants would reshare their secrets. If a
+    /// prior ICE-FROST DKG has been ran successfully, participants from a new set should run the `new`
+    /// method instead.
     ///
-    /// # Note
+    /// The `bootstrap` method checks the zero-knowledge proofs of knowledge of signing keys and
+    /// Diffie-Hellman private keys of all the other participants.
     ///
-    /// The `participants` will be sorted by their indices.
+    /// # Inputs
+    ///
+    /// * The protocol instance [`ThresholdParameters`].
+    /// * This participant's [`DiffieHellmanPrivateKey`].
+    /// * This participant's `index`.
+    /// * This participant's secret `coefficients` making up their long-lived secret key.
+    /// * The list of `participants` for this ICE-FROST session.
+    /// * A cryptographically secure pseudo-random generator.
     ///
     /// # Returns
     ///
     /// An updated state machine for the distributed key generation protocol if
     /// all of the zero-knowledge proofs verified successfully, otherwise a
-    /// vector of participants whose zero-knowledge proofs were incorrect.
-    pub fn new_initial(
+    /// vector of participants whose proofs were incorrect.
+    pub fn bootstrap(
         parameters: &ThresholdParameters<C>,
         dh_private_key: &DiffieHellmanPrivateKey<C>,
         my_index: &u32,
@@ -135,14 +143,22 @@ where
         )
     }
 
-    /// Check the zero-knowledge proofs of knowledge of secret keys of all the
-    /// other participants. When a group key already exists and dealers have
-    /// distributed secret shares to a new set, participants of this new set
-    /// should call this method.
+    /// Initiate a new DKG session beween participants, where an ICE-FROST group
+    /// key already exists. If no ICE-FROST group key exists yet, the `bootstrap`
+    /// should be called instead.
     ///
-    /// # Note
+    /// This method will check the zero-knowledge proofs of
+    /// knowledge of secret keys of all the other participants.
     ///
-    /// The `participants` will be sorted by their indices.
+    /// # Inputs
+    ///
+    /// * The protocol new instance [`ThresholdParameters`]. These parameters can
+    ///   be different from the previous ICE-FROST session using the same group key.
+    /// * This participant's [`DiffieHellmanPrivateKey`].
+    /// * This participant's `index`.
+    /// * The list of `dealers`. These are the participants of the previous ICE-FROST
+    ///   session from which the individual secret shares are being redistributed.
+    /// * A cryptographically secure pseudo-random generator.
     ///
     /// # Returns
     ///
@@ -232,7 +248,7 @@ where
             }
         }
 
-        // [DIFFERENT_TO_PAPER] If too many participants were misbehaving, return an error along their indices.
+        // If too many participants were misbehaving, return an error along their indices.
         if valid_participants.len() < parameters.t as usize {
             return Err(Error::TooManyInvalidParticipants(misbehaving_participants));
         }
@@ -605,7 +621,7 @@ mod test {
         let params = ThresholdParameters::new(3, 2);
         let rng = OsRng;
 
-        let (p, _, _) = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, rng).unwrap();
+        let (p, _, _) = Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
         let result = p
             .proof_of_secret_key
             .as_ref()
@@ -685,7 +701,7 @@ mod test {
 
         let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone()];
         let (p1_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &p1_dh_sk,
                 &p1.index,
@@ -753,7 +769,7 @@ mod test {
         let participants: Vec<Participant<Secp256k1Sha256>> =
             vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
         let (p1_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &p1_dh_sk,
                 &p1.index,
@@ -765,7 +781,7 @@ mod test {
         let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
 
         let (p2_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &p2_dh_sk,
                 &p2.index,
@@ -777,7 +793,7 @@ mod test {
         let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
 
         let (p3_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &p3_dh_sk,
                 &p3.index,
@@ -789,7 +805,7 @@ mod test {
         let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
 
         let (p4_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &p4_dh_sk,
                 &p4.index,
@@ -801,7 +817,7 @@ mod test {
         let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
 
         let (p5_state, _participant_lists) =
-            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &p5_dh_sk,
                 &p5.index,
@@ -932,7 +948,7 @@ mod test {
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
             let (p1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p1_dh_sk,
                     &p1.index,
@@ -943,7 +959,7 @@ mod test {
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
 
             let (p2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p2_dh_sk,
                     &p2.index,
@@ -954,7 +970,7 @@ mod test {
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
 
             let (p3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p3_dh_sk,
                     &p3.index,
@@ -1028,7 +1044,7 @@ mod test {
             let dealers: Vec<Participant<Secp256k1Sha256>> =
                 vec![dealer1.clone(), dealer2.clone(), dealer3.clone()];
             let (dealer1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dealer1_dh_sk,
                     &dealer1.index,
@@ -1040,7 +1056,7 @@ mod test {
                 dealer1_state.their_encrypted_secret_shares()?;
 
             let (dealer2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dealer2_dh_sk,
                     &dealer2.index,
@@ -1052,7 +1068,7 @@ mod test {
                 dealer2_state.their_encrypted_secret_shares()?;
 
             let (dealer3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dealer3_dh_sk,
                     &dealer3.index,
@@ -1209,7 +1225,7 @@ mod test {
             let dealers: Vec<Participant<Secp256k1Sha256>> =
                 vec![dealer1.clone(), dealer2.clone(), dealer3.clone()];
             let (dealer1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params_dealers,
                     &dealer1_dh_sk,
                     &dealer1.index,
@@ -1221,7 +1237,7 @@ mod test {
                 dealer1_state.their_encrypted_secret_shares()?;
 
             let (dealer2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params_dealers,
                     &dealer2_dh_sk,
                     &dealer2.index,
@@ -1233,7 +1249,7 @@ mod test {
                 dealer2_state.their_encrypted_secret_shares()?;
 
             let (dealer3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params_dealers,
                     &dealer3_dh_sk,
                     &dealer3.index,
@@ -1457,7 +1473,7 @@ mod test {
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
             let (p1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dh_sk1,
                     &p1.index,
@@ -1468,7 +1484,7 @@ mod test {
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
 
             let (p2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dh_sk2,
                     &p2.index,
@@ -1479,7 +1495,7 @@ mod test {
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
 
             let (p3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dh_sk3,
                     &p3.index,
@@ -1550,7 +1566,7 @@ mod test {
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
             let (p1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dh_sk1,
                     &p1.index,
@@ -1561,7 +1577,7 @@ mod test {
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
 
             let (p2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dh_sk2,
                     &p2.index,
@@ -1572,7 +1588,7 @@ mod test {
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
 
             let (p3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &dh_sk3,
                     &p3.index,
@@ -1800,7 +1816,7 @@ mod test {
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
             let (p1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p1_dh_sk,
                     &p1.index,
@@ -1811,7 +1827,7 @@ mod test {
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
 
             let (p2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p2_dh_sk,
                     &p2.index,
@@ -1822,7 +1838,7 @@ mod test {
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
 
             let (p3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p3_dh_sk,
                     &p3.index,
@@ -2001,7 +2017,7 @@ mod test {
             let participants: Vec<Participant<Secp256k1Sha256>> =
                 vec![p1.clone(), p2.clone(), p3.clone()];
             let (p1_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p1_dh_sk,
                     &p1.index,
@@ -2012,7 +2028,7 @@ mod test {
             let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares()?;
 
             let (p2_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p2_dh_sk,
                     &p2.index,
@@ -2023,7 +2039,7 @@ mod test {
             let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares()?;
 
             let (p3_state, _participant_lists) =
-                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new_initial(
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                     &params,
                     &p3_dh_sk,
                     &p3.index,

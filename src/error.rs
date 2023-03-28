@@ -20,6 +20,8 @@ pub enum Error<C: CipherSuite> {
     ShareVerificationError,
     /// Complaint verification failure
     ComplaintVerificationError,
+    /// The index of a participant is zero
+    IndexIsZero,
     /// GroupVerifyingKey generation failure
     InvalidGroupKey,
     /// Invalid NiZK proof of knowledge
@@ -73,6 +75,9 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
             }
             Error::ComplaintVerificationError => {
                 write!(f, "The complaint is not correct.")
+            }
+            Error::IndexIsZero => {
+                write!(f, "The indexs of a participant cannot be 0.")
             }
             Error::InvalidGroupKey => {
                 write!(

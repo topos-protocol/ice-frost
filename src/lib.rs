@@ -129,7 +129,7 @@
 //!
 //! let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
 //! let (alice_state, participant_lists) =
-//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
 //!         &params,
 //!         &alice_dh_sk,
 //!         &alice.index,
@@ -163,7 +163,7 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
@@ -193,7 +193,7 @@
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
 //! let (bob_state, participant_lists) =
-//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
 //!         &params,
 //!         &bob_dh_sk,
 //!         &bob.index,
@@ -211,7 +211,7 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //!
 //! let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
@@ -245,7 +245,7 @@
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
 //! let (carol_state, participant_lists) =
-//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
 //!         &params,
 //!         &carol_dh_sk,
 //!         &carol.index,
@@ -263,7 +263,7 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //!
 //! let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
@@ -296,15 +296,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -343,15 +343,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -396,15 +396,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -464,15 +464,15 @@
 //! // Perform regular 2-out-of-3 DKG...
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -542,15 +542,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -657,15 +657,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -764,15 +764,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -883,15 +883,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -961,15 +961,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -1035,15 +1035,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
@@ -1109,15 +1109,15 @@
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //! #
 //! # let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
-//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
 //! #
-//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
 //! #                                                    &participants, &mut rng)?;
 //! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;
 //! #
-//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::new_initial(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
 //! # let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),

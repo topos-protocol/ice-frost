@@ -53,7 +53,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut participants_states_2 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 0..NUMBER_OF_PARTICIPANTS {
-        let (pi_state, _participant_lists) = Dkg::<_>::new_initial(
+        let (pi_state, _participant_lists) = Dkg::<_>::bootstrap(
             &params,
             &dh_secret_keys[i as usize],
             &participants[i as usize].index.clone(),

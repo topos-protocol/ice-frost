@@ -582,7 +582,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
         let mut misbehaving_participants = Vec::new();
         let remaining_signers = self.get_remaining_signers();
 
-        // [DIFFERENT_TO_PAPER] We're reporting missing partial signatures which
+        // We're reporting missing partial signatures which
         // could possibly be the fault of the aggregator, but here we explicitly
         // make it the aggregator's fault and problem.
         if !remaining_signers.is_empty() {
@@ -810,7 +810,7 @@ mod test {
         let mut participants_states_2 = Vec::<Dkg<_>>::new();
 
         for i in 0..n1 {
-            let (pi_state, _participant_lists) = Dkg::<_>::new_initial(
+            let (pi_state, _participant_lists) = Dkg::<_>::bootstrap(
                 &params,
                 &dh_secret_keys[i as usize],
                 &participants[i as usize].index.clone(),

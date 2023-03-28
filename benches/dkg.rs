@@ -59,7 +59,7 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     c.bench_function("Round One (dealer)", move |b| {
         b.iter(|| {
-            Dkg::<_>::new_initial(
+            Dkg::<_>::bootstrap(
                 &params,
                 &p1_dh_sk,
                 &p1.index,
@@ -71,7 +71,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     });
 
     for i in 0..NUMBER_OF_PARTICIPANTS {
-        let (pi_state, _participant_lists) = Dkg::<_>::new_initial(
+        let (pi_state, _participant_lists) = Dkg::<_>::bootstrap(
             &params,
             &dh_secret_keys[i as usize],
             &participants[i as usize].index.clone(),

@@ -47,17 +47,20 @@ where
     [(); C::HASH_SEC_PARAM]:,
 {
     /// Construct a new dealer for the distributed key generation protocol,
-    /// who will generate shares for a group of signers (can be the group of dealers).
+    /// who will generate shares for a group of participants. Dealers are regular
+    /// signers with the additional ability to redistribute their secret shares,
+    /// either to the same set of participants (called key refreshing), or to
+    /// another set of participants.
     ///
     /// In case of resharing/refreshing of the secret participant shares once the
-    /// Dkg has completed, a dealer can call the `reshare` method to distribute
-    /// shares of her secret key to a new set of participants.
+    /// DKG session has completed, a dealer can call the `reshare` method to distribute
+    /// shares of their secret key to a new set of participants.
     ///
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
     /// * This participant's `index`,
-    /// * A context string to prevent replay attacks.
+    /// * A cryptographically secure pseudo-random generator.
     ///
     /// # Usage
     ///
@@ -85,13 +88,14 @@ where
     /// Construct a new signer for the distributed key generation protocol.
     ///
     /// A signer only combines shares from a previous set of dealers and
-    /// computes a private signing key from it.
+    /// computes a private signing key from it. In particular, signers do
+    /// not have the ability to redistribute secret share to other participants.
     ///
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
     /// * This participant's `index`,
-    /// * A context string to prevent replay attacks.
+    /// * A cryptographically secure pseudo-random generator.
     ///
     /// # Usage
     ///
@@ -103,7 +107,7 @@ where
     ///
     /// A distributed key generation protocol [`Participant`] along the
     /// signers's Diffie-Hellman private key for secret shares encryption
-    /// which must be kept private,
+    /// which must be kept private.
     pub fn new_signer(
         parameters: &ThresholdParameters<C>,
         index: u32,
@@ -121,6 +125,10 @@ where
         secret_key: Option<<C::G as Group>::ScalarField>,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, Option<Coefficients<C>>, DiffieHellmanPrivateKey<C>)> {
+        if index == 0 {
+            return Err(Error::IndexIsZero);
+        }
+
         // Step 1: Every participant P_i samples t random values (a_{i0}, ..., a_{i(t-1)})
         //         uniformly in ZZ_q, and uses these values as coefficients to define a
         //         polynomial f_i(x) = \sum_{j=0}^{t-1} a_{ij} x^{j} of degree t-1 over
@@ -301,5 +309,22 @@ impl<C: CipherSuite> PartialOrd for Participant<C> {
 impl<C: CipherSuite> PartialEq for Participant<C> {
     fn eq(&self, other: &Participant<C>) -> bool {
         self.index == other.index
+    }
+}
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::Secp256k1Sha256;
+
+    use rand::rngs::OsRng;
+
+    #[test]
+    fn index_zero_is_invalid() {
+        let params = ThresholdParameters::new(3, 2);
+        let rng = OsRng;
+
+        let result = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, rng);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), Error::IndexIsZero);
     }
 }

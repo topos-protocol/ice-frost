@@ -29,28 +29,23 @@ fn signing_and_verification_3_out_of_5() {
     let participants: Vec<ParticipantDKG> =
         vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
     let (p1_state, _participant_lists) =
-        Dkg::<_>::new_initial(&params, &p1_dh_sk, &p1.index, &p1coeffs, &participants, rng)
-            .unwrap();
+        Dkg::<_>::bootstrap(&params, &p1_dh_sk, &p1.index, &p1coeffs, &participants, rng).unwrap();
     let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
 
     let (p2_state, _participant_lists) =
-        Dkg::<_>::new_initial(&params, &p2_dh_sk, &p2.index, &p2coeffs, &participants, rng)
-            .unwrap();
+        Dkg::<_>::bootstrap(&params, &p2_dh_sk, &p2.index, &p2coeffs, &participants, rng).unwrap();
     let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
 
     let (p3_state, _participant_lists) =
-        Dkg::<_>::new_initial(&params, &p3_dh_sk, &p3.index, &p3coeffs, &participants, rng)
-            .unwrap();
+        Dkg::<_>::bootstrap(&params, &p3_dh_sk, &p3.index, &p3coeffs, &participants, rng).unwrap();
     let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
 
     let (p4_state, _participant_lists) =
-        Dkg::<_>::new_initial(&params, &p4_dh_sk, &p4.index, &p4coeffs, &participants, rng)
-            .unwrap();
+        Dkg::<_>::bootstrap(&params, &p4_dh_sk, &p4.index, &p4coeffs, &participants, rng).unwrap();
     let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
 
     let (p5_state, _participant_lists) =
-        Dkg::<_>::new_initial(&params, &p5_dh_sk, &p5.index, &p5coeffs, &participants, rng)
-            .unwrap();
+        Dkg::<_>::bootstrap(&params, &p5_dh_sk, &p5.index, &p5coeffs, &participants, rng).unwrap();
     let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
 
     let p1_my_encrypted_secret_shares = vec![
