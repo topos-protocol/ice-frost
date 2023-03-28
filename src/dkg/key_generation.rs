@@ -1,14 +1,3 @@
-// -*- mode: rust; -*-
-//
-// This file is part of ice-frost.
-// Copyright (c) 2020 isis lovecruft
-// Copyright (c) 2021-2023 Toposware Inc.
-// See LICENSE for licensing information.
-//
-// Authors:
-// - isis agora lovecruft <isis@patternsinthevoid.net>
-// - Toposware developers <dev@toposware.com>
-
 //! The static and robust ICE-FROST Distributed Key generation (DKG) protocol.
 //!
 //! This implementation uses the [typestate] design pattern (also called session

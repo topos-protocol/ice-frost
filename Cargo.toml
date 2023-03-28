@@ -2,7 +2,7 @@
 name = "ice-frost"
 version = "0.1.0"
 authors = [
-    "Toposware Developers <dev@toposware.com>"
+    "zk Foundation Developers <dev@zkfoundation.io>"
 ]
 edition = "2021"
 description = "Modular Static ICE-FROST: Identifiable Cheating Entity Flexible Round-Optimised Threshold Signature"

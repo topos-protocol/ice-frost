@@ -1,15 +1,3 @@
-//!
-// -*- mode: rust; -*-
-//
-// This file is part of ice-frost.
-// Copyright (c) 2017-2019 isis lovecruft
-// Copyright (c) 2021-2023 Toposware Inc.
-// See LICENSE for licensing information.
-//
-// Authors:
-// - isis agora lovecruft <isis@patternsinthevoid.net>
-// - Toposware developers <dev@toposware.com>
-
 //! This library provides a Rust implementation of the Static **[ICE-FROST]**:
 //! **I**dentifiable **C**heating **E**ntity **F**lexible **R**ound-**O**ptimised **S**chnorr **T**hreshold
 //! signature scheme, detailed in <https://eprint.iacr.org/2021/1658>.

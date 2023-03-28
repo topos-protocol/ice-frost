@@ -6,16 +6,6 @@
 
 A modular Rust implementation of [ICE-FROST: Identifiable Cheating Entity Flexible Round-Optimised Schnorr Threshold signatures](https://eprint.iacr.org/2021/1658) supporting static group keys.
 
-# TODO
-
-- [x] Update backend
-- [x] Modularize keygen
-- [x] Modularize signing
-- [x] Bring back to_bytes() / from_bytes() method
-- [ ] Update doc
-- [ ] Update readme
-- [ ] Update license
-
 ## Usage
 
 Please see the documentation for usage examples.
@@ -44,4 +34,9 @@ In particular, this implementation has not received careful code review yet, and
 
 ## License
 
-This project is licensed under the BSD-3-Clause.
+Licensed under either of
+
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or <http://www.apache.org/licenses/LICENSE-2.0>)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or <http://opensource.org/licenses/MIT>)
+
+at your option.
