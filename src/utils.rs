@@ -33,16 +33,34 @@ use digest::Digest;
 pub(crate) type Scalar<C> = <<C as CipherSuite>::G as Group>::ScalarField;
 
 /// Interpolate a polynomial with Lagrange method.
+///
+/// This will error if one of the following conditions is met:
+/// * `my_index` is 0;
+/// * `all_indices` contains 0;
+/// * `all_indices` does not contain `my_index`;
+/// * `all_indices` contains duplicated indices.
 pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
     my_index: u32,
     all_indices: &[u32],
 ) -> FrostResult<C, Scalar<C>> {
+    let mut sorted_indices = all_indices.to_vec();
+    sorted_indices.sort();
+    sorted_indices.dedup();
+    if sorted_indices.len() != all_indices.len() {
+        return Err(Error::Custom("Duplicate indices provided".to_string()));
+    }
+
+    // Also handles the case where `my_index` is 0.
+    if sorted_indices.contains(&0) {
+        return Err(Error::IndexIsZero);
+    }
+
     let mut numerator = Scalar::<C>::ONE;
     let mut denominator = Scalar::<C>::ONE;
 
     let my_index_field = Scalar::<C>::from(my_index);
 
-    for &j in all_indices.iter() {
+    for j in sorted_indices.into_iter() {
         if j == my_index {
             continue;
         }
@@ -52,11 +70,10 @@ pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
         denominator *= s - my_index_field;
     }
 
-    if denominator == Scalar::<C>::ZERO {
-        return Err(Error::Custom("Duplicate shares provided".to_string()));
-    }
-
-    Ok(numerator * denominator.inverse().unwrap())
+    Ok(numerator
+        * denominator
+            .inverse()
+            .ok_or(Error::Custom("Duplicate indices provided".to_string()))?)
 }
 
 pub fn hash_to_field<C: CipherSuite>(
@@ -86,4 +103,51 @@ pub fn hash_to_array<C: CipherSuite>(
     output.as_mut().copy_from_slice(h.finalize().as_slice());
 
     Ok(output)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+
+    use crate::testing::Secp256k1Sha256;
+
+    #[test]
+    fn invalid_lagrange_interpolation() {
+        // Participant index is zero
+        {
+            let index = 0u32;
+            let all_indices: Vec<u32> = (0..100u32).collect();
+            assert!(
+                calculate_lagrange_coefficients::<Secp256k1Sha256>(index, &all_indices).is_err()
+            );
+        }
+
+        // Participants list contains zero
+        {
+            let index = 2u32;
+            let all_indices: Vec<u32> = (0..100u32).collect();
+            assert!(
+                calculate_lagrange_coefficients::<Secp256k1Sha256>(index, &all_indices).is_err()
+            );
+        }
+
+        // Participants list does not contain participant index
+        {
+            let index = 101u32;
+            let all_indices: Vec<u32> = (0..100u32).collect();
+            assert!(
+                calculate_lagrange_coefficients::<Secp256k1Sha256>(index, &all_indices).is_err()
+            );
+        }
+
+        // Participants list contains duplicated indices
+        {
+            let index = 4u32;
+            let mut all_indices: Vec<u32> = (1..100u32).collect();
+            all_indices[63] = 12;
+            assert!(
+                calculate_lagrange_coefficients::<Secp256k1Sha256>(index, &all_indices).is_err()
+            );
+        }
+    }
 }
