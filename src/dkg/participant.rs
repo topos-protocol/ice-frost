@@ -212,9 +212,9 @@ where
     ///
     /// # Usage
     ///
-    /// After a new participant is constructed, the [`participant.index`],
-    /// [`participant.commitments`], [`participant.proof_of_secret_key`] and
-    /// [`participant.proof_of_dh_private_key`] should be sent to every other
+    /// After a new participant is constructed, the `participant.index`,
+    /// `participant.commitments`, `participant.proof_of_secret_key` and
+    /// `participant.proof_of_dh_private_key` should be sent to every other
     /// participant in the protocol along with their dedicated secret share.
     ///
     /// # Returns

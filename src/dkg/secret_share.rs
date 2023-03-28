@@ -81,7 +81,7 @@ impl<C: CipherSuite> SecretShare<C> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
-    /// Evaluate the polynomial, [`f(x)`] for the secret coefficients at the value of [`x`] .
+    /// Evaluate the polynomial, `f(x)` for the secret coefficients at the value of `x` .
     pub(crate) fn evaluate_polynomial(
         sender_index: &u32,
         receiver_index: &u32,
@@ -107,7 +107,7 @@ impl<C: CipherSuite> SecretShare<C> {
     }
 
     /// Verify that this secret share was correctly computed w.r.t. some secret
-    /// polynomial coefficients attested to by some [`commitment`] .
+    /// polynomial coefficients attested to by some `commitment` .
     pub(crate) fn verify(
         &self,
         commitment: &VerifiableSecretSharingCommitment<C>,
