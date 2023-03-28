@@ -1,5 +1,5 @@
-* @toposware/crypto
+* @topos-network/crypto
 
 # Github Actions
 
-/.github/workflows/ @toposware/crypto @sebastiendan
+/.github/workflows/ @topos-network/crypto @topos-network/tools
