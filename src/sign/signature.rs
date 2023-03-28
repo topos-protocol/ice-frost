@@ -960,7 +960,7 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1001,7 +1001,7 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1038,7 +1038,7 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1077,11 +1077,11 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
         let (p3_public_comshares, mut p3_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 3, 1);
+            generate_commitment_share_lists(&mut OsRng, &p3_sk, 1);
         let (p4_public_comshares, mut p4_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 4, 1);
+            generate_commitment_share_lists(&mut OsRng, &p4_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1141,9 +1141,9 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
         let (p2_public_comshares, mut p2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 2, 1);
+            generate_commitment_share_lists(&mut OsRng, &p2_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1200,9 +1200,9 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (d1_public_comshares, mut d1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
         let (d2_public_comshares, mut d2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 2, 1);
+            generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1246,9 +1246,9 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (s1_public_comshares, mut s1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
         let (s2_public_comshares, mut s2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 2, 1);
+            generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1307,9 +1307,9 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (d1_public_comshares, mut d1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
         let (d2_public_comshares, mut d2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 2, 1);
+            generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(d_params, group_key, &message[..]);
 
@@ -1353,11 +1353,11 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (s1_public_comshares, mut s1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
         let (s2_public_comshares, mut s2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 2, 1);
+            generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
         let (s3_public_comshares, mut s3_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 3, 1);
+            generate_commitment_share_lists(&mut OsRng, &s3_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(s_params, group_key, &message[..]);
 
@@ -1418,17 +1418,6 @@ mod test {
         let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2);
         let message = b"This is a test of the tsunami alert system. This is only a test.";
 
-        let (p1_public_comshares, _) =
-            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 1, 1);
-        let (p2_public_comshares, _) =
-            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 2, 1);
-
-        let mut aggregator = SignatureAggregator::new(
-            params,
-            GroupVerifyingKey::new(Projective::zero()),
-            &message[..],
-        );
-
         let p1_sk = IndividualSigningKey {
             index: 1,
             key: Fr::rand(&mut OsRng),
@@ -1437,6 +1426,17 @@ mod test {
             index: 2,
             key: Fr::rand(&mut OsRng),
         };
+
+        let (p1_public_comshares, _) =
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p1_sk, 1);
+        let (p2_public_comshares, _) =
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p2_sk, 1);
+
+        let mut aggregator = SignatureAggregator::new(
+            params,
+            GroupVerifyingKey::new(Projective::zero()),
+            &message[..],
+        );
 
         aggregator.include_signer(2, p2_public_comshares.commitments[0], (&p2_sk).into());
         aggregator.include_signer(1, p1_public_comshares.commitments[0], (&p1_sk).into());
@@ -1469,9 +1469,9 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 1, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
         let (p2_public_comshares, mut p2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, 2, 1);
+            generate_commitment_share_lists(&mut OsRng, &p2_sk, 1);
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 

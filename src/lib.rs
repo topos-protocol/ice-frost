@@ -18,14 +18,14 @@
 //! new properties to the distributed key generation phase: it is made robust, meaning that adversaries under
 //! a targeted threshold cannot interrupt a key sharing / resharing session; and static, meaning that the public
 //! group verifying key, to be used to attest correctness of the generated ICE-FROST signatures, is invariant
-//! when proceeding to individual signing key resharing to a (possibly) different group.
+//! when proceeding to individual signing keys resharing to a (possibly) different group of participants.
 //!
 //! # Usage
 //!
 //! Alice, Bob, and Carol would like to set up a threshold signing scheme where
 //! at least two of them need to sign on a given message to produce a valid
 //! signature.
-//! For this, they need to define a CipherSuite to be used in the DKG and signing sessions.
+//! For this, they need to define a [`CipherSuite`] to be used in the DKG and signing sessions.
 //! This CipherSuite is used to parameterize ICE-FROST over an arbitrary curve backend, with
 //! an arbitrary underlying hasher instantiating all random oracles.
 //! The following example creates an ICE-FROST CipherSuite over the Secp256k1 curve,
@@ -1001,11 +1001,11 @@
 //! # let carol_public_key = carol_secret_key.to_public();
 //!
 //! let (alice_public_comshares, mut alice_secret_comshares) =
-//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 1, 1);
+//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
 //! let (bob_public_comshares, mut bob_secret_comshares) =
-//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 2, 1);
+//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
 //! let (carol_public_comshares, mut carol_secret_comshares) =
-//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 3, 1);
+//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
 //!
 //! let message = b"This is a test of the tsunami alert system. This is only a test.";
 //!
@@ -1078,9 +1078,12 @@
 //! # let bob_public_key = bob_secret_key.to_public();
 //! # let carol_public_key = carol_secret_key.to_public();
 //! #
-//! # let (alice_public_comshares, mut alice_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 1, 1);
-//! # let (bob_public_comshares, mut bob_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 2, 1);
-//! # let (carol_public_comshares, mut carol_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 3, 1);
+//! # let (alice_public_comshares, mut alice_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
+//! # let (bob_public_comshares, mut bob_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
+//! # let (carol_public_comshares, mut carol_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
 //! #
 //! # let message = b"This is a test of the tsunami alert system. This is only a test.";
 //! #
@@ -1149,9 +1152,12 @@
 //! # let bob_public_key = bob_secret_key.to_public();
 //! # let carol_public_key = carol_secret_key.to_public();
 //! #
-//! # let (alice_public_comshares, mut alice_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 1, 1);
-//! # let (bob_public_comshares, mut bob_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 2, 1);
-//! # let (carol_public_comshares, mut carol_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 3, 1);
+//! # let (alice_public_comshares, mut alice_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
+//! # let (bob_public_comshares, mut bob_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
+//! # let (carol_public_comshares, mut carol_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
 //! #
 //! # let message = b"This is a test of the tsunami alert system. This is only a test.";
 //! #
@@ -1220,9 +1226,12 @@
 //! # let bob_public_key = bob_secret_key.to_public();
 //! # let carol_public_key = carol_secret_key.to_public();
 //! #
-//! # let (alice_public_comshares, mut alice_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 1, 1);
-//! # let (bob_public_comshares, mut bob_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 2, 1);
-//! # let (carol_public_comshares, mut carol_secret_comshares) = generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 3, 1);
+//! # let (alice_public_comshares, mut alice_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
+//! # let (bob_public_comshares, mut bob_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
+//! # let (carol_public_comshares, mut carol_secret_comshares) =
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
 //! #
 //! # let message = b"This is a test of the tsunami alert system. This is only a test.";
 //! #

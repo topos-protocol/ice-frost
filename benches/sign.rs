@@ -126,13 +126,16 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut participants_secret_comshares =
         Vec::<SecretCommShareList>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let (p1_public_comshares, p1_secret_comshares) =
-        generate_commitment_share_lists(&mut OsRng, 1, 1);
+        generate_commitment_share_lists(&mut OsRng, &participants_secret_keys[0].clone(), 1);
     participants_public_comshares.push(p1_public_comshares);
     participants_secret_comshares.push(p1_secret_comshares.clone());
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
-        let (pi_public_comshares, pi_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, i, 1);
+        let (pi_public_comshares, pi_secret_comshares) = generate_commitment_share_lists(
+            &mut OsRng,
+            &participants_secret_keys[i as usize].clone(),
+            1,
+        );
         participants_public_comshares.push(pi_public_comshares);
         participants_secret_comshares.push(pi_secret_comshares);
     }

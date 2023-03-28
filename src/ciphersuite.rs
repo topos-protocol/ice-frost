@@ -43,17 +43,22 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     ///
     /// The context string for `h0` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "nizkpok".
+    ///
+    /// It is used to compute the Non-Interactive Zero-Knowledge proofs
+    /// of Knowledge of the participants' private keys.
     fn h0(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
         [(); Self::HASH_SEC_PARAM]:,
     {
-        crate::utils::hash_to_field::<Self>((Self::context_string() + "rho").as_bytes(), m)
+        crate::utils::hash_to_field::<Self>((Self::context_string() + "nizkpok").as_bytes(), m)
     }
 
     /// `h1` hash for this [`CipherSuite`] .
     ///
     /// The context string for `h1` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "rho".
+    ///
+    /// It is used to compute the binding factor during an ICE-FROST signing session.
     fn h1(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
         [(); Self::HASH_SEC_PARAM]:,
@@ -65,6 +70,8 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     ///
     /// The context string for `h2` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "challenge".
+    ///
+    /// It is used to compute the binding factor during an ICE-FROST signing session.
     fn h2(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
         [(); Self::HASH_SEC_PARAM]:,
@@ -76,6 +83,8 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     ///
     /// The context string for `h3` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "nonce".
+    ///
+    /// It is used to precompute the nonces to be shared during ICE-FROST signing sessions.
     fn h3(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
         [(); Self::HASH_SEC_PARAM]:,
@@ -87,6 +96,11 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     ///
     /// The context string for `h4` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "message".
+    ///
+    /// It is used to hash the message to sign during an ICE-FROST signing session.
+    ///
+    /// Signers of an ICE-FROST session should use this method to hash the original message
+    /// before proceeding to computing their individual partial signatures.
     fn h4(m: &[u8]) -> FrostResult<Self, Self::HashOutput> {
         crate::utils::hash_to_array::<Self>((Self::context_string() + "message").as_bytes(), m)
     }
@@ -95,6 +109,8 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     ///
     /// The context string for `h5` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "commitment".
+    ///
+    /// It is used to hash the group commitment during an ICE-FROST signing session.
     fn h5(m: &[u8]) -> FrostResult<Self, Self::HashOutput> {
         crate::utils::hash_to_array::<Self>((Self::context_string() + "commitment").as_bytes(), m)
     }

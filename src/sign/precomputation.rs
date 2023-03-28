@@ -2,13 +2,14 @@
 
 use core::ops::Mul;
 
+use crate::keys::IndividualSigningKey;
 use crate::utils::Vec;
 use crate::{Error, FrostResult};
 
 use crate::ciphersuite::CipherSuite;
 
 use ark_ec::{CurveGroup, Group};
-use ark_ff::{PrimeField, Zero};
+use ark_ff::Zero;
 use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 
@@ -16,23 +17,46 @@ use rand::CryptoRng;
 use rand::Rng;
 use zeroize::Zeroize;
 
-#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
-pub(crate) struct NoncePair<F: PrimeField>(pub(crate) F, pub(crate) F);
+pub(crate) type Nonce<C> = <<C as CipherSuite>::G as Group>::ScalarField;
 
-impl<F: PrimeField> Drop for NoncePair<F> {
+fn nonce_generate<C: CipherSuite>(
+    secret_key: &IndividualSigningKey<C>,
+    mut csprng: impl CryptoRng + Rng,
+) -> FrostResult<C, Nonce<C>>
+where
+    [(); C::HASH_SEC_PARAM]:,
+{
+    let mut random_bytes = C::HashOutput::default();
+    csprng.fill_bytes(random_bytes.as_mut());
+
+    let mut nonce_input = random_bytes.as_ref().to_vec();
+    nonce_input.extend(&secret_key.to_bytes()?);
+    C::h3(&nonce_input)
+}
+
+#[derive(Debug, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
+pub(crate) struct NoncePair<C: CipherSuite>(pub(crate) Nonce<C>, pub(crate) Nonce<C>);
+
+impl<C: CipherSuite> Drop for NoncePair<C> {
     fn drop(&mut self) {
         self.zeroize();
     }
 }
 
-impl<F: PrimeField> NoncePair<F> {
-    pub fn new(mut csprng: impl CryptoRng + Rng) -> Self {
-        NoncePair(F::rand(&mut csprng), F::rand(&mut csprng))
+impl<C: CipherSuite> NoncePair<C>
+where
+    [(); C::HASH_SEC_PARAM]:,
+{
+    pub fn new(secret_key: &IndividualSigningKey<C>, mut csprng: impl CryptoRng + Rng) -> Self {
+        NoncePair(
+            nonce_generate(secret_key, &mut csprng).unwrap(),
+            nonce_generate(secret_key, &mut csprng).unwrap(),
+        )
     }
 }
 
-impl<C: CipherSuite> From<NoncePair<<C::G as Group>::ScalarField>> for CommitmentShare<C> {
-    fn from(other: NoncePair<<C::G as Group>::ScalarField>) -> Self {
+impl<C: CipherSuite> From<NoncePair<C>> for CommitmentShare<C> {
+    fn from(other: NoncePair<C>) -> Self {
         let x = C::G::generator().mul(other.0);
         let y = C::G::generator().mul(other.1);
 
@@ -190,8 +214,8 @@ impl<C: CipherSuite> PublicCommitmentShareList<C> {
 ///
 /// # Inputs
 ///
-/// * `participant_index` is the index of the threshold signing
-///   participant who is publishing this share.
+/// * `participant_secret_key` is the [`IndividualSigningKey`] of the participant
+///   who is publishing this share list.
 /// * `number_of_shares` denotes the number of commitments published at a time.
 ///
 /// # Returns
@@ -199,13 +223,19 @@ impl<C: CipherSuite> PublicCommitmentShareList<C> {
 /// A tuple of ([`PublicCommitmentShareList`], [`SecretCommitmentShareList`]).
 pub fn generate_commitment_share_lists<C: CipherSuite>(
     mut csprng: impl CryptoRng + Rng,
-    participant_index: u32,
+    participant_secret_key: &IndividualSigningKey<C>,
     number_of_shares: usize,
-) -> (PublicCommitmentShareList<C>, SecretCommitmentShareList<C>) {
+) -> (PublicCommitmentShareList<C>, SecretCommitmentShareList<C>)
+where
+    [(); C::HASH_SEC_PARAM]:,
+{
     let mut commitments: Vec<CommitmentShare<C>> = Vec::with_capacity(number_of_shares);
 
     for _ in 0..number_of_shares {
-        commitments.push(CommitmentShare::from(NoncePair::new(&mut csprng)));
+        commitments.push(CommitmentShare::from(NoncePair::new(
+            participant_secret_key,
+            &mut csprng,
+        )));
     }
 
     let mut published: Vec<(C::G, C::G)> = Vec::with_capacity(number_of_shares);
@@ -216,7 +246,7 @@ pub fn generate_commitment_share_lists<C: CipherSuite>(
 
     (
         PublicCommitmentShareList {
-            participant_index,
+            participant_index: participant_secret_key.index,
             commitments: published,
         },
         SecretCommitmentShareList { commitments },
@@ -259,12 +289,21 @@ mod test {
 
     #[test]
     fn secret_pair() {
-        let _secret_pair = NoncePair::<Fr>::new(&mut OsRng);
+        let secret_key = IndividualSigningKey::<Secp256k1Sha256> {
+            index: 1,
+            key: Fr::zero(),
+        };
+        let _secret_pair = NoncePair::<Secp256k1Sha256>::new(&secret_key, &mut OsRng);
     }
 
     #[test]
     fn secret_pair_into_commitment_share() {
-        let _commitment_share: CommitmentShare<Secp256k1Sha256> = NoncePair::new(&mut OsRng).into();
+        let secret_key = IndividualSigningKey::<Secp256k1Sha256> {
+            index: 1,
+            key: Fr::zero(),
+        };
+        let _commitment_share: CommitmentShare<Secp256k1Sha256> =
+            NoncePair::new(&secret_key, &mut OsRng).into();
     }
 
     #[test]
@@ -309,8 +348,12 @@ mod test {
 
     #[test]
     fn commitment_share_list_generate() {
+        let secret_key = IndividualSigningKey::<Secp256k1Sha256> {
+            index: 1,
+            key: Fr::zero(),
+        };
         let (public_share_list, secret_share_list) =
-            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 0, 5);
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &secret_key, 1);
 
         assert_eq!(
             public_share_list.commitments[0].0.into_affine(),
@@ -321,8 +364,12 @@ mod test {
 
     #[test]
     fn drop_used_commitment_shares() {
+        let secret_key = IndividualSigningKey::<Secp256k1Sha256> {
+            index: 3,
+            key: Fr::zero(),
+        };
         let (_public_share_list, mut secret_share_list) =
-            generate_commitment_share_lists(&mut OsRng, 3, 8);
+            generate_commitment_share_lists(&mut OsRng, &secret_key, 8);
 
         assert!(secret_share_list.commitments.len() == 8);
 
