@@ -24,7 +24,7 @@ use zeroize::Zeroize;
 pub struct Coefficients<C: CipherSuite>(pub(crate) Vec<<C::G as Group>::ScalarField>);
 
 impl<C: CipherSuite> Coefficients<C> {
-    /// Serialize this [`Coefficients`] to a vector of bytes.
+    /// Serialize this `coefficients` to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -34,7 +34,7 @@ impl<C: CipherSuite> Coefficients<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a [`Coefficients`] from a vector of bytes.
+    /// Attempt to deserialize a `coefficients` from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }

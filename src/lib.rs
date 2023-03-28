@@ -12,7 +12,7 @@
 
 //! This library provides a Rust implementation of the Static **[ICE-FROST]**:
 //! **I**dentifiable **C**heating **E**ntity **F**lexible **R**ound-**O**ptimised **S**chnorr **T**hreshold
-//! signature scheme, detailed in https://eprint.iacr.org/2021/1658.
+//! signature scheme, detailed in <https://eprint.iacr.org/2021/1658>.
 //!
 //! The ICE-FROST signature scheme extends the original FROST t-out-of-n threshold signature scheme, by adding
 //! new properties to the distributed key generation phase: it is made robust, meaning that adversaries under
@@ -456,7 +456,8 @@
 //!
 //! Each participant can now derive their long-lived, personal signing keys and the group's
 //! public key.  They should all derive the same group public key.  They
-//! also derive their [`IndividualVerifyingKey`]s from their [`IndividualSigningKey`]s.
+//! also derive their [`IndividualVerifyingKey`](crate::keys::IndividualVerifyingKey)s
+//! from their [`IndividualSigningKey`](crate::keys::IndividualSigningKey)s.
 //!
 //! ```rust
 //! # use ice_frost::dkg::DistributedKeyGeneration;
@@ -942,9 +943,9 @@
 //! After running their DKG, or after receiving secret shares from a previous set of signers,
 //! Alice, Bob, and Carol can now create partial threshold signatures over an agreed upon
 //! message with their respective secret keys, which they can then give to an untrusted
-//! [`SignatureAggregator`] (which can be one of the participants) to create a
+//! [`SignatureAggregator`](crate::sign::SignatureAggregator) (which can be one of the participants) to create a
 //! 2-out-of-3 threshold signature.  To do this, they each pre-compute (using
-//! [`generate_commitment_share_lists`]) and publish a list of commitment shares.
+//! `generate_commitment_share_lists` and publish a list of commitment shares.
 //!
 //! ```rust
 //! use ice_frost::sign::generate_commitment_share_lists;
@@ -1299,7 +1300,7 @@ pub use error::{Error, FrostResult};
 
 /// A module defining the different key types used by an ICE-FROST instance.
 pub mod keys;
-/// A module defining the [`ThresholdParameters`] type used by an ICE-FROST instance.
+/// A module defining the [`ThresholdParameters`](crate::parameters::ThresholdParameters) type used by an ICE-FROST instance.
 pub mod parameters;
 
 mod ciphersuite;

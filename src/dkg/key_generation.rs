@@ -108,7 +108,7 @@ where
     ///
     /// # Note
     ///
-    /// The [`participants`] will be sorted by their indices.
+    /// The `participants` will be sorted by their indices.
     ///
     /// # Returns
     ///
@@ -142,7 +142,7 @@ where
     ///
     /// # Note
     ///
-    /// The [`participants`] will be sorted by their indices.
+    /// The `participants` will be sorted by their indices.
     ///
     /// # Returns
     ///

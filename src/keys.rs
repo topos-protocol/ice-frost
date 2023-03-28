@@ -118,12 +118,12 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
     /// Y\_i = \prod\_{j=1}^{n} \prod\_{k=0}^{t-1} \phi\_{jk}^{i^{k} \mod q}
     /// \\]
     ///
-    /// for each [`Participant`] index \\(i\\).
+    /// for each [`Participant`](crate::dkg::Participant) index \\(i\\).
     ///
     /// # Inputs
     ///
-    /// * A vector of [`commitments`] regarding the secret polynomial
-    ///   [`Coefficients`] that this [`IndividualVerifyingKey`] was generated with.
+    /// * A vector of `commitments` regarding the secret polynomial
+    ///   `coefficients` that this [`IndividualVerifyingKey`] was generated with.
     ///
     /// # Returns
     ///
@@ -174,13 +174,13 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
     /// Y\_i = \prod\_{j=1}^{n} \prod\_{k=0}^{t-1} \phi\_{jk}^{i^{k} \mod q}
     /// \\]
     ///
-    /// for each [`Participant`] index \\(i\\).
+    /// for each [`Participant`](crate::dkg::Participant) index \\(i\\).
     ///
     /// # Inputs
     ///
-    /// * A [`participant_index`] and
-    /// * A vector of [`commitments`] regarding the secret polynomial
-    ///   [`Coefficients`] that the [`IndividualVerifyingKey`] will be generated from.
+    /// * A `participant_index` and
+    /// * A vector of `commitments` regarding the secret polynomial
+    ///   `coefficients` that the [`IndividualVerifyingKey`] will be generated from.
     ///
     /// # Returns
     ///

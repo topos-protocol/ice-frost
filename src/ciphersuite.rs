@@ -21,7 +21,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// The underlying hasher used to construct all random oracles of this [`CipherSuite`] .
     type InnerHasher: Default + Clone + Digest + DynDigest;
 
-    /// The security parameter of this [`CipherSuite`]'s [`InnerHasher`] .
+    /// The security parameter of this [`CipherSuite`]'s `InnerHasher` .
     const HASH_SEC_PARAM: usize;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
@@ -36,12 +36,12 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
 
     // Provided methods`
 
-    /// [`h0`] hash for this [`CipherSuite`] .
+    /// `h0` hash for this [`CipherSuite`] .
     ///
     /// This oracle is not part of the FROST IETF specification, and is
     /// aimed at being used during the distributed key generation phase.
     ///
-    /// The context string for [`h0`] is this [`CipherSuite`]'s CONTEXT_STRING,
+    /// The context string for `h0` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "nizkpok".
     fn h0(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
@@ -50,9 +50,9 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
         crate::utils::hash_to_field::<Self>((Self::context_string() + "rho").as_bytes(), m)
     }
 
-    /// [`h1`] hash for this [`CipherSuite`] .
+    /// `h1` hash for this [`CipherSuite`] .
     ///
-    /// The context string for [`h1`] is this [`CipherSuite`]'s CONTEXT_STRING,
+    /// The context string for `h1` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "rho".
     fn h1(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
@@ -61,9 +61,9 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
         crate::utils::hash_to_field::<Self>((Self::context_string() + "rho").as_bytes(), m)
     }
 
-    /// [`h2`] hash for this [`CipherSuite`] .
+    /// `h2` hash for this [`CipherSuite`] .
     ///
-    /// The context string for [`h2`] is this [`CipherSuite`]'s CONTEXT_STRING,
+    /// The context string for `h2` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "challenge".
     fn h2(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
@@ -72,9 +72,9 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
         crate::utils::hash_to_field::<Self>((Self::context_string() + "challenge").as_bytes(), m)
     }
 
-    /// [`h3`] hash for this [`CipherSuite`] .
+    /// `h3` hash for this [`CipherSuite`] .
     ///
-    /// The context string for [`h3`] is this [`CipherSuite`]'s CONTEXT_STRING,
+    /// The context string for `h3` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "nonce".
     fn h3(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
     where
@@ -83,17 +83,17 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
         crate::utils::hash_to_field::<Self>((Self::context_string() + "nonce").as_bytes(), m)
     }
 
-    /// [`h4`] hash for this [`CipherSuite`] .
+    /// `h4` hash for this [`CipherSuite`] .
     ///
-    /// The context string for [`h4`] is this [`CipherSuite`]'s CONTEXT_STRING,
+    /// The context string for `h4` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "message".
     fn h4(m: &[u8]) -> FrostResult<Self, Self::HashOutput> {
         crate::utils::hash_to_array::<Self>((Self::context_string() + "message").as_bytes(), m)
     }
 
-    /// [`h5`] hash for this [`CipherSuite`] .
+    /// `h5` hash for this [`CipherSuite`] .
     ///
-    /// The context string for [`h5`] is this [`CipherSuite`]'s CONTEXT_STRING,
+    /// The context string for `h5` is this [`CipherSuite`]'s `CONTEXT_STRING`,
     /// concatenated with "commitment".
     fn h5(m: &[u8]) -> FrostResult<Self, Self::HashOutput> {
         crate::utils::hash_to_array::<Self>((Self::context_string() + "commitment").as_bytes(), m)

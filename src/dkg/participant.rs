@@ -50,13 +50,13 @@ where
     /// who will generate shares for a group of signers (can be the group of dealers).
     ///
     /// In case of resharing/refreshing of the secret participant shares once the
-    /// Dkg has completed, a dealer can call the [`reshare`] method to distribute
+    /// Dkg has completed, a dealer can call the `reshare` method to distribute
     /// shares of her secret key to a new set of participants.
     ///
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
-    /// * This participant's [`index`],
+    /// * This participant's `index`,
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
@@ -69,7 +69,7 @@ where
     /// # Returns
     ///
     /// A distributed key generation protocol [`Participant`] and that
-    /// dealer's secret polynomial [`Coefficients`] along the dealer's
+    /// dealer's secret polynomial `coefficients` along the dealer's
     /// Diffie-Hellman private key for secret shares encryption which
     /// must be kept private.
     pub fn new_dealer(
@@ -90,12 +90,12 @@ where
     /// # Inputs
     ///
     /// * The protocol instance [`ThresholdParameters`],
-    /// * This participant's [`index`],
+    /// * This participant's `index`,
     /// * A context string to prevent replay attacks.
     ///
     /// # Usage
     ///
-    /// After a new participant is constructed, the [`participant.index`
+    /// After a new participant is constructed, the `participant.index`
     /// and [`participant.proof_of_dh_private_key`] should be sent to every
     /// other participant in the protocol.
     ///
@@ -207,9 +207,8 @@ where
     /// # Inputs
     ///
     /// * The *new* protocol instance [`ThresholdParameters`],
-    /// * This participant's [`secret_key`],
+    /// * This participant's `secret_key`,
     /// * A reference to the list of new participants,
-    /// * A context string to prevent replay attacks.
     ///
     /// # Usage
     ///

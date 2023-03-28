@@ -190,9 +190,9 @@ impl<C: CipherSuite> PublicCommitmentShareList<C> {
 ///
 /// # Inputs
 ///
-/// * [`participant_index`] is the index of the threshold signing
+/// * `participant_index` is the index of the threshold signing
 ///   participant who is publishing this share.
-/// * [`number_of_shares`] denotes the number of commitments published at a time.
+/// * `number_of_shares` denotes the number of commitments published at a time.
 ///
 /// # Returns
 ///

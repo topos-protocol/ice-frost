@@ -319,28 +319,27 @@ where
     [(); C::HASH_SEC_PARAM]:,
 {
     /// Compute an individual signer's [`PartialThresholdSignature`] contribution to
-    /// a [`ThresholdSignature`] on a [`message`] .
+    /// a [`ThresholdSignature`] on a `message`.
     ///
     /// # Inputs
     ///
-    /// * The [`message_hash`] to be signed by every individual signer. This can be computed
-    ///   with the [`h4`] hasher of this instantiation's CipherSuite.
+    /// * The `message_hash` to be signed by every individual signer. This can be computed
+    ///   with the `h4` hasher of this instantiation's CipherSuite.
     /// * The public [`GroupVerifyingKey`] for this group of signing participants,
     /// * This signer's [`SecretCommitmentShareList`] being used in this instantiation and
-    /// * The index of the particular [`CommitmentShare`] being used, and
+    /// * The index of the particular `CommitmentShare` being used, and
     /// * The list of all the currently participating [`Signer`]s (including ourself).
     ///
     /// # Warning
     ///
-    /// The secret share [`index`] here **must** be the same secret share
+    /// The secret share `index` here **must** be the same secret share
     /// corresponding to its public commitment which is passed to
     /// [`SignatureAggregrator.include_signer()`] .
     ///
     /// # Returns
     ///
     /// A Result whose [`Ok`] value contains a [`PartialThresholdSignature`], which
-    /// should be sent to the [`SignatureAggregator`].  Otherwise, its [`Err`] value contains
-    /// a string describing the error which occurred.
+    /// should be sent to the [`SignatureAggregator`].
     pub fn sign(
         &self,
         message_hash: &[u8],
@@ -447,20 +446,18 @@ impl<C: CipherSuite> Aggregator for Finalized<C> {}
 
 impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// Construct a new signature aggregator from some protocol instantiation
-    /// [`parameters`] and a [`message`] to be signed.
+    /// `parameters` and a `message` to be signed.
     ///
     /// # Inputs
     ///
     /// * The [`ThresholdParameters`] for this threshold signing operation,
     /// * The public [`GroupVerifyingKey`] for the intended sets of signers,
-    /// * An optional [`context`] string for computing the message hash,
-    /// * The [`message`] to be signed.
+    /// * The `message` to be signed.
     ///
     /// # Notes
     ///
-    /// The [`context`] and the [`message`] string should be given to the aggregator
-    /// so that all signers can query them before deciding whether or not to
-    /// sign.
+    /// The `message` string should be given to the aggregator so that all
+    /// signers can query it before deciding whether or not to sign.
     ///
     /// # Returns
     ///
@@ -522,7 +519,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     ///
     /// # Returns
     ///
-    /// A [`&Vec<Signer>`] of the participating signers in this round.
+    /// A `&Vec<Signer>` of the participating signers in this round.
     pub fn get_signers(&'_ mut self) -> &'_ Vec<Signer<C>> {
         self.state.signers.sort();
         self.state.signers.dedup();
