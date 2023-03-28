@@ -271,13 +271,13 @@ impl<C: CipherSuite> From<&IndividualSigningKey<C>> for IndividualVerifyingKey<C
 
 /// A public key, used to verify a signature made by a threshold of a group of participants.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
-pub struct GroupKey<C: CipherSuite> {
+pub struct GroupVerifyingKey<C: CipherSuite> {
     pub(crate) key: C::G,
     _phantom: PhantomData<C>,
 }
 
-impl<C: CipherSuite> GroupKey<C> {
-    /// Instantiates a new [`GroupKey`] key.
+impl<C: CipherSuite> GroupVerifyingKey<C> {
+    /// Instantiates a new [`GroupVerifyingKey`] key.
     pub fn new(key: C::G) -> Self {
         Self {
             key,
@@ -309,7 +309,7 @@ impl<C: CipherSuite> GroupKey<C> {
         }
     }
 
-    /// Serialize this [`GroupKey`] to a vector of bytes.
+    /// Serialize this [`GroupVerifyingKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
 
@@ -319,7 +319,7 @@ impl<C: CipherSuite> GroupKey<C> {
         Ok(bytes)
     }
 
-    /// Attempt to deserialize a [`GroupKey`] from a vector of bytes.
+    /// Attempt to deserialize a [`GroupVerifyingKey`] from a vector of bytes.
     pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
         Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }

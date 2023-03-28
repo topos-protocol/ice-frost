@@ -20,7 +20,7 @@ pub enum Error<C: CipherSuite> {
     ShareVerificationError,
     /// Complaint verification failure
     ComplaintVerificationError,
-    /// GroupKey generation failure
+    /// GroupVerifyingKey generation failure
     InvalidGroupKey,
     /// Invalid NiZK proof of knowledge
     InvalidProofOfKnowledge,

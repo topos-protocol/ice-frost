@@ -13,7 +13,7 @@ use crate::utils::calculate_lagrange_coefficients;
 use crate::utils::{BTreeMap, Box, Vec};
 use crate::{Error, FrostResult};
 
-use crate::keys::{GroupKey, IndividualSigningKey, IndividualVerifyingKey};
+use crate::keys::{GroupVerifyingKey, IndividualSigningKey, IndividualVerifyingKey};
 use crate::parameters::ThresholdParameters;
 
 use super::precomputation::SecretCommitmentShareList;
@@ -296,7 +296,7 @@ fn compute_group_commitment<C: CipherSuite>(
 
 pub(crate) fn compute_challenge<C: CipherSuite>(
     group_commitment: &C::G,
-    group_key: &GroupKey<C>,
+    group_key: &GroupVerifyingKey<C>,
     message_hash: &[u8],
 ) -> FrostResult<C, <C::G as Group>::ScalarField>
 where
@@ -325,7 +325,7 @@ where
     ///
     /// * The [`message_hash`] to be signed by every individual signer. This can be computed
     ///   with the [`h4`] hasher of this instantiation's CipherSuite.
-    /// * The public [`GroupKey`] for this group of signing participants,
+    /// * The public [`GroupVerifyingKey`] for this group of signing participants,
     /// * This signer's [`SecretCommitmentShareList`] being used in this instantiation and
     /// * The index of the particular [`CommitmentShare`] being used, and
     /// * The list of all the currently participating [`Signer`]s (including ourself).
@@ -344,7 +344,7 @@ where
     pub fn sign(
         &self,
         message_hash: &[u8],
-        group_key: &GroupKey<C>,
+        group_key: &GroupVerifyingKey<C>,
         my_secret_commitment_share_list: &mut SecretCommitmentShareList<C>,
         my_commitment_share_index: usize,
         signers: &[Signer<C>],
@@ -398,7 +398,7 @@ pub(crate) struct AggregatorState<C: CipherSuite> {
     /// collected thus far.
     pub(crate) partial_signatures: PartialThresholdSignatures<C>,
     /// The group public key for all the participants.
-    pub(crate) group_key: GroupKey<C>,
+    pub(crate) group_key: GroupVerifyingKey<C>,
 }
 
 /// A signature aggregator is an untrusted party who coalesces all of the
@@ -452,7 +452,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// # Inputs
     ///
     /// * The [`ThresholdParameters`] for this threshold signing operation,
-    /// * The public [`GroupKey`] for the intended sets of signers,
+    /// * The public [`GroupVerifyingKey`] for the intended sets of signers,
     /// * An optional [`context`] string for computing the message hash,
     /// * The [`message`] to be signed.
     ///
@@ -467,7 +467,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// A new [`SignatureAggregator`].
     pub fn new(
         parameters: ThresholdParameters<C>,
-        group_key: GroupKey<C>,
+        group_key: GroupVerifyingKey<C>,
         message: &[u8],
     ) -> SignatureAggregator<C, Initial<'_>> {
         let signers: Vec<Signer<C>> = Vec::with_capacity(parameters.t as usize);
@@ -735,7 +735,11 @@ where
     /// # Returns
     ///
     /// A [`FrostResult`] whose [`Ok`] value indicates that the signature was computed correctly.
-    pub fn verify(&self, group_key: &GroupKey<C>, message_hash: &[u8]) -> FrostResult<C, ()> {
+    pub fn verify(
+        &self,
+        group_key: &GroupVerifyingKey<C>,
+        message_hash: &[u8],
+    ) -> FrostResult<C, ()> {
         let challenge =
             compute_challenge::<C>(&self.group_commitment, group_key, message_hash).unwrap();
 
@@ -777,7 +781,7 @@ mod test {
         (
             ThresholdParameters<Secp256k1Sha256>,
             Vec<IndividualSigningKey<Secp256k1Sha256>>,
-            GroupKey<Secp256k1Sha256>,
+            GroupVerifyingKey<Secp256k1Sha256>,
             Option<ThresholdParameters<Secp256k1Sha256>>,
             Option<Vec<IndividualSigningKey<Secp256k1Sha256>>>,
         ),
@@ -1422,8 +1426,11 @@ mod test {
         let (p2_public_comshares, _) =
             generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, 2, 1);
 
-        let mut aggregator =
-            SignatureAggregator::new(params, GroupKey::new(Projective::zero()), &message[..]);
+        let mut aggregator = SignatureAggregator::new(
+            params,
+            GroupVerifyingKey::new(Projective::zero()),
+            &message[..],
+        );
 
         let p1_sk = IndividualSigningKey {
             index: 1,

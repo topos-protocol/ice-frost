@@ -19,7 +19,7 @@ use crate::dkg::{
     Complaint, Participant,
 };
 use crate::keys::{
-    DiffieHellmanPrivateKey, DiffieHellmanPublicKey, GroupKey, IndividualSigningKey,
+    DiffieHellmanPrivateKey, DiffieHellmanPublicKey, GroupVerifyingKey, IndividualSigningKey,
 };
 use crate::parameters::ThresholdParameters;
 use crate::{Error, FrostResult};
@@ -451,7 +451,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// [```ignore
     /// let (group_key, secret_key) = state.finish()?;
     /// [```
-    pub fn finish(mut self) -> FrostResult<C, (GroupKey<C>, IndividualSigningKey<C>)> {
+    pub fn finish(mut self) -> FrostResult<C, (GroupVerifyingKey<C>, IndividualSigningKey<C>)> {
         let secret_key = self.calculate_signing_key()?;
         let group_key = self.calculate_group_key()?;
 
@@ -495,11 +495,11 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     ///
     /// # Returns
     ///
-    /// A [`GroupKey`] for the set of participants.
+    /// A [`GroupVerifyingKey`] for the set of participants.
     ///
     /// my_commitment is needed for now, but won't be when the distinction
     /// dealers/signers is implemented.
-    pub(crate) fn calculate_group_key(&self) -> FrostResult<C, GroupKey<C>> {
+    pub(crate) fn calculate_group_key(&self) -> FrostResult<C, GroupVerifyingKey<C>> {
         let mut index_vector: Vec<u32> = Vec::new();
 
         for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
@@ -519,7 +519,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             group_key += commitment.public_key().unwrap().mul(coeff);
         }
 
-        Ok(GroupKey::new(group_key))
+        Ok(GroupVerifyingKey::new(group_key))
     }
 
     /// Every participant can verify a complaint and determine who is the malicious
@@ -898,7 +898,7 @@ mod test {
             .unwrap()
             * p5_secret_key.key;
 
-        let group_key = GroupKey::new(Projective::generator().mul(group_secret_key));
+        let group_key = GroupVerifyingKey::new(Projective::generator().mul(group_secret_key));
 
         assert!(p5_group_key == group_key)
     }
@@ -1904,7 +1904,7 @@ mod test {
 
                 // Check serialisation
                 let bytes = p1_group_key.to_bytes()?;
-                assert_eq!(p1_group_key, GroupKey::from_bytes(&bytes)?);
+                assert_eq!(p1_group_key, GroupVerifyingKey::from_bytes(&bytes)?);
 
                 let bytes = p1_state.to_bytes()?;
                 assert_eq!(
