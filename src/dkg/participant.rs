@@ -20,7 +20,7 @@ use crate::keys::{DiffieHellmanPrivateKey, DiffieHellmanPublicKey, IndividualSig
 use crate::parameters::ThresholdParameters;
 use crate::{Error, FrostResult};
 
-use crate::utils::Vec;
+use crate::utils::{Scalar, Vec};
 
 use super::DKGParticipantList;
 use super::DistributedKeyGeneration;
@@ -125,7 +125,7 @@ where
         parameters: &ThresholdParameters<C>,
         is_signer: bool,
         index: u32,
-        secret_key: Option<<C::G as Group>::ScalarField>,
+        secret_key: Option<Scalar<C>>,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, Option<Coefficients<C>>, DiffieHellmanPrivateKey<C>)> {
         if index == 0 {
@@ -141,7 +141,7 @@ where
         // Every participant samples a random pair of keys (dh_private_key, dh_public_key)
         // and generates a proof of knowledge of dh_private_key.
         // This will be used for secret shares encryption and for complaint generation.
-        let dh_private_key = DiffieHellmanPrivateKey(<C::G as Group>::ScalarField::rand(&mut rng));
+        let dh_private_key = DiffieHellmanPrivateKey(Scalar::<C>::rand(&mut rng));
         let dh_public_key = DiffieHellmanPublicKey::new(C::G::generator().mul(dh_private_key.0));
 
         // Compute a proof of knowledge of dh_secret_key
@@ -162,7 +162,7 @@ where
                 dh_private_key,
             ))
         } else {
-            let mut coefficients: Vec<<C::G as Group>::ScalarField> = Vec::with_capacity(t);
+            let mut coefficients: Vec<Scalar<C>> = Vec::with_capacity(t);
             let mut commitments = VerifiableSecretSharingCommitment {
                 index,
                 points: Vec::with_capacity(t),
@@ -170,11 +170,11 @@ where
 
             match secret_key {
                 Some(sk) => coefficients.push(sk),
-                None => coefficients.push(<C::G as Group>::ScalarField::rand(&mut rng)),
+                None => coefficients.push(Scalar::<C>::rand(&mut rng)),
             }
 
             for _ in 1..t {
-                coefficients.push(<C::G as Group>::ScalarField::rand(&mut rng));
+                coefficients.push(Scalar::<C>::rand(&mut rng));
             }
 
             let coefficients = Coefficients(coefficients);

@@ -12,7 +12,7 @@ use core::cmp::Ordering;
 use core::ops::{Add, Deref, DerefMut, Mul};
 
 use crate::utils::calculate_lagrange_coefficients;
-use crate::utils::{BTreeMap, Box, Vec};
+use crate::utils::{BTreeMap, Box, Scalar, Vec};
 use crate::{Error, FrostResult};
 
 use crate::keys::{GroupVerifyingKey, IndividualSigningKey, IndividualVerifyingKey};
@@ -58,7 +58,7 @@ impl<C: CipherSuite> PartialEq for Signer<C> {
 #[derive(Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct PartialThresholdSignature<C: CipherSuite> {
     pub(crate) index: u32,
-    pub(crate) z: <C::G as Group>::ScalarField,
+    pub(crate) z: Scalar<C>,
 }
 
 impl<C: CipherSuite> PartialThresholdSignature<C> {
@@ -82,7 +82,7 @@ impl<C: CipherSuite> PartialThresholdSignature<C> {
 #[derive(Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct ThresholdSignature<C: CipherSuite> {
     pub(crate) group_commitment: C::G,
-    pub(crate) z: <C::G as Group>::ScalarField,
+    pub(crate) z: Scalar<C>,
 }
 
 impl<C: CipherSuite> ThresholdSignature<C> {
@@ -104,7 +104,7 @@ impl<C: CipherSuite> ThresholdSignature<C> {
 
 /// A struct for storing signers' binding factors with their index.
 #[derive(Debug, Default, CanonicalSerialize, CanonicalDeserialize)]
-struct BindingFactors<C: CipherSuite>(pub(crate) BTreeMap<u32, <C::G as Group>::ScalarField>);
+struct BindingFactors<C: CipherSuite>(pub(crate) BTreeMap<u32, Scalar<C>>);
 
 impl<C: CipherSuite> BindingFactors<C> {
     pub fn new() -> Self {
@@ -113,7 +113,7 @@ impl<C: CipherSuite> BindingFactors<C> {
 }
 
 impl<C: CipherSuite> Deref for BindingFactors<C> {
-    type Target = BTreeMap<u32, <C::G as Group>::ScalarField>;
+    type Target = BTreeMap<u32, Scalar<C>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -129,9 +129,7 @@ impl<C: CipherSuite> DerefMut for BindingFactors<C> {
 /// A type for storing signers' partial threshold signatures along with the
 /// respective signer participant index.
 #[derive(Debug, Default, CanonicalSerialize, CanonicalDeserialize)]
-pub(crate) struct PartialThresholdSignatures<C: CipherSuite>(
-    pub(crate) BTreeMap<u32, <C::G as Group>::ScalarField>,
-);
+pub(crate) struct PartialThresholdSignatures<C: CipherSuite>(pub(crate) BTreeMap<u32, Scalar<C>>);
 
 impl<C: CipherSuite> PartialThresholdSignatures<C> {
     pub fn new() -> Self {
@@ -140,7 +138,7 @@ impl<C: CipherSuite> PartialThresholdSignatures<C> {
 }
 
 impl<C: CipherSuite> Deref for PartialThresholdSignatures<C> {
-    type Target = BTreeMap<u32, <C::G as Group>::ScalarField>;
+    type Target = BTreeMap<u32, Scalar<C>>;
 
     fn deref(&self) -> &Self::Target {
         &self.0
@@ -231,8 +229,8 @@ where
 
 fn binding_factor_for_participant<C: CipherSuite>(
     participant_index: u32,
-    binding_factor_list: &BTreeMap<u32, <C::G as Group>::ScalarField>,
-) -> <C::G as Group>::ScalarField {
+    binding_factor_list: &BTreeMap<u32, Scalar<C>>,
+) -> Scalar<C> {
     for (i, binding_factor) in binding_factor_list.iter() {
         if participant_index == *i {
             return *binding_factor;
@@ -279,7 +277,7 @@ where
 
 fn compute_group_commitment<C: CipherSuite>(
     signers: &[Signer<C>],
-    binding_factor_list: &BTreeMap<u32, <C::G as Group>::ScalarField>,
+    binding_factor_list: &BTreeMap<u32, Scalar<C>>,
 ) -> C::G {
     let mut group_commitment = C::G::zero();
 
@@ -300,7 +298,7 @@ pub(crate) fn compute_challenge<C: CipherSuite>(
     group_commitment: &C::G,
     group_key: &GroupVerifyingKey<C>,
     message_hash: &[u8],
-) -> FrostResult<C, <C::G as Group>::ScalarField>
+) -> FrostResult<C, Scalar<C>>
 where
     [(); C::HASH_SEC_PARAM]:,
 {
@@ -361,7 +359,7 @@ where
 
         let all_participant_indices: Vec<u32> =
             signers.iter().map(|x| x.participant_index).collect();
-        let lambda: <C::G as Group>::ScalarField =
+        let lambda: Scalar<C> =
             calculate_lagrange_coefficients::<C>(self.index, &all_participant_indices).unwrap();
 
         let my_commitment_share =
@@ -651,7 +649,7 @@ where
             .map(|x| x.participant_index)
             .collect();
 
-        let mut z = <C::G as Group>::ScalarField::ZERO;
+        let mut z = Scalar::<C>::ZERO;
 
         // We first combine all partial signatures together, to remove the need for individual
         // signature verification in case the final group signature is valid.

@@ -4,7 +4,7 @@
 
 use core::marker::PhantomData;
 
-use crate::utils::{ToString, Vec};
+use crate::utils::{Scalar, ToString, Vec};
 use crate::{Error, FrostResult};
 
 use crate::ciphersuite::CipherSuite;
@@ -25,7 +25,7 @@ use zeroize::Zeroize;
 /// A struct for holding a shard of the shared secret, in order to ensure that
 /// the shard is overwritten with zeroes when it falls out of scope.
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
-pub struct Coefficients<C: CipherSuite>(pub(crate) Vec<<C::G as Group>::ScalarField>);
+pub struct Coefficients<C: CipherSuite>(pub(crate) Vec<Scalar<C>>);
 
 impl<C: CipherSuite> Coefficients<C> {
     /// Serialize this `coefficients` to a vector of bytes.
@@ -60,7 +60,7 @@ pub struct SecretShare<C: CipherSuite> {
     pub receiver_index: u32,
     /// The final evaluation of the polynomial for the participant-respective
     /// indeterminant.
-    pub(crate) polynomial_evaluation: <C::G as Group>::ScalarField,
+    pub(crate) polynomial_evaluation: Scalar<C>,
 }
 
 impl<C: CipherSuite> Drop for SecretShare<C> {
@@ -91,8 +91,8 @@ impl<C: CipherSuite> SecretShare<C> {
         receiver_index: &u32,
         coefficients: &Coefficients<C>,
     ) -> SecretShare<C> {
-        let term: <C::G as Group>::ScalarField = (*receiver_index).into();
-        let mut sum = <C::G as Group>::ScalarField::ZERO;
+        let term: Scalar<C> = (*receiver_index).into();
+        let mut sum = Scalar::<C>::ZERO;
 
         // Evaluate using Horner's method.
         for (receiver_index, coefficient) in coefficients.0.iter().rev().enumerate() {
@@ -117,7 +117,7 @@ impl<C: CipherSuite> SecretShare<C> {
         commitment: &VerifiableSecretSharingCommitment<C>,
     ) -> FrostResult<C, ()> {
         let lhs = C::G::generator() * self.polynomial_evaluation;
-        let term: <C::G as Group>::ScalarField = self.receiver_index.into();
+        let term: Scalar<C> = self.receiver_index.into();
         let mut rhs: C::G = <C as CipherSuite>::G::zero();
 
         for (index, com) in commitment.points.iter().rev().enumerate() {
@@ -225,7 +225,7 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
     }
 
     /// Evaluate g^P(i) without knowing the secret coefficients of the polynomial
-    pub fn evaluate_hiding(&self, term: &<C::G as Group>::ScalarField) -> C::G {
+    pub fn evaluate_hiding(&self, term: &Scalar<C>) -> C::G {
         let mut sum = <C as CipherSuite>::G::zero();
 
         // Evaluate using Horner's method.
@@ -294,8 +294,8 @@ pub(crate) fn decrypt_share<C: CipherSuite>(
     let mut bytes = encrypted_share.encrypted_polynomial_evaluation.clone();
     cipher.apply_keystream(&mut bytes);
 
-    let evaluation = <C::G as Group>::ScalarField::deserialize_compressed(&bytes[..])
-        .map_err(|_| Error::DecryptionError)?;
+    let evaluation =
+        Scalar::<C>::deserialize_compressed(&bytes[..]).map_err(|_| Error::DecryptionError)?;
 
     Ok(SecretShare {
         sender_index: encrypted_share.sender_index,

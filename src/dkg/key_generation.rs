@@ -473,7 +473,7 @@ use crate::parameters::ThresholdParameters;
 use crate::{Error, FrostResult};
 
 use crate::utils::calculate_lagrange_coefficients;
-use crate::utils::{Box, ToString, Vec};
+use crate::utils::{Box, Scalar, ToString, Vec};
 
 /// State machine structures for holding intermediate values during a
 /// distributed key generation protocol run, to prevent misuse.
@@ -938,7 +938,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             index_vector.push(share.sender_index);
         }
 
-        let mut key = <C::G as Group>::ScalarField::ZERO;
+        let mut key = Scalar::<C>::ZERO;
 
         for share in my_secret_shares.iter() {
             let coeff =

@@ -1,7 +1,7 @@
 //! The complaint module for handling disputes during an ICE-FROST
 //! Distributed Key Generation session.
 
-use crate::utils::Vec;
+use crate::utils::{Scalar, Vec};
 use crate::{Error, FrostResult};
 
 use core::ops::Mul;
@@ -34,19 +34,19 @@ impl<C: CipherSuite> Complaint<C> {
         my_index: u32,
         accused_index: u32,
         accused_pk: &C::G,
-        dh_skey: &<C::G as Group>::ScalarField,
+        dh_skey: &Scalar<C>,
         dh_pkey: &C::G,
         dh_shared_key: &C::G,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, Self> {
-        let r = <C::G as Group>::ScalarField::rand(&mut rng);
+        let r = Scalar::<C>::rand(&mut rng);
 
         let a1 = C::G::generator().mul(r);
         let a2 = accused_pk.mul(r);
 
-        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<
-            <C::G as Group>::ScalarField,
-        >>::new("Complaint Context".as_bytes());
+        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<Scalar<C>>>::new(
+            "Complaint Context".as_bytes(),
+        );
 
         let mut message = my_index.to_le_bytes().to_vec();
         message.extend(&accused_index.to_le_bytes());
@@ -64,7 +64,7 @@ impl<C: CipherSuite> Complaint<C> {
         a2.serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
 
-        let h: <C::G as Group>::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
+        let h: Scalar<C> = hasher.hash_to_field(&message[..], 1)[0];
         Ok(Self {
             maker_index: my_index,
             accused_index,
@@ -81,9 +81,9 @@ impl<C: CipherSuite> Complaint<C> {
     /// --  a1 + h.pk_i = z.g
     /// --  a2 + h.k_il = z.pk_l
     pub fn verify(&self, pk_i: &C::G, pk_l: &C::G) -> FrostResult<C, ()> {
-        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<
-            <C::G as Group>::ScalarField,
-        >>::new("Complaint Context".as_bytes());
+        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<Scalar<C>>>::new(
+            "Complaint Context".as_bytes(),
+        );
 
         let mut message = self.maker_index.to_le_bytes().to_vec();
         message.extend(&self.accused_index.to_le_bytes());
@@ -103,7 +103,7 @@ impl<C: CipherSuite> Complaint<C> {
             .serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
 
-        let h: <C::G as Group>::ScalarField = hasher.hash_to_field(&message[..], 1)[0];
+        let h: Scalar<C> = hasher.hash_to_field(&message[..], 1)[0];
 
         if self.proof.a1 + pk_i.mul(h) != C::G::generator() * self.proof.z {
             return Err(Error::ComplaintVerificationError);
@@ -140,7 +140,7 @@ pub struct ComplaintProof<C: CipherSuite> {
     /// a2 = pk_l^r.
     pub a2: <C as CipherSuite>::G,
     /// z = r + H(pk_i, pk_l, k_il).sh_i
-    pub z: <C::G as Group>::ScalarField,
+    pub z: Scalar<C>,
 }
 
 impl<C: CipherSuite> ComplaintProof<C> {

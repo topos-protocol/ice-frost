@@ -5,9 +5,9 @@ use core::marker::{Send, Sync};
 
 use zeroize::Zeroize;
 
-use ark_ec::{CurveGroup, Group};
+use ark_ec::CurveGroup;
 
-use crate::utils::String;
+use crate::utils::{Scalar, String};
 use crate::FrostResult;
 use digest::{Digest, DynDigest};
 
@@ -48,7 +48,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     ///
     /// It is used to compute the Non-Interactive Zero-Knowledge proofs
     /// of Knowledge of the participants' private keys.
-    fn h0(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
+    fn h0(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
     where
         [(); Self::HASH_SEC_PARAM]:,
     {
@@ -61,7 +61,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// concatenated with "rho".
     ///
     /// It is used to compute the binding factor during an ICE-FROST signing session.
-    fn h1(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
+    fn h1(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
     where
         [(); Self::HASH_SEC_PARAM]:,
     {
@@ -74,7 +74,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// concatenated with "challenge".
     ///
     /// It is used to compute the binding factor during an ICE-FROST signing session.
-    fn h2(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
+    fn h2(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
     where
         [(); Self::HASH_SEC_PARAM]:,
     {
@@ -87,7 +87,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// concatenated with "nonce".
     ///
     /// It is used to precompute the nonces to be shared during ICE-FROST signing sessions.
-    fn h3(m: &[u8]) -> FrostResult<Self, <Self::G as Group>::ScalarField>
+    fn h3(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
     where
         [(); Self::HASH_SEC_PARAM]:,
     {

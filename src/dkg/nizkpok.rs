@@ -6,7 +6,7 @@ use ark_ff::UniformRand;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use crate::ciphersuite::CipherSuite;
-use crate::utils::Vec;
+use crate::utils::{Scalar, Vec};
 use crate::{Error, FrostResult};
 
 use rand::CryptoRng;
@@ -29,9 +29,9 @@ use rand::Rng;
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct NizkPokOfSecretKey<C: CipherSuite> {
     /// The scalar portion of the Schnorr signature encoding the context.
-    s: <C::G as Group>::ScalarField,
+    s: Scalar<C>,
     /// The scalar portion of the Schnorr signature which is the actual signature.
-    r: <C::G as Group>::ScalarField,
+    r: Scalar<C>,
 }
 
 impl<C: CipherSuite> NizkPokOfSecretKey<C>
@@ -56,11 +56,11 @@ where
     /// Prove knowledge of a secret key.
     pub fn prove(
         index: u32,
-        secret_key: &<C::G as Group>::ScalarField,
+        secret_key: &Scalar<C>,
         public_key: &C::G,
         mut csprng: impl Rng + CryptoRng,
     ) -> FrostResult<C, Self> {
-        let k = <C::G as Group>::ScalarField::rand(&mut csprng);
+        let k = Scalar::<C>::rand(&mut csprng);
         let m = C::G::generator() * k;
 
         let mut message = index.to_le_bytes().to_vec();

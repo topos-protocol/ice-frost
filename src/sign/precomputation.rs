@@ -5,7 +5,7 @@
 use core::ops::Mul;
 
 use crate::keys::IndividualSigningKey;
-use crate::utils::Vec;
+use crate::utils::{Scalar, Vec};
 use crate::{Error, FrostResult};
 
 use crate::ciphersuite::CipherSuite;
@@ -19,12 +19,10 @@ use rand::CryptoRng;
 use rand::Rng;
 use zeroize::Zeroize;
 
-pub(crate) type Nonce<C> = <<C as CipherSuite>::G as Group>::ScalarField;
-
 fn nonce_generate<C: CipherSuite>(
     secret_key: &IndividualSigningKey<C>,
     mut csprng: impl CryptoRng + Rng,
-) -> FrostResult<C, Nonce<C>>
+) -> FrostResult<C, Scalar<C>>
 where
     [(); C::HASH_SEC_PARAM]:,
 {
@@ -37,7 +35,7 @@ where
 }
 
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
-pub(crate) struct NoncePair<C: CipherSuite>(pub(crate) Nonce<C>, pub(crate) Nonce<C>);
+pub(crate) struct NoncePair<C: CipherSuite>(pub(crate) Scalar<C>, pub(crate) Scalar<C>);
 
 impl<C: CipherSuite> Drop for NoncePair<C> {
     fn drop(&mut self) {
@@ -79,7 +77,7 @@ impl<C: CipherSuite> From<NoncePair<C>> for CommitmentShare<C> {
 #[derive(Clone, Debug, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub(crate) struct Commitment<C: CipherSuite> {
     /// The secret.
-    pub(crate) secret: <C::G as Group>::ScalarField,
+    pub(crate) secret: Scalar<C>,
     /// The commitment.
     pub(crate) commit: <C as CipherSuite>::G,
 }
