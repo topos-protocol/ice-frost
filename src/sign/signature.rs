@@ -1,4 +1,6 @@
-//! ICE-FROST signatures.
+//! The signature module defining an ICE-FROST signing
+//! session, from individual partial signature creation to
+//! their public aggregation.
 
 use crate::ciphersuite::CipherSuite;
 

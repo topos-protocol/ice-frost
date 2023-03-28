@@ -1,3 +1,6 @@
+//! The complaint module for handling disputes during an ICE-FROST
+//! Distributed Key Generation session.
+
 use crate::utils::Vec;
 use crate::{Error, FrostResult};
 
@@ -13,14 +16,14 @@ use ark_ff::field_hashers::{DefaultFieldHasher, HashToField};
 use ark_ff::UniformRand;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-/// A complaint generated when a participant receives a bad share.
+/// A complaint generated when a participant receives an invalid share.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Complaint<C: CipherSuite> {
     /// The index of the complaint maker.
     pub maker_index: u32,
     /// The index of the alleged misbehaving participant.
     pub accused_index: u32,
-    /// The shared DH private key.
+    /// The shared Diffie-Hellman secret key.
     pub dh_shared_key: <C as CipherSuite>::G,
     /// The complaint proof.
     pub proof: ComplaintProof<C>,

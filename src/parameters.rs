@@ -1,4 +1,4 @@
-//! Configurable parameters for an instance of an ICE-FROST signing protocol.
+//! The parameters module for defining the threshold parameters to be used within an ICE-FROST session.
 
 use core::marker::PhantomData;
 

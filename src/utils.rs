@@ -1,3 +1,5 @@
+//! Utility module.
+
 use ark_ff::field_hashers::{DefaultFieldHasher, HashToField};
 
 #[cfg(not(feature = "std"))]

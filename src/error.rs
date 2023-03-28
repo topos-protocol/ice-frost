@@ -1,3 +1,5 @@
+//! The error module for error handling during ICE-FROST sessions.
+
 use crate::ciphersuite::CipherSuite;
 
 use crate::dkg::Complaint;

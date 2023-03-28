@@ -1,3 +1,7 @@
+//! The secret sharing module for defining individual secret shares
+//! and their public commitments, along with their encrypted versions
+//! post Diffie-Hellman key exchange.
+
 use core::marker::PhantomData;
 
 use crate::utils::{ToString, Vec};

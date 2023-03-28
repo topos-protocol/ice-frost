@@ -1,4 +1,6 @@
-//! Precomputation for one-round signing.
+//! The precomputation module for generating nonces
+//! ahead of an ICE-FROST signing session, to reduce
+//! the interaction to a single round before aggregation.
 
 use core::ops::Mul;
 

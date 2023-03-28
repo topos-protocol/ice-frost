@@ -9,7 +9,7 @@
 // - isis agora lovecruft <isis@patternsinthevoid.net>
 // - Toposware developers <dev@toposware.com>
 
-//! A variation of Pedersen's distributed key generation (DKG) protocol.
+//! The static and robust ICE-FROST Distributed Key generation (DKG) protocol.
 //!
 //! This implementation uses the [typestate] design pattern (also called session
 //! types) behind the scenes to enforce that more programming errors are discoverable
@@ -34,9 +34,7 @@
 //!            \\(0 \le j \le t-1\\).
 //!
 //! * Step #2: Every \\(P\_i\\) computes a proof of knowledge to the corresponding secret key
-//!            \\(a\_{i0}\\) by calculating a pseudo-Schnorr signature \\(\sigma\_i = \(s, r\)\\).  (In
-//!            the FROST paper: \\(\sigma\_i = \(\mu\_i, c\_i\)\\), but we stick with Schnorr's
-//!            original notation here.)
+//!            \\(a\_{i0}\\) by calculating a pseudo-Schnorr signature \\(\sigma\_i = \(s, r\)\\).
 //!
 //! * Step #4: Every participant \\(P\_i\\) broadcasts \\(\(C\_i\\), \\(\sigma\_i\)\\) to all other participants.
 //!

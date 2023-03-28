@@ -1,3 +1,5 @@
+//! The keys module for defining all key types to be used within an ICE-FROST session.
+
 use core::marker::PhantomData;
 use core::ops::{Deref, Mul};
 

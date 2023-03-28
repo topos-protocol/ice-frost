@@ -1,3 +1,6 @@
+//! The proof of knowledge module for proving knowledge of secret keys
+//! when performing an ICE-FROST Distributed Key Generation session.
+
 use ark_ec::{AffineRepr, CurveGroup, Group, VariableBaseMSM};
 use ark_ff::UniformRand;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};

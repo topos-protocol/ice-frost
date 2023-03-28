@@ -1,3 +1,6 @@
+//! The participant module, defining ICE-FROST Distributed Key Generation
+//! participants creation and individual secret share redistribution.
+
 use ark_ec::Group;
 use ark_ff::UniformRand;
 use ark_serialize::CanonicalDeserialize;

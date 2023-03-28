@@ -1,3 +1,5 @@
+//! The ciphersuite module to parameterize ICE-FROST sessions.
+
 use core::fmt::Debug;
 use core::marker::{Send, Sync};
 

@@ -1,3 +1,7 @@
+//! The round module for defining the two rounds of an ICE-FROST
+//! Distributed Key Generation session, using the [typestate](http://cliffle.com/blog/rust-typestate/)
+//! pattern internally.
+
 use crate::utils::Vec;
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
