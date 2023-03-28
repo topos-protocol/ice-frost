@@ -25,6 +25,7 @@
 //! Alice, Bob, and Carol would like to set up a threshold signing scheme where
 //! at least two of them need to sign on a given message to produce a valid
 //! signature.
+//!
 //! For this, they need to define a [`CipherSuite`] to be used in the DKG and signing sessions.
 //! This CipherSuite is used to parameterize ICE-FROST over an arbitrary curve backend, with
 //! an arbitrary underlying hasher instantiating all random oracles.
@@ -56,13 +57,9 @@
 //! }
 //! ```
 //!
-//! We will use the Secp256k1Sha256 as CipherSuite for all the following examples.
+//! We will use the `Secp256k1Sha256` as CipherSuite for all the following examples.
 //!
-//! Alice, Bob, and Carol would like to set up a threshold signing scheme where
-//! at least two of them need to sign on a given message to produce a valid
-//! signature.
-//!
-//! Following the CipherSuite definition, Alice, Bob, and Carol need to define their
+//! Following the [`CipherSuite`] definition, Alice, Bob, and Carol need to define their
 //! ICE-FROST session parameters as follows.
 //!
 //! ```rust
@@ -109,88 +106,7 @@
 //! Note that they should only send the `alice`, `bob`, and `carol` structs, *not*
 //! the `alice_coefficients`, etc., as the latter are their personal signing keys.
 //!
-//! Bob and Carol verify Alice's zero-knowledge proofs by doing:
-//!
-//! ```rust
-//! # use ice_frost::parameters::ThresholdParameters;
-//! # use ice_frost::FrostResult;
-//! # use ice_frost::dkg::Participant;
-//! # use ice_frost::CipherSuite;
-//! # use rand::rngs::OsRng;
-//! # use ark_secp256k1::Projective as G;
-//! # use sha2::Sha256;
-//! # use ice_frost::testing::Secp256k1Sha256;
-//! #
-//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
-//! # let mut rng = OsRng;
-//! #
-//! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
-//! # let (bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
-//! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
-//! #
-//! alice.proof_of_dh_private_key
-//!     .verify(alice.index, &alice.dh_public_key)?;
-//! alice.proof_of_secret_key.as_ref().unwrap()
-//!     .verify(alice.index, &alice.public_key().unwrap())?;
-//! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
-//! ```
-//!
-//! Similarly, Alice and Carol verify Bob's proof:
-//!
-//! ```rust
-//! # use ice_frost::parameters::ThresholdParameters;
-//! # use ice_frost::FrostResult;
-//! # use ice_frost::dkg::Participant;
-//! # use ice_frost::CipherSuite;
-//! # use rand::rngs::OsRng;
-//! # use ark_secp256k1::Projective as G;
-//! # use sha2::Sha256;
-//! # use ice_frost::testing::Secp256k1Sha256;
-//! #
-//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
-//! # let mut rng = OsRng;
-//! #
-//! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
-//! # let (bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
-//! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
-//! #
-//! bob.proof_of_dh_private_key
-//!     .verify(bob.index, &bob.dh_public_key)?;
-//! bob.proof_of_secret_key.as_ref().unwrap()
-//!     .verify(bob.index, &bob.public_key().unwrap())?;
-//! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
-//! ```
-//!
-//! And, again, Alice and Bob verify Carol's proof:
-//!
-//! ```rust
-//! # use ice_frost::parameters::ThresholdParameters;
-//! # use ice_frost::FrostResult;
-//! # use ice_frost::dkg::Participant;
-//! # use ice_frost::CipherSuite;
-//! # use rand::rngs::OsRng;
-//! # use ark_secp256k1::Projective as G;
-//! # use sha2::Sha256;
-//! # use ice_frost::testing::Secp256k1Sha256;
-//! #
-//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
-//! # let mut rng = OsRng;
-//! #
-//! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
-//! # let (bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
-//! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
-//! #
-//! carol.proof_of_dh_private_key
-//!     .verify(carol.index, &carol.dh_public_key)?;
-//! carol.proof_of_secret_key.as_ref().unwrap()
-//!     .verify(carol.index, &carol.public_key().unwrap())?;
-//! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
-//! ```
-//!
-//! Alice enters round one of the distributed key generation protocol:
+//! Alice can then start the first round of the distributed key generation protocol:
 //!
 //! ```rust
 //! use ice_frost::dkg::DistributedKeyGeneration;
@@ -224,7 +140,7 @@
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
 //!
-//! Alice then collects the secret shares which they send to the other participants:
+//! Alice then collects their secret shares which they send to the other participants:
 //!
 //! ```rust
 //! # use ice_frost::dkg::DistributedKeyGeneration;
@@ -1266,15 +1182,16 @@
 //! ```
 //!
 //! If the aggregator could not finalize the state, then the `.finalize()` method
-//! will return a `BTreeMap<u32, &'static str>` describing participant indices and the issues
-//! encountered for them.  These issues are **guaranteed to be the fault of the aggregator**,
+//! will return a list of participant indices from which finalization failed.
+//! Note that a failure to complete is **guaranteed to be the fault of the aggregator**,
 //! e.g. not collecting all the expected partial signatures, accepting two partial
 //! signatures from the same participant, etc.
 //!
-//! And the same for the actual aggregation, if there was an error then a
-//! `BTreeMap<u32, &'static str>` will be returned which maps participant indices to issues.
-//! Unlike before, however, these issues are guaranteed to be the fault of the
-//! corresponding participant, specifically, that their partial signature was invalid.
+//! And the same for the actual aggregation, if there was an error then list of
+//! misbehaving participant indices is returned.
+//! Unlike the `.finalize()` step, however, a failure of final aggregation is guaranteed
+//! to be caused by the returned list of misbehaving participants, specifically that
+//! their partial signature was invalid.
 //!
 //! ```rust,ignore
 //! let threshold_signature = aggregator.aggregate()?;
