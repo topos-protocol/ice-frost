@@ -1,3 +1,464 @@
+// -*- mode: rust; -*-
+//
+// This file is part of ice-frost.
+// Copyright (c) 2020 isis lovecruft
+// Copyright (c) 2021-2023 Toposware Inc.
+// See LICENSE for licensing information.
+//
+// Authors:
+// - isis agora lovecruft <isis@patternsinthevoid.net>
+// - Toposware developers <dev@toposware.com>
+
+//! A variation of Pedersen's distributed key generation (DKG) protocol.
+//!
+//! This implementation uses the [typestate] design pattern (also called session
+//! types) behind the scenes to enforce that more programming errors are discoverable
+//! at compile-time.  Additionally, secrets generated for commitment openings, secret keys,
+//! nonces in zero-knowledge proofs, etc., are zeroed-out in memory when they are dropped
+//! out of scope.
+//!
+//! # Details
+//!
+//! ## Round One
+//!
+//! * Step #1: Every participant \\(P\_i\\) samples \\(t\\) random values \\((a\_{i0}, \\dots, a\_{i(t-1)})\\)
+//!            uniformly in \\(\mathbb{Z}\_q\\), and uses these values as coefficients to define a
+//!            polynomial \\(f\_i\(x\) = \sum\_{j=0}^{t-1} a\_{ij} x^{j}\\) of degree \\( t-1 \\) over
+//!            \\(\mathbb{Z}\_q\\).
+//!
+//! These step numbers are given as written in the paper. They are executed in a different order to
+//! save one scalar multiplication.
+//!
+//! * Step #3: Every participant \\(P\_i\\) computes a public commitment
+//!            \\(C\_i = \[\phi\_{i0}, \\dots, \phi\_{i(t-1)}\]\\), where \\(\phi\_{ij} = g^{a\_{ij}}\\),
+//!            \\(0 \le j \le t-1\\).
+//!
+//! * Step #2: Every \\(P\_i\\) computes a proof of knowledge to the corresponding secret key
+//!            \\(a\_{i0}\\) by calculating a pseudo-Schnorr signature \\(\sigma\_i = \(s, r\)\\).  (In
+//!            the FROST paper: \\(\sigma\_i = \(\mu\_i, c\_i\)\\), but we stick with Schnorr's
+//!            original notation here.)
+//!
+//! * Step #4: Every participant \\(P\_i\\) broadcasts \\(\(C\_i\\), \\(\sigma\_i\)\\) to all other participants.
+//!
+//! * Step #5: Upon receiving \\((C\_l, \sigma\_l)\\) from participants \\(1 \le l \le n\\), \\(l \ne i\\),
+//!            participant \\(P\_i\\) verifies \\(\sigma\_l = (s\_l, r\_l)\\), by checking:
+//!            \\(s\_l \stackrel{?}{=} \mathcal{H}(l, \Phi, \phi\_{l0}, g^{r\_l} \cdot \phi\_{l0}^{-s\_i})\\).
+//!            If any participants' proofs cannot be verified, return their participant indices.
+//!
+//! ## Round Two
+//!
+//! * Step #1: Each \\(P\_i\\) securely sends to each other participant \\(P\_l\\) a secret share
+//!            \\((l, f\_i(l))\\) using their secret polynomial \\(f\_i(l)\\) and keeps \\((i, f\_i(i))\\)
+//!            for themselves.
+//!
+//! * Step #2: Each \\(P\_i\\) verifies their shares by calculating:
+//!            \\(g^{f\_l(i)} \stackrel{?}{=} \prod\_{k=0}^{n-1} \\)\\(\phi\_{lk}^{i^{k} \mod q}\\),
+//!            aborting if the check fails.
+//!
+//! * Step #3: Each \\(P\_i\\) calculates their secret signing key as the product of all the secret
+//!            polynomial evaluations (including their own):
+//!            \\(a\_i = g^{f\_i(i)} \cdot \prod\_{l=0}^{n-1} g^{f\_l(i)}\\), as well as calculating
+//!            the group public key in similar fashion from the commitments from round one:
+//!            \\(A = C\_i \cdot \prod\_{l=0}^{n-1} C_l\\).
+//!
+//! # Examples
+//!
+//! ```rust
+//! use ice_frost::dkg::DistributedKeyGeneration;
+//! use ice_frost::parameters::ThresholdParameters;
+//! use ice_frost::FrostResult;
+//! use ice_frost::testing::Secp256k1Sha256;
+//! use ice_frost::dkg::Participant;
+//! use rand::rngs::OsRng;
+//!
+//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+//! // Set up key shares for a threshold signature scheme which needs at least
+//! // 2-out-of-3 signers.
+//! let params = ThresholdParameters::new(3,2);
+//! let mut rng = OsRng;
+//!
+//! // Alice, Bob, and Carol each generate their secret polynomial coefficients
+//! // and commitments to them, as well as a zero-knowledge proof of a secret key.
+//! let (alice, alice_coeffs, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
+//! let (bob, bob_coeffs, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
+//! let (carol, carol_coeffs, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
+//!
+//! // They send these values to each of the other participants (out of scope
+//! // for this library), or otherwise publish them somewhere.
+//! //
+//! // alice.send_to(bob);
+//! // alice.send_to(carol);
+//! // bob.send_to(alice);
+//! // bob.send_to(carol);
+//! // carol.send_to(alice);
+//! // carol.send_to(bob);
+//! //
+//! // NOTE: They should only send the `alice`, `bob`, and `carol` structs, *not*
+//! //       the `alice_coefficients`, etc.
+//! //
+//!
+//! // Alice enters round one of the distributed key generation protocol.
+//! let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
+//! let (alice_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params,
+//!         &alice_dh_sk,
+//!         &alice.index,
+//!         &alice_coeffs,
+//!         &participants,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! // Alice then collects the secret shares which they send to the other participants:
+//! let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
+//! // keep_to_self(alice_their_encrypted_secret_shares[0]);
+//! // send_to_bob(alice_their_encrypted_secret_shares[1]);
+//! // send_to_carol(alice_their_encrypted_secret_shares[2]);
+//!
+//! // Bob enters round one of the distributed key generation protocol.
+//! let (bob_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params,
+//!         &bob_dh_sk,
+//!         &bob.index,
+//!         &bob_coeffs,
+//!         &participants,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! // Bob then collects the secret shares which they send to the other participants:
+//! let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;
+//! // send_to_alice(bob_their_encrypted_secret_shares[0]);
+//! // keep_to_self(bob_their_encrypted_secret_shares[1]);
+//! // send_to_carol(bob_their_encrypted_secret_shares[2]);
+//!
+//! // Carol enters round one of the distributed key generation protocol.
+//! let (carol_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params,
+//!         &carol_dh_sk,
+//!         &carol.index,
+//!         &carol_coeffs,
+//!         &participants,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! // Carol then collects the secret shares which they send to the other participants:
+//! let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
+//! // send_to_alice(carol_their_encrypted_secret_shares[0]);
+//! // send_to_bob(carol_their_encrypted_secret_shares[1]);
+//! // keep_to_self(carol_their_encrypted_secret_shares[2]);
+//!
+//! // Each participant now has a vector of secret shares given to them by the other participants:
+//! let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
+//!                                     bob_their_encrypted_secret_shares[0].clone(),
+//!                                     carol_their_encrypted_secret_shares[0].clone());
+//! let bob_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[1].clone(),
+//!                                     bob_their_encrypted_secret_shares[1].clone(),
+//!                                     carol_their_encrypted_secret_shares[1].clone());
+//! let carol_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[2].clone(),
+//!                                     bob_their_encrypted_secret_shares[2].clone(),
+//!                                     carol_their_encrypted_secret_shares[2].clone());
+//!
+//! // The participants then use these secret shares from the other participants to advance to
+//! // round two of the distributed key generation protocol.
+//! let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Each participant can now derive their long-lived secret keys and the group's
+//! // public key.
+//! let (alice_group_key, alice_secret_key) = alice_state.finish()?;
+//! let (bob_group_key, bob_secret_key) = bob_state.finish()?;
+//! let (carol_group_key, carol_secret_key) = carol_state.finish()?;
+//!
+//! // They should all derive the same group public key.
+//! assert!(alice_group_key == bob_group_key);
+//! assert!(carol_group_key == bob_group_key);
+//!
+//! // Alice, Bob, and Carol can now create partial threshold signatures over an agreed upon
+//! // message with their respective secret keys, which they can then give to a
+//! // [`SignatureAggregator`] to create a 2-out-of-3 threshold signature.
+//! # Ok(())}
+//! # fn main() { assert!(do_test().is_ok()); }
+//! ```
+//!
+//! ## Resharing
+//!
+//! ICE-FROST allows for secret shares redistribution to a new set of participants,
+//! while keeping the same group's public key. The new set of participants can be intersecting,
+//! partly or fully, the former set of participants, or be fully disjoint from it. In the case
+//! where both sets are equal, we talk of secret share refreshing instead of resharing.
+//!
+//! # Examples
+//!
+//! ```rust
+//! use ice_frost::dkg::DistributedKeyGeneration;
+//! use ice_frost::parameters::ThresholdParameters;
+//! use ice_frost::FrostResult;
+//! use ice_frost::testing::Secp256k1Sha256;
+//! use ice_frost::dkg::Participant;
+//! use rand::rngs::OsRng;
+//!
+//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+//! // Set up key shares for a threshold signature scheme which needs at least
+//! // 2-out-of-3 signers.
+//! let params = ThresholdParameters::new(3,2);
+//! let mut rng = OsRng;
+//!
+//! // Alice, Bob, and Carol each generate their secret polynomial coefficients
+//! // and commitments to them, as well as a zero-knowledge proof of a secret key.
+//! let (alice, alice_coeffs, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
+//! let (bob, bob_coeffs, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
+//! let (carol, carol_coeffs, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
+//!
+//! // They send these values to each of the other participants (out of scope
+//! // for this library), or otherwise publish them somewhere.
+//! //
+//! // alice.send_to(bob);
+//! // alice.send_to(carol);
+//! // bob.send_to(alice);
+//! // bob.send_to(carol);
+//! // carol.send_to(alice);
+//! // carol.send_to(bob);
+//! //
+//! // NOTE: They should only send the `alice`, `bob`, and `carol` structs, *not*
+//! //       the `alice_coefficients`, etc.
+//!
+//! // Alice enters round one of the distributed key generation protocol.
+//! let participants: Vec<Participant<Secp256k1Sha256>> = vec!(alice.clone(), bob.clone(), carol.clone());
+//! let (alice_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params,
+//!         &alice_dh_sk,
+//!         &alice.index,
+//!         &alice_coeffs,
+//!         &participants,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! // Alice then collects the secret shares which they send to the other participants:
+//! let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
+//! // keep_to_self(alice_their_encrypted_secret_shares[0]);
+//! // send_to_bob(alice_their_encrypted_secret_shares[1]);
+//! // send_to_carol(alice_their_encrypted_secret_shares[2]);
+//!
+//! // Bob enters round one of the distributed key generation protocol.
+//! let (bob_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params,
+//!         &bob_dh_sk,
+//!         &bob.index,
+//!         &bob_coeffs,
+//!         &participants,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! // Bob then collects the secret shares which they send to the other participants:
+//! let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;
+//! // send_to_alice(bob_their_encrypted_secret_shares[0]);
+//! // keep_to_self(bob_their_encrypted_secret_shares[1]);
+//! // send_to_carol(bob_their_encrypted_secret_shares[2]);
+//!
+//! // Carol enters round one of the distributed key generation protocol.
+//! let (carol_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params,
+//!         &carol_dh_sk,
+//!         &carol.index,
+//!         &carol_coeffs,
+//!         &participants,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! // Carol then collects the secret shares which they send to the other participants:
+//! let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
+//! // send_to_alice(carol_their_encrypted_secret_shares[0]);
+//! // send_to_bob(carol_their_encrypted_secret_shares[1]);
+//! // keep_to_self(carol_their_encrypted_secret_shares[2]);
+//!
+//! // Each participant now has a vector of secret shares given to them by the other participants:
+//! let alice_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[0].clone(),
+//!                                     bob_their_encrypted_secret_shares[0].clone(),
+//!                                     carol_their_encrypted_secret_shares[0].clone());
+//! let bob_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[1].clone(),
+//!                                     bob_their_encrypted_secret_shares[1].clone(),
+//!                                     carol_their_encrypted_secret_shares[1].clone());
+//! let carol_my_encrypted_secret_shares = vec!(alice_their_encrypted_secret_shares[2].clone(),
+//!                                     bob_their_encrypted_secret_shares[2].clone(),
+//!                                     carol_their_encrypted_secret_shares[2].clone());
+//!
+//! // The participants then use these secret shares from the other participants to advance to
+//! // round two of the distributed key generation protocol.
+//! let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Each participant can now derive their long-lived secret keys and the group's
+//! // public key.
+//! let (alice_group_key, alice_secret_key) = alice_state.finish()?;
+//! let (bob_group_key, bob_secret_key) = bob_state.finish()?;
+//! let (carol_group_key, carol_secret_key) = carol_state.finish()?;
+//!
+//! // They should all derive the same group public key.
+//! assert!(alice_group_key == bob_group_key);
+//! assert!(carol_group_key == bob_group_key);
+//!
+//! // Instantiate another configuration of threshold signature.
+//! let new_params = ThresholdParameters::new(4,3);
+//!
+//! // Alexis, Barbara, Claire and David each generate their Diffie-Hellman
+//! // private key, as well as a zero-knowledge proof to it.
+//! let (alexis, alexis_dh_sk) = Participant::new_signer(&new_params, 1, &mut rng)?;
+//! let (barbara, barbara_dh_sk) = Participant::new_signer(&new_params, 2, &mut rng)?;
+//! let (claire, claire_dh_sk) = Participant::new_signer(&new_params, 3, &mut rng)?;
+//! let (david, david_dh_sk) = Participant::new_signer(&new_params, 4, &mut rng)?;
+//!
+//! // They send these values to each of the other and previous participants
+//! // (out of scope for this library), or otherwise publish them somewhere.
+//! //
+//! // alexis.send_to(barbara);
+//! // alexis.send_to(claire);
+//! // alexis.send_to(david);
+//! // alexis.send_to(alice);
+//! // alexis.send_to(bob);
+//! // alexis.send_to(carol);
+//! // barbara.send_to(alexis);
+//! // barbara.send_to(claire);
+//! // barbara.send_to(david);
+//! // barbara.send_to(alice);
+//! // barbara.send_to(bob);
+//! // barbara.send_to(carol);
+//! // claire.send_to(alexis);
+//! // claire.send_to(barbara);
+//! // claire.send_to(david);
+//! // claire.send_to(alice);
+//! // claire.send_to(bob);
+//! // claire.send_to(carol);
+//! // david.send_to(alexis);
+//! // david.send_to(barbara);
+//! // david.send_to(claire);
+//! // david.send_to(alice);
+//! // david.send_to(bob);
+//! // david.send_to(carol);
+//! //
+//! // NOTE: They should only send the `alexis`, `barbara`, `claire` and `david` structs,
+//! //       *not* the `alexis_dh_sk`, etc.
+//! //
+//! // Everybody verifies the zero-knowledge proofs of Diffie-Hellman private keys of
+//! // the other participants.
+//!
+//! // Alice, Bob and Carol compute new secret shares of their long-lived secret signing key,
+//! // encrypted for Alexis, Barbara, Claire and David respectively.
+//!
+//! let signers: Vec<Participant<Secp256k1Sha256>> =
+//!     vec!(alexis.clone(), barbara.clone(), claire.clone(), david.clone());
+//! let (alice_as_dealer, alice_encrypted_shares, participant_lists) =
+//!     Participant::reshare(&new_params, alice_secret_key, &signers, &mut rng)?;
+//!
+//! let (bob_as_dealer, bob_encrypted_shares, participant_lists) =
+//!     Participant::reshare(&new_params, bob_secret_key, &signers, &mut rng)?;
+//!
+//! let (carol_as_dealer, carol_encrypted_shares, participant_lists) =
+//!     Participant::reshare(&new_params, carol_secret_key, &signers, &mut rng)?;
+//!
+//! // NOTE: They use the *new* configuration parameters (3-out-of-4) when resharing.
+//!
+//! // Alexis, Barbara, Claire and Carol instantiate their DKG session with the set of dealers
+//! // who will compute their shares. They don't need to provide any coefficients.
+//! let dealers: Vec<Participant<Secp256k1Sha256>> =
+//!     vec!(alice_as_dealer.clone(), bob_as_dealer.clone(), carol_as_dealer.clone());
+//! let (alexis_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::new(
+//!         &params,
+//!         &alexis_dh_sk,
+//!         &alexis.index,
+//!         &dealers,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! let (barbara_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::new(
+//!         &params,
+//!         &barbara_dh_sk,
+//!         &barbara.index,
+//!         &dealers,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! let (claire_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::new(
+//!         &params,
+//!         &claire_dh_sk,
+//!         &claire.index,
+//!         &dealers,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! let (david_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::new(
+//!         &params,
+//!         &david_dh_sk,
+//!         &david.index,
+//!         &dealers,
+//!         &mut rng,
+//!     )
+//!     ?;
+//!
+//! // NOTE: They use the *old* configuration parameters (2-out-of-3) when instantiating their DKG.
+//! //       If some participants of the previous set (i.e. dealers here) have been discarded
+//! //       during their own DKG, signers need to update the *old* configuration parameters to
+//! //       take the number of total participants into account.
+//! //       For instance, if in a 201-out-of-300 setting, 37 participants had been discarded for
+//! //       misconduct, when new signers would refer to this previous set as dealers, they should
+//! //       set `params` to a 201-out-of-263 setting.
+//!
+//! let alexis_my_encrypted_secret_shares = vec!(alice_encrypted_shares[0].clone(),
+//!                                   bob_encrypted_shares[0].clone(),
+//!                                   carol_encrypted_shares[0].clone());
+//! let barbara_my_encrypted_secret_shares = vec!(alice_encrypted_shares[1].clone(),
+//!                                   bob_encrypted_shares[1].clone(),
+//!                                   carol_encrypted_shares[1].clone());
+//! let claire_my_encrypted_secret_shares = vec!(alice_encrypted_shares[2].clone(),
+//!                                   bob_encrypted_shares[2].clone(),
+//!                                   carol_encrypted_shares[2].clone());
+//! let david_my_encrypted_secret_shares = vec!(alice_encrypted_shares[3].clone(),
+//!                                   bob_encrypted_shares[3].clone(),
+//!                                   carol_encrypted_shares[3].clone());
+//!
+//! // Alexis, Barbara, Claire and David can now finish the resharing DKG with the received
+//! // encrypted shares from Alice, Bob and Carol. This process is identical to the initial
+//! // DKG ran by Alice, Bob and Carol. The final group key of the 3-out-of-4 threshold scheme
+//! // configuration will be identical to the one of the 2-out-of-3 original one.
+//!
+//! let alexis_state = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
+//! let barbara_state = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
+//! let claire_state = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
+//! let david_state = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! let (alexis_group_key, alexis_secret_key) = alexis_state.finish()?;
+//! let (barbara_group_key, barbara_secret_key) = barbara_state.finish()?;
+//! let (claire_group_key, claire_secret_key) = claire_state.finish()?;
+//! let (david_group_key, david_secret_key) = david_state.finish()?;
+//!
+//! assert!(alexis_group_key == alice_group_key);
+//! assert!(barbara_group_key == alice_group_key);
+//! assert!(claire_group_key == alice_group_key);
+//! assert!(david_group_key == alice_group_key);
+//! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
+//! ```
+//!
+//! [typestate]: http://cliffle.com/blog/rust-typestate/
+
 use ark_ec::Group;
 use ark_ff::{Field, Zero};
 use ark_serialize::CanonicalDeserialize;
