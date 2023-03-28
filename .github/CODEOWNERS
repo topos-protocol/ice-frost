@@ -1,4 +1,5 @@
-* @toposware/crypto-frost
+* @toposware/crypto
 
 # Github Actions
-/.github/workflows/ @toposware/crypto-frost @sebastiendan
+
+/.github/workflows/ @toposware/crypto @sebastiendan
