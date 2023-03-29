@@ -2,9 +2,10 @@ name: Coverage
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
-    branches: ["main"]
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   codecov:
@@ -13,9 +14,6 @@ jobs:
 
     steps:
       - uses: actions/checkout@v3
-
-      - run: |
-          git config --global url."https://${{ secrets.ROBOT_TOPOSWARE_PRIV_REPOS_TOKEN }}@github.com/".insteadOf "https://github.com/"
 
       - name: Install Protoc
         uses: arduino/setup-protoc@v1
@@ -27,10 +25,11 @@ jobs:
 
       - uses: Swatinem/rust-cache@v1
 
-      - uses: actions-rs/tarpaulin@v0.1
+      - uses: actions-rs/install@v0.1
         with:
-          args: "--engine llvm --workspace --release"
-          timeout: 600
+          crate: cargo-tarpaulin
+          version: 0.24.0
+      - run: cargo tarpaulin --engine llvm --workspace --release
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3.1.1
