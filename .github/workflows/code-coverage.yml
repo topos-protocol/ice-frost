@@ -29,7 +29,7 @@ jobs:
         with:
           crate: cargo-tarpaulin
           version: 0.24.0
-      - run: cargo tarpaulin --engine llvm --workspace --release
+      - run: cargo tarpaulin --engine llvm --release
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3.1.1
