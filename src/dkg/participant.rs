@@ -45,10 +45,7 @@ pub struct Participant<C: CipherSuite> {
     pub proof_of_dh_private_key: NizkPokOfSecretKey<C>,
 }
 
-impl<C: CipherSuite> Participant<C>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+impl<C: CipherSuite> Participant<C> {
     /// Construct a new dealer for the distributed key generation protocol,
     /// who will generate shares for a group of participants. Dealers are regular
     /// signers with the additional ability to redistribute their secret shares,

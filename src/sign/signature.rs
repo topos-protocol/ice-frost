@@ -196,10 +196,7 @@ fn encode_group_commitment_list<C: CipherSuite>(commitment_list: &[(u32, C::G, C
 fn compute_binding_factors<C: CipherSuite>(
     message: &[u8],
     signers: &[Signer<C>],
-) -> FrostResult<C, BindingFactors<C>>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+) -> FrostResult<C, BindingFactors<C>> {
     let mut binding_factor_list = BindingFactors::new();
 
     let mut msg_hash = C::h4(message)?.as_ref().to_vec();
@@ -244,10 +241,7 @@ fn commitment_for_participant<C: CipherSuite>(
     participant_index: u32,
     message: &[u8],
     signers: &[Signer<C>],
-) -> FrostResult<C, C::G>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+) -> FrostResult<C, C::G> {
     let mut msg_hash = C::h4(message)?.as_ref().to_vec();
 
     let mut commitment_list = Vec::with_capacity(signers.len());
@@ -298,10 +292,7 @@ pub(crate) fn compute_challenge<C: CipherSuite>(
     group_commitment: &C::G,
     group_key: &GroupVerifyingKey<C>,
     message_hash: &[u8],
-) -> FrostResult<C, Scalar<C>>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+) -> FrostResult<C, Scalar<C>> {
     let mut challenge_input = Vec::new();
     group_commitment
         .serialize_compressed(&mut challenge_input)
@@ -314,10 +305,7 @@ where
     Ok(C::h2(&challenge_input).unwrap())
 }
 
-impl<C: CipherSuite> IndividualSigningKey<C>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+impl<C: CipherSuite> IndividualSigningKey<C> {
     /// Compute an individual signer's [`PartialThresholdSignature`] contribution to
     /// a [`ThresholdSignature`] on a `message`.
     ///
@@ -621,10 +609,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     }
 }
 
-impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
     /// Aggregate a set of previously-collected partial signatures.
     ///
     /// # Returns
@@ -723,10 +708,7 @@ where
     }
 }
 
-impl<C: CipherSuite> ThresholdSignature<C>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+impl<C: CipherSuite> ThresholdSignature<C> {
     /// Verify this [`ThresholdSignature`].
     ///
     /// # Returns

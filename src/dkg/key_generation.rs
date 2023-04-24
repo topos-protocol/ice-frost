@@ -518,10 +518,7 @@ pub struct DKGParticipantList<C: CipherSuite> {
     pub misbehaving_participants: Option<Vec<u32>>,
 }
 
-impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
     /// Serialize this [`DistributedKeyGeneration<RoundOne, _>`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();

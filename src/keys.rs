@@ -292,10 +292,7 @@ impl<C: CipherSuite> GroupVerifyingKey<C> {
         &self,
         signature: &ThresholdSignature<C>,
         message_hash: &[u8],
-    ) -> FrostResult<C, ()>
-    where
-        [(); C::HASH_SEC_PARAM]:,
-    {
+    ) -> FrostResult<C, ()> {
         let challenge =
             compute_challenge::<C>(&signature.group_commitment, self, message_hash).unwrap();
 

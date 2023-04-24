@@ -1200,7 +1200,6 @@
 #![deny(unsafe_code)]
 #![warn(future_incompatible)]
 #![allow(clippy::type_complexity)]
-#![feature(generic_const_exprs)]
 
 #[cfg(any(test, feature = "std"))]
 #[macro_use]
@@ -1208,6 +1207,8 @@ extern crate std;
 
 #[cfg(not(feature = "std"))]
 extern crate alloc;
+
+pub(crate) const HASH_SEC_PARAM: usize = 128;
 
 mod error;
 pub use error::{Error, FrostResult};
@@ -1253,9 +1254,6 @@ pub mod testing {
         type HashOutput = [u8; 32];
 
         type InnerHasher = Sha256;
-
-        // SHA-256 targets 128 bits of security
-        const HASH_SEC_PARAM: usize = 128;
 
         fn context_string() -> String {
             "ICE-FROST_SECP256K1_SHA256".to_owned()

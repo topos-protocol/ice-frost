@@ -13,6 +13,10 @@ use digest::{Digest, DynDigest};
 
 /// A trait defining the prime-order group of operation and cryptographic hash function details
 /// of this ICE-FROST protocol instantiation.
+///
+/// ***NOTE***: A [`CipherSuite`]'s `InnerHasher` is assumed to be guaranteeing 128 bits of security.
+/// It is the responsibility of developers to instantiate any ICE-FROST Ciphersuite with a hasher that
+/// does have *at least* 128 bits of collision resistance.
 pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zeroize {
     /// The prime-order group on which this ICE-FROST [`CipherSuite`] operates.
     type G: CurveGroup;
@@ -22,9 +26,6 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
 
     /// The underlying hasher used to construct all random oracles of this [`CipherSuite`] .
     type InnerHasher: Default + Clone + Digest + DynDigest;
-
-    /// The security parameter of this [`CipherSuite`]'s `InnerHasher` .
-    const HASH_SEC_PARAM: usize;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -48,10 +49,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     ///
     /// It is used to compute the Non-Interactive Zero-Knowledge proofs
     /// of Knowledge of the participants' private keys.
-    fn h0(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
-    where
-        [(); Self::HASH_SEC_PARAM]:,
-    {
+    fn h0(m: &[u8]) -> FrostResult<Self, Scalar<Self>> {
         crate::utils::hash_to_field::<Self>((Self::context_string() + "nizkpok").as_bytes(), m)
     }
 
@@ -61,10 +59,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// concatenated with "rho".
     ///
     /// It is used to compute the binding factor during an ICE-FROST signing session.
-    fn h1(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
-    where
-        [(); Self::HASH_SEC_PARAM]:,
-    {
+    fn h1(m: &[u8]) -> FrostResult<Self, Scalar<Self>> {
         crate::utils::hash_to_field::<Self>((Self::context_string() + "rho").as_bytes(), m)
     }
 
@@ -74,10 +69,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// concatenated with "challenge".
     ///
     /// It is used to compute the binding factor during an ICE-FROST signing session.
-    fn h2(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
-    where
-        [(); Self::HASH_SEC_PARAM]:,
-    {
+    fn h2(m: &[u8]) -> FrostResult<Self, Scalar<Self>> {
         crate::utils::hash_to_field::<Self>((Self::context_string() + "challenge").as_bytes(), m)
     }
 
@@ -87,10 +79,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// concatenated with "nonce".
     ///
     /// It is used to precompute the nonces to be shared during ICE-FROST signing sessions.
-    fn h3(m: &[u8]) -> FrostResult<Self, Scalar<Self>>
-    where
-        [(); Self::HASH_SEC_PARAM]:,
-    {
+    fn h3(m: &[u8]) -> FrostResult<Self, Scalar<Self>> {
         crate::utils::hash_to_field::<Self>((Self::context_string() + "nonce").as_bytes(), m)
     }
 

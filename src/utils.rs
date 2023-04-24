@@ -20,7 +20,7 @@ pub use std::{
     vec::{self, Vec},
 };
 
-use crate::ciphersuite::CipherSuite;
+use crate::{ciphersuite::CipherSuite, HASH_SEC_PARAM};
 
 use crate::{Error, FrostResult};
 use ark_ec::Group;
@@ -79,14 +79,10 @@ pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
 pub fn hash_to_field<C: CipherSuite>(
     context_string: &[u8],
     message_to_hash: &[u8],
-) -> FrostResult<C, Scalar<C>>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
-    let h =
-        <DefaultFieldHasher<C::InnerHasher, { C::HASH_SEC_PARAM }> as HashToField<Scalar<C>>>::new(
-            context_string,
-        );
+) -> FrostResult<C, Scalar<C>> {
+    let h = <DefaultFieldHasher<C::InnerHasher, { HASH_SEC_PARAM }> as HashToField<Scalar<C>>>::new(
+        context_string,
+    );
 
     Ok(h.hash_to_field(message_to_hash, 1)[0])
 }

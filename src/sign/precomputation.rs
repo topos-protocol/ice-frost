@@ -22,10 +22,7 @@ use zeroize::Zeroize;
 fn nonce_generate<C: CipherSuite>(
     secret_key: &IndividualSigningKey<C>,
     mut csprng: impl CryptoRng + Rng,
-) -> FrostResult<C, Scalar<C>>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+) -> FrostResult<C, Scalar<C>> {
     let mut random_bytes = C::HashOutput::default();
     csprng.fill_bytes(random_bytes.as_mut());
 
@@ -43,10 +40,7 @@ impl<C: CipherSuite> Drop for NoncePair<C> {
     }
 }
 
-impl<C: CipherSuite> NoncePair<C>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+impl<C: CipherSuite> NoncePair<C> {
     pub fn new(secret_key: &IndividualSigningKey<C>, mut csprng: impl CryptoRng + Rng) -> Self {
         NoncePair(
             nonce_generate(secret_key, &mut csprng).unwrap(),
@@ -225,10 +219,7 @@ pub fn generate_commitment_share_lists<C: CipherSuite>(
     mut csprng: impl CryptoRng + Rng,
     participant_secret_key: &IndividualSigningKey<C>,
     number_of_shares: usize,
-) -> (PublicCommitmentShareList<C>, SecretCommitmentShareList<C>)
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+) -> (PublicCommitmentShareList<C>, SecretCommitmentShareList<C>) {
     let mut commitments: Vec<CommitmentShare<C>> = Vec::with_capacity(number_of_shares);
 
     for _ in 0..number_of_shares {

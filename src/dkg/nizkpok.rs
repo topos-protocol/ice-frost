@@ -34,10 +34,7 @@ pub struct NizkPokOfSecretKey<C: CipherSuite> {
     r: Scalar<C>,
 }
 
-impl<C: CipherSuite> NizkPokOfSecretKey<C>
-where
-    [(); C::HASH_SEC_PARAM]:,
-{
+impl<C: CipherSuite> NizkPokOfSecretKey<C> {
     /// Serialize this [`NizkPokOfSecretKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
         let mut bytes = Vec::new();
