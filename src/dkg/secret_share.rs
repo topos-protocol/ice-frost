@@ -1,6 +1,9 @@
 //! The secret sharing module for defining individual secret shares
 //! and their public commitments, along with their encrypted versions
 //! post Diffie-Hellman key exchange.
+//!
+//! This module currently only supports AES128-CTR with HKDF instantiated
+//! from SHA-256.
 
 use core::marker::PhantomData;
 
