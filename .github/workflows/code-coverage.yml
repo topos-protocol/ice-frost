@@ -11,26 +11,15 @@ jobs:
   codecov:
     name: Code coverage
     runs-on: ubuntu-latest
+    container:
+      image: xd009642/tarpaulin:develop-nightly
+      options: --security-opt seccomp=unconfined
 
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Protoc
-        uses: arduino/setup-protoc@v1
-        with:
-          repo-token: ${{ secrets.GITHUB_TOKEN }}
-
-      - uses: actions-rs/toolchain@v1
-        with:
-          toolchain: nightly
-          override: true
-
-      - uses: Swatinem/rust-cache@v1
-
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
-        with:
-          args: "-- --engine llvm --release"
+      - run: |
+          cargo +nightly tarpaulin --verbose --engine llvm --release --out Xml
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3.1.1
