@@ -36,9 +36,6 @@
 //!
 //!     type InnerHasher = Sha256;
 //!
-//!     // SHA-256 targets 128 bits of security
-//!     const HASH_SEC_PARAM: usize = 128;
-//!
 //!     fn context_string() -> String {
 //!         "ICE-FROST_SECP256K1_SHA256".to_owned()
 //!     }
