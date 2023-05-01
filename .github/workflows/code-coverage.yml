@@ -25,11 +25,12 @@ jobs:
 
       - uses: Swatinem/rust-cache@v1
 
-      - name: Run cargo-tarpaulin
-        uses: actions-rs/tarpaulin@v0.1
+      - uses: actions-rs/install@v0.1
         with:
-          version: "0.24.0"
-          args: "-- --engine llvm --release"
+          crate: cargo-tarpaulin
+          version: 0.24.0
+
+      - run: cargo tarpaulin --engine llvm --release
 
       - name: Upload coverage to Codecov
         uses: codecov/codecov-action@v3.1.1
