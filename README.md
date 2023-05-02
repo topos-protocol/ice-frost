@@ -24,10 +24,6 @@ Note however that two parameters are not modular, at least in the current versio
 
 This library also provides by default an example instantiation over the Secp256k1 curve with SHA-256, to be used in tests and benchmarks.
 
-## MSRV
-
-This crate requires the `generic_const_exprs` unstable feature, and thus needs to be compiled with the `nightly` toolchain.
-
 ## Note on `no_std` usage
 
 This crate can be made `no_std` compliant, by relying on the `alloc` crate instead.
