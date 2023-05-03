@@ -28,6 +28,11 @@ This library also provides by default an example instantiation over the Secp256k
 
 This crate can be made `no_std` compliant, by relying on the `alloc` crate instead.
 
+## Features
+
+- `std`: activated by-default, allowing use of the Rust standard library
+- `asm`: deactivated by-default, allowing x86-64 assembly optimization for finite field operations. This feature also activates the `std` one.
+
 ## WARNING
 
 This codebase is under development and is at an academic proof-of-concept prototype level.
