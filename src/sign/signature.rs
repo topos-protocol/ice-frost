@@ -1172,227 +1172,239 @@ mod test {
 
     #[test]
     fn signing_and_verification_static_2_out_of_3() {
-        let (params, dealers_signing_keys, group_key, _, Some(signers_signing_keys)) =
-            do_keygen(3, 2, Some(3), Some(2)).unwrap() else { panic!()};
-        let d1_sk = dealers_signing_keys[0].clone();
-        let d2_sk = dealers_signing_keys[1].clone();
+        if let (params, dealers_signing_keys, group_key, _, Some(signers_signing_keys)) =
+            do_keygen(3, 2, Some(3), Some(2)).unwrap()
+        {
+            let d1_sk = dealers_signing_keys[0].clone();
+            let d2_sk = dealers_signing_keys[1].clone();
 
-        let s1_sk = signers_signing_keys[0].clone();
-        let s2_sk = signers_signing_keys[1].clone();
+            let s1_sk = signers_signing_keys[0].clone();
+            let s2_sk = signers_signing_keys[1].clone();
 
-        let message = b"This is a test of the tsunami alert system. This is only a test.";
-        let (d1_public_comshares, mut d1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
-        let (d2_public_comshares, mut d2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
+            let message = b"This is a test of the tsunami alert system. This is only a test.";
+            let (d1_public_comshares, mut d1_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
+            let (d2_public_comshares, mut d2_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
 
-        let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
+            let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, d1_public_comshares.commitments[0], (&d1_sk).into());
-        aggregator.include_signer(2, d2_public_comshares.commitments[0], (&d2_sk).into());
+            aggregator.include_signer(1, d1_public_comshares.commitments[0], (&d1_sk).into());
+            aggregator.include_signer(2, d2_public_comshares.commitments[0], (&d2_sk).into());
 
-        let signers = aggregator.get_signers();
-        let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
+            let signers = aggregator.get_signers();
+            let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
 
-        let d1_partial = d1_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut d1_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
-        let d2_partial = d2_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut d2_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
+            let d1_partial = d1_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut d1_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
+            let d2_partial = d2_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut d2_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
 
-        aggregator.include_partial_signature(d1_partial);
-        aggregator.include_partial_signature(d2_partial);
+            aggregator.include_partial_signature(d1_partial);
+            aggregator.include_partial_signature(d2_partial);
 
-        let aggregator = aggregator.finalize().unwrap();
-        let signing_result = aggregator.aggregate();
+            let aggregator = aggregator.finalize().unwrap();
+            let signing_result = aggregator.aggregate();
 
-        assert!(signing_result.is_ok());
+            assert!(signing_result.is_ok());
 
-        let threshold_signature = signing_result.unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+            let threshold_signature = signing_result.unwrap();
+            let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-        println!("Dealer's signing session: {:?}", verification_result);
+            println!("Dealer's signing session: {:?}", verification_result);
 
-        let message = b"This is a test of the tsunami alert system. This is only a test.";
-        let (s1_public_comshares, mut s1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
-        let (s2_public_comshares, mut s2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
+            let message = b"This is a test of the tsunami alert system. This is only a test.";
+            let (s1_public_comshares, mut s1_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
+            let (s2_public_comshares, mut s2_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
 
-        let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
+            let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, s1_public_comshares.commitments[0], (&s1_sk).into());
-        aggregator.include_signer(2, s2_public_comshares.commitments[0], (&s2_sk).into());
+            aggregator.include_signer(1, s1_public_comshares.commitments[0], (&s1_sk).into());
+            aggregator.include_signer(2, s2_public_comshares.commitments[0], (&s2_sk).into());
 
-        let signers = aggregator.get_signers();
-        let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
+            let signers = aggregator.get_signers();
+            let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
 
-        let s1_partial = s1_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut s1_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
-        let s2_partial = s2_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut s2_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
+            let s1_partial = s1_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut s1_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
+            let s2_partial = s2_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut s2_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
 
-        aggregator.include_partial_signature(s1_partial);
-        aggregator.include_partial_signature(s2_partial);
+            aggregator.include_partial_signature(s1_partial);
+            aggregator.include_partial_signature(s2_partial);
 
-        let aggregator = aggregator.finalize().unwrap();
-        let signing_result = aggregator.aggregate();
+            let aggregator = aggregator.finalize().unwrap();
+            let signing_result = aggregator.aggregate();
 
-        assert!(signing_result.is_ok());
+            assert!(signing_result.is_ok());
 
-        let threshold_signature = signing_result.unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+            let threshold_signature = signing_result.unwrap();
+            let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-        println!("Signers's signing session: {:?}", verification_result);
+            println!("Signers's signing session: {:?}", verification_result);
 
-        assert!(verification_result.is_ok());
+            assert!(verification_result.is_ok());
+        } else {
+            panic!("Invalid DKG")
+        }
     }
 
     #[test]
     fn signing_and_verification_static_2_out_of_3_into_3_out_of_5() {
-        let (d_params, dealers_signing_keys, group_key, Some(s_params), Some(signers_signing_keys)) =
-            do_keygen(3, 2, Some(5), Some(3)).unwrap() else { panic!()};
+        if let (
+            d_params,
+            dealers_signing_keys,
+            group_key,
+            Some(s_params),
+            Some(signers_signing_keys),
+        ) = do_keygen(3, 2, Some(5), Some(3)).unwrap()
+        {
+            let d1_sk = dealers_signing_keys[0].clone();
+            let d2_sk = dealers_signing_keys[1].clone();
 
-        let d1_sk = dealers_signing_keys[0].clone();
-        let d2_sk = dealers_signing_keys[1].clone();
+            let s1_sk = signers_signing_keys[0].clone();
+            let s2_sk = signers_signing_keys[1].clone();
+            let s3_sk = signers_signing_keys[2].clone();
 
-        let s1_sk = signers_signing_keys[0].clone();
-        let s2_sk = signers_signing_keys[1].clone();
-        let s3_sk = signers_signing_keys[2].clone();
+            let message = b"This is a test of the tsunami alert system. This is only a test.";
+            let (d1_public_comshares, mut d1_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
+            let (d2_public_comshares, mut d2_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
 
-        let message = b"This is a test of the tsunami alert system. This is only a test.";
-        let (d1_public_comshares, mut d1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
-        let (d2_public_comshares, mut d2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
+            let mut aggregator = SignatureAggregator::new(d_params, group_key, &message[..]);
 
-        let mut aggregator = SignatureAggregator::new(d_params, group_key, &message[..]);
+            aggregator.include_signer(1, d1_public_comshares.commitments[0], (&d1_sk).into());
+            aggregator.include_signer(2, d2_public_comshares.commitments[0], (&d2_sk).into());
 
-        aggregator.include_signer(1, d1_public_comshares.commitments[0], (&d1_sk).into());
-        aggregator.include_signer(2, d2_public_comshares.commitments[0], (&d2_sk).into());
+            let signers = aggregator.get_signers();
+            let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
 
-        let signers = aggregator.get_signers();
-        let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
+            let d1_partial = d1_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut d1_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
+            let d2_partial = d2_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut d2_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
 
-        let d1_partial = d1_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut d1_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
-        let d2_partial = d2_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut d2_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
+            aggregator.include_partial_signature(d1_partial);
+            aggregator.include_partial_signature(d2_partial);
 
-        aggregator.include_partial_signature(d1_partial);
-        aggregator.include_partial_signature(d2_partial);
+            let aggregator = aggregator.finalize().unwrap();
+            let signing_result = aggregator.aggregate();
 
-        let aggregator = aggregator.finalize().unwrap();
-        let signing_result = aggregator.aggregate();
+            assert!(signing_result.is_ok());
 
-        assert!(signing_result.is_ok());
+            let threshold_signature = signing_result.unwrap();
+            let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-        let threshold_signature = signing_result.unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+            println!("Dealer's signing session: {:?}", verification_result);
 
-        println!("Dealer's signing session: {:?}", verification_result);
+            let message = b"This is a test of the tsunami alert system. This is only a test.";
+            let (s1_public_comshares, mut s1_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
+            let (s2_public_comshares, mut s2_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
+            let (s3_public_comshares, mut s3_secret_comshares) =
+                generate_commitment_share_lists(&mut OsRng, &s3_sk, 1);
 
-        let message = b"This is a test of the tsunami alert system. This is only a test.";
-        let (s1_public_comshares, mut s1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
-        let (s2_public_comshares, mut s2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
-        let (s3_public_comshares, mut s3_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &s3_sk, 1);
+            let mut aggregator = SignatureAggregator::new(s_params, group_key, &message[..]);
 
-        let mut aggregator = SignatureAggregator::new(s_params, group_key, &message[..]);
+            aggregator.include_signer(1, s1_public_comshares.commitments[0], (&s1_sk).into());
+            aggregator.include_signer(2, s2_public_comshares.commitments[0], (&s2_sk).into());
+            aggregator.include_signer(3, s3_public_comshares.commitments[0], (&s3_sk).into());
 
-        aggregator.include_signer(1, s1_public_comshares.commitments[0], (&s1_sk).into());
-        aggregator.include_signer(2, s2_public_comshares.commitments[0], (&s2_sk).into());
-        aggregator.include_signer(3, s3_public_comshares.commitments[0], (&s3_sk).into());
+            let signers = aggregator.get_signers();
+            let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
 
-        let signers = aggregator.get_signers();
-        let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
+            let s1_partial = s1_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut s1_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
+            let s2_partial = s2_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut s2_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
+            let s3_partial = s3_sk
+                .sign(
+                    &message_hash,
+                    &group_key,
+                    &mut s3_secret_comshares,
+                    0,
+                    signers,
+                )
+                .unwrap();
 
-        let s1_partial = s1_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut s1_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
-        let s2_partial = s2_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut s2_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
-        let s3_partial = s3_sk
-            .sign(
-                &message_hash,
-                &group_key,
-                &mut s3_secret_comshares,
-                0,
-                signers,
-            )
-            .unwrap();
+            aggregator.include_partial_signature(s1_partial);
+            aggregator.include_partial_signature(s2_partial);
+            aggregator.include_partial_signature(s3_partial);
 
-        aggregator.include_partial_signature(s1_partial);
-        aggregator.include_partial_signature(s2_partial);
-        aggregator.include_partial_signature(s3_partial);
+            let aggregator = aggregator.finalize().unwrap();
+            let signing_result = aggregator.aggregate();
 
-        let aggregator = aggregator.finalize().unwrap();
-        let signing_result = aggregator.aggregate();
+            assert!(signing_result.is_ok());
 
-        assert!(signing_result.is_ok());
+            let threshold_signature = signing_result.unwrap();
+            let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-        let threshold_signature = signing_result.unwrap();
-        let verification_result = threshold_signature.verify(&group_key, &message_hash);
+            println!("Signers's signing session: {:?}", verification_result);
 
-        println!("Signers's signing session: {:?}", verification_result);
-
-        assert!(verification_result.is_ok());
+            assert!(verification_result.is_ok());
+        } else {
+            panic!("Invalid DKG")
+        }
     }
 
     #[test]

@@ -73,7 +73,7 @@ pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
     Ok(numerator
         * denominator
             .inverse()
-            .ok_or(Error::Custom("Duplicate indices provided".to_string()))?)
+            .ok_or_else(|| Error::Custom("Duplicate indices provided".to_string()))?)
 }
 
 pub fn hash_to_field<C: CipherSuite>(
