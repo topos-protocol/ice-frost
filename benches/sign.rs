@@ -130,10 +130,10 @@ fn criterion_benchmark(c: &mut Criterion) {
     participants_public_comshares.push(p1_public_comshares);
     participants_secret_comshares.push(p1_secret_comshares.clone());
 
-    for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
+    for i in 1..THRESHOLD_OF_PARTICIPANTS + 1 {
         let (pi_public_comshares, pi_secret_comshares) = generate_commitment_share_lists(
             &mut OsRng,
-            &participants_secret_keys[i as usize].clone(),
+            &participants_secret_keys[(i - 1) as usize].clone(),
             1,
         );
         participants_public_comshares.push(pi_public_comshares);
