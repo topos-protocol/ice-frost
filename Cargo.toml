@@ -13,6 +13,7 @@ homepage = "https://github.com/topos-network/ice_frost"
 keywords = ["cryptography", "frost", "ice-frost", "signature", "threshold-signature"]
 categories = ["cryptography"]
 exclude = [ ".gitignore" ]
+rust-version = "1.63" # MSRV
 
 [package.metadata.docs.rs]
 rustdoc-args = ["--html-in-header", "/opt/rustwide/workdir/docs/assets/rustdoc-include-katex-header.html"]
