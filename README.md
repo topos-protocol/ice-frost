@@ -33,6 +33,10 @@ This crate can be made `no_std` compliant, by relying on the `alloc` crate inste
 - `std`: activated by-default, allowing use of the Rust standard library
 - `asm`: deactivated by-default, allowing x86-64 assembly optimization for finite field operations. This feature also activates the `std` one.
 
+## MSRV
+
+Because this library depends on crates from the arkworks ecosystem with version 0.4, it requires Rust 1.63.0 or greater.
+
 ## WARNING
 
 This codebase is under development and is at an academic proof-of-concept prototype level.
