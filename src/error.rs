@@ -8,9 +8,9 @@ use crate::utils::{String, Vec};
 /// Errors that may happen during Key Generation
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error<C: CipherSuite> {
-    /// Serialisation error
+    /// Serialization error
     SerializationError,
-    /// Deserialisation error
+    /// Deserialization error
     DeserializationError,
     /// Point compression error
     CompressionError,

@@ -2330,16 +2330,16 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                // Check serialisation
+                // Check serialization
 
                 let bytes = p1.to_bytes()?;
                 assert_eq!(p1, Participant::from_bytes(&bytes)?);
 
                 let bytes = p1coeffs.to_bytes()?;
-                let p1coeffs_deserialised = Coefficients::from_bytes(&bytes)?;
-                assert_eq!(p1coeffs.0.len(), p1coeffs_deserialised.0.len());
+                let p1coeffs_deserialized = Coefficients::from_bytes(&bytes)?;
+                assert_eq!(p1coeffs.0.len(), p1coeffs_deserialized.0.len());
                 for i in 0..p1coeffs.0.len() {
-                    assert_eq!(p1coeffs.0[i], p1coeffs_deserialised.0[i]);
+                    assert_eq!(p1coeffs.0[i], p1coeffs_deserialized.0[i]);
                 }
 
                 let bytes = p1_dh_sk.to_bytes()?;
@@ -2383,7 +2383,7 @@ mod test {
                 assert!(p1_group_key.key == p2_group_key.key);
                 assert!(p2_group_key.key == p3_group_key.key);
 
-                // Check serialisation
+                // Check serialization
                 let bytes = p1_group_key.to_bytes()?;
                 assert_eq!(p1_group_key, GroupVerifyingKey::from_bytes(&bytes)?);
 
@@ -2433,7 +2433,7 @@ mod test {
 
                     assert!(p1_group_key == p3_group_key);
 
-                    // Check serialisation
+                    // Check serialization
 
                     let bytes = complaints[0].proof.to_bytes()?;
                     assert_eq!(complaints[0].proof, ComplaintProof::from_bytes(&bytes)?);
