@@ -140,15 +140,21 @@
 //! // keep_to_self(carol_their_encrypted_secret_shares[2]);
 //!
 //! // Each participant now has a vector of secret shares given to them by the other participants:
-//! let alice_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[0].clone(),
-//!                                     bob_their_encrypted_secret_shares[0].clone(),
-//!                                     carol_their_encrypted_secret_shares[0].clone()];
-//! let bob_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[1].clone(),
-//!                                     bob_their_encrypted_secret_shares[1].clone(),
-//!                                     carol_their_encrypted_secret_shares[1].clone()];
-//! let carol_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[2].clone(),
-//!                                     bob_their_encrypted_secret_shares[2].clone(),
-//!                                     carol_their_encrypted_secret_shares[2].clone()];
+//! let alice_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[0].clone(),
+//!     bob_their_encrypted_secret_shares[0].clone(),
+//!     carol_their_encrypted_secret_shares[0].clone(),
+//! ];
+//! let bob_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[1].clone(),
+//!     bob_their_encrypted_secret_shares[1].clone(),
+//!     carol_their_encrypted_secret_shares[1].clone(),
+//! ];
+//! let carol_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[2].clone(),
+//!     bob_their_encrypted_secret_shares[2].clone(),
+//!     carol_their_encrypted_secret_shares[2].clone(),
+//! ];
 //!
 //! // The participants then use these secret shares from the other participants to advance to
 //! // round two of the distributed key generation protocol.
@@ -271,15 +277,21 @@
 //! // keep_to_self(carol_their_encrypted_secret_shares[2]);
 //!
 //! // Each participant now has a vector of secret shares given to them by the other participants:
-//! let alice_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[0].clone(),
-//!                                     bob_their_encrypted_secret_shares[0].clone(),
-//!                                     carol_their_encrypted_secret_shares[0].clone()];
-//! let bob_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[1].clone(),
-//!                                     bob_their_encrypted_secret_shares[1].clone(),
-//!                                     carol_their_encrypted_secret_shares[1].clone()];
-//! let carol_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[2].clone(),
-//!                                     bob_their_encrypted_secret_shares[2].clone(),
-//!                                     carol_their_encrypted_secret_shares[2].clone()];
+//! let alice_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[0].clone(),
+//!     bob_their_encrypted_secret_shares[0].clone(),
+//!     carol_their_encrypted_secret_shares[0].clone(),
+//! ];
+//! let bob_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[1].clone(),
+//!     bob_their_encrypted_secret_shares[1].clone(),
+//!     carol_their_encrypted_secret_shares[1].clone(),
+//! ];
+//! let carol_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[2].clone(),
+//!     bob_their_encrypted_secret_shares[2].clone(),
+//!     carol_their_encrypted_secret_shares[2].clone(),
+//! ];
 //!
 //! // The participants then use these secret shares from the other participants to advance to
 //! // round two of the distributed key generation protocol.
@@ -409,18 +421,26 @@
 //! //       misconduct, when new signers would refer to this previous set as dealers, they should
 //! //       set `params` to a 201-out-of-263 setting.
 //!
-//! let alexis_my_encrypted_secret_shares = vec![alice_encrypted_shares[0].clone(),
-//!                                   bob_encrypted_shares[0].clone(),
-//!                                   carol_encrypted_shares[0].clone()];
-//! let barbara_my_encrypted_secret_shares = vec![alice_encrypted_shares[1].clone(),
-//!                                   bob_encrypted_shares[1].clone(),
-//!                                   carol_encrypted_shares[1].clone()];
-//! let claire_my_encrypted_secret_shares = vec![alice_encrypted_shares[2].clone(),
-//!                                   bob_encrypted_shares[2].clone(),
-//!                                   carol_encrypted_shares[2].clone()];
-//! let david_my_encrypted_secret_shares = vec![alice_encrypted_shares[3].clone(),
-//!                                   bob_encrypted_shares[3].clone(),
-//!                                   carol_encrypted_shares[3].clone()];
+//! let alexis_my_encrypted_secret_shares = vec![
+//!     alice_encrypted_shares[0].clone(),
+//!     bob_encrypted_shares[0].clone(),
+//!     carol_encrypted_shares[0].clone(),
+//! ];
+//! let barbara_my_encrypted_secret_shares = vec![
+//!     alice_encrypted_shares[1].clone(),
+//!     bob_encrypted_shares[1].clone(),
+//!     carol_encrypted_shares[1].clone()
+//! ];
+//! let claire_my_encrypted_secret_shares = vec![
+//!     alice_encrypted_shares[2].clone(),
+//!     bob_encrypted_shares[2].clone(),
+//!     carol_encrypted_shares[2].clone()
+//! ];
+//! let david_my_encrypted_secret_shares = vec![
+//!     alice_encrypted_shares[3].clone(),
+//!     bob_encrypted_shares[3].clone(),
+//!     carol_encrypted_shares[3].clone()
+//! ];
 //!
 //! // Alexis, Barbara, Claire and David can now finish the resharing DKG with the received
 //! // encrypted shares from Alice, Bob and Carol. This process is identical to the initial

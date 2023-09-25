@@ -50,7 +50,6 @@
 //! ```rust
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! use ice_frost::parameters::ThresholdParameters;
-//!
 //! let params = ThresholdParameters::<Secp256k1Sha256>::new(3,2);
 //! ```
 //!
@@ -76,7 +75,7 @@
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
 //! # let params = ThresholdParameters::new(3,2);
 //! # let mut rng = OsRng;
-//!
+//! #
 //! // All ICE-FROST methods requiring a source of entropy should use a cryptographic pseudorandom
 //! // generator to prevent any risk of private information retrieval.
 //! let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
@@ -112,7 +111,8 @@
 //! # let (bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
 //! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
 //!
-//! let participants: Vec<Participant<Secp256k1Sha256>> = vec![alice.clone(), bob.clone(), carol.clone()];
+//! let participants: Vec<Participant<Secp256k1Sha256>> =
+//!     vec![alice.clone(), bob.clone(), carol.clone()];
 //! let (alice_state, participant_lists) =
 //!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
 //!         &params,
@@ -292,15 +292,21 @@
 //! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
 //! #                                                      &participants, &mut rng)?;
 //! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
-//! let alice_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[0].clone(),
-//!                                   bob_their_encrypted_secret_shares[0].clone(),
-//!                                   carol_their_encrypted_secret_shares[0].clone()];
-//! let bob_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[1].clone(),
-//!                                 bob_their_encrypted_secret_shares[1].clone(),
-//!                                 carol_their_encrypted_secret_shares[1].clone()];
-//! let carol_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares[2].clone(),
-//!                                   bob_their_encrypted_secret_shares[2].clone(),
-//!                                   carol_their_encrypted_secret_shares[2].clone()];
+//! let alice_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[0].clone(),
+//!     bob_their_encrypted_secret_shares[0].clone(),
+//!     carol_their_encrypted_secret_shares[0].clone(),
+//! ];
+//! let bob_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[1].clone(),
+//!     bob_their_encrypted_secret_shares[1].clone(),
+//!     carol_their_encrypted_secret_shares[1].clone(),
+//! ];
+//! let carol_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares[2].clone(),
+//!     bob_their_encrypted_secret_shares[2].clone(),
+//!     carol_their_encrypted_secret_shares[2].clone(),
+//! ];
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
 //!
@@ -902,15 +908,16 @@
 //! # let carol_public_key = carol_secret_key.to_public();
 //!
 //! let (alice_public_comshares, mut alice_secret_comshares) =
-//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
+//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &alice_secret_key, 1);
 //! let (bob_public_comshares, mut bob_secret_comshares) =
-//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
+//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &bob_secret_key, 1);
 //! let (carol_public_comshares, mut carol_secret_comshares) =
-//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
+//!     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &carol_secret_key, 1);
 //!
 //! let message = b"This is a test of the tsunami alert system. This is only a test.";
 //!
-//! // The aggregator can be anyone who knows the group key, not necessarily Bob or a group participant
+//! // The aggregator can be anyone who knows the group key,
+//! // not necessarily Bob or a group participant.
 //! let mut aggregator =
 //!     SignatureAggregator::new(
 //!         params,
@@ -921,8 +928,8 @@
 //! # fn main() { assert!(do_test().is_ok()); }
 //! ```
 //!
-//! The aggregator takes note of each expected signer for this run of the protocol.  For this run,
-//! we'll have Alice and Carol sign.
+//! The aggregator takes note of each expected signer for this run of the protocol.
+//! For this run, we'll have Alice and Carol sign.
 //!
 //! ```rust
 //! # use ice_frost::sign::generate_commitment_share_lists;
@@ -980,11 +987,11 @@
 //! # let carol_public_key = carol_secret_key.to_public();
 //! #
 //! # let (alice_public_comshares, mut alice_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &alice_secret_key, 1);
 //! # let (bob_public_comshares, mut bob_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &bob_secret_key, 1);
 //! # let (carol_public_comshares, mut carol_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &carol_secret_key, 1);
 //! #
 //! # let message = b"This is a test of the tsunami alert system. This is only a test.";
 //! #
@@ -1054,11 +1061,11 @@
 //! # let carol_public_key = carol_secret_key.to_public();
 //! #
 //! # let (alice_public_comshares, mut alice_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &alice_secret_key, 1);
 //! # let (bob_public_comshares, mut bob_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &bob_secret_key, 1);
 //! # let (carol_public_comshares, mut carol_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &carol_secret_key, 1);
 //! #
 //! # let message = b"This is a test of the tsunami alert system. This is only a test.";
 //! #
@@ -1128,11 +1135,11 @@
 //! # let carol_public_key = carol_secret_key.to_public();
 //! #
 //! # let (alice_public_comshares, mut alice_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &alice_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &alice_secret_key, 1);
 //! # let (bob_public_comshares, mut bob_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &bob_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &bob_secret_key, 1);
 //! # let (carol_public_comshares, mut carol_secret_comshares) =
-//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &carol_secret_key, 1);
+//! #     generate_commitment_share_lists::<Secp256k1Sha256>(&mut rng, &carol_secret_key, 1);
 //! #
 //! # let message = b"This is a test of the tsunami alert system. This is only a test.";
 //! #
@@ -1144,10 +1151,20 @@
 //! # let signers = aggregator.get_signers();
 //! # let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
 //!
-//! let alice_partial = alice_secret_key.sign(&message_hash, &alice_group_key,
-//!                                           &mut alice_secret_comshares, 0, signers)?;
-//! let carol_partial = carol_secret_key.sign(&message_hash, &carol_group_key,
-//!                                           &mut carol_secret_comshares, 0, signers)?;
+//! let alice_partial = alice_secret_key.sign(
+//!     &message_hash,
+//!     &alice_group_key,
+//!     &mut alice_secret_comshares,
+//!     0,
+//!     signers
+//! )?;
+//! let carol_partial = carol_secret_key.sign(
+//!     &message_hash,
+//!     &carol_group_key,
+//!     &mut carol_secret_comshares,
+//!     0,
+//!     signers
+//! )?;
 //!
 //! aggregator.include_partial_signature(alice_partial);
 //! aggregator.include_partial_signature(carol_partial);
