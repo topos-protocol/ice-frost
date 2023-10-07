@@ -32,11 +32,11 @@ pub enum Error<C: CipherSuite> {
     MissingShares,
     /// Could not retrieve the participant's encrypted shares
     NoEncryptedShares,
-    /// At least one complaint has been issued during to_round_two() execution
+    /// At least one complaint has been issued during `to_round_two()` execution
     Complaint(Vec<Complaint<C>>),
     /// Not all participants have been included
     InvalidNumberOfParticipants(usize, u32),
-    /// The provided slices for the MSM don't match in lenth
+    /// The provided slices for the MSM don't match in length
     InvalidMSMParameters,
     /// Too many invalid participants, with their indices
     TooManyInvalidParticipants(Vec<u32>),
@@ -48,7 +48,7 @@ pub enum Error<C: CipherSuite> {
     InvalidChallenge,
     /// Invalid signature
     InvalidSignature,
-    /// Misbehaving Participants
+    /// Misbehaving participants
     MisbehavingParticipants(Vec<u32>),
     /// Custom error
     Custom(String),
