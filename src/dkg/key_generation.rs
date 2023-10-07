@@ -521,7 +521,8 @@ pub struct DKGParticipantList<C: CipherSuite> {
 impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
     /// Serialize this [`DistributedKeyGeneration<RoundOne, _>`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes =
+            Vec::with_capacity(self.state.compressed_size() + self.data.compressed_size());
 
         self.state
             .serialize_compressed(&mut bytes)
@@ -741,7 +742,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                 SecretShare::<C>::evaluate_polynomial(my_index, &p.index, my_coefficients.unwrap());
 
             let dh_key = p.dh_public_key.key * dh_private_key.0;
-            let mut dh_key_bytes = Vec::new();
+            let mut dh_key_bytes = Vec::with_capacity(dh_key.compressed_size());
             dh_key
                 .serialize_compressed(&mut dh_key_bytes)
                 .map_err(|_| Error::CompressionError)?;
@@ -820,7 +821,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             for pk in self.state.their_dh_public_keys.iter() {
                 if pk.0 == encrypted_share.sender_index {
                     let dh_shared_key = *pk.1 * self.state.dh_private_key.0;
-                    let mut dh_key_bytes = Vec::new();
+                    let mut dh_key_bytes = Vec::with_capacity(dh_shared_key.compressed_size());
                     dh_shared_key
                         .serialize_compressed(&mut dh_key_bytes)
                         .map_err(|_| Error::CompressionError)?;
@@ -879,7 +880,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// Serialize this [`DistributedKeyGeneration<RoundTwo, _>`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes =
+            Vec::with_capacity(self.state.compressed_size() + self.data.compressed_size());
 
         self.state
             .serialize_compressed(&mut bytes)
@@ -929,7 +931,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             Error::Custom("Could not retrieve participant's secret shares".to_string())
         })?;
 
-        let mut index_vector: Vec<u32> = Vec::new();
+        let mut index_vector = Vec::with_capacity(my_secret_shares.len());
 
         for share in my_secret_shares.iter() {
             index_vector.push(share.sender_index);
@@ -961,7 +963,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// my_commitment is needed for now, but won't be when the distinction
     /// dealers/signers is implemented.
     pub(crate) fn calculate_group_key(&self) -> FrostResult<C, GroupVerifyingKey<C>> {
-        let mut index_vector: Vec<u32> = Vec::new();
+        let mut index_vector =
+            Vec::with_capacity(self.state.their_commitments.as_ref().unwrap().len());
 
         for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
             index_vector.push(commitment.index);
@@ -1025,7 +1028,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             return complaint.maker_index;
         }
 
-        let mut dh_key_bytes = Vec::new();
+        let mut dh_key_bytes = Vec::with_capacity(complaint.dh_shared_key.compressed_size());
         if complaint
             .dh_shared_key
             .serialize_compressed(&mut dh_key_bytes)
@@ -1078,7 +1081,7 @@ mod test {
 
     #[test]
     fn secret_share_from_one_coefficients() {
-        let mut coeffs: Vec<Fr> = Vec::new();
+        let mut coeffs: Vec<Fr> = Vec::with_capacity(5);
 
         for _ in 0..5 {
             coeffs.push(Fr::ONE);
@@ -1105,7 +1108,7 @@ mod test {
 
     #[test]
     fn secret_share_participant_index_zero() {
-        let mut coeffs: Vec<Fr> = Vec::new();
+        let mut coeffs: Vec<Fr> = Vec::with_capacity(5);
 
         for _ in 0..5 {
             coeffs.push(Fr::ONE);
@@ -2148,7 +2151,7 @@ mod test {
             // Wrong encrypted share
             {
                 let dh_key = p1.dh_public_key.key * dh_sk1.0;
-                let mut dh_key_bytes = Vec::new();
+                let mut dh_key_bytes = Vec::with_capacity(dh_key.compressed_size());
                 dh_key.serialize_compressed(&mut dh_key_bytes).unwrap();
                 let wrong_encrypted_secret_share = encrypt_share(
                     &SecretShare::<Secp256k1Sha256> {

@@ -64,7 +64,7 @@ pub struct PartialThresholdSignature<C: CipherSuite> {
 impl<C: CipherSuite> PartialThresholdSignature<C> {
     /// Serialize this [`PartialThresholdSignature`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -88,7 +88,7 @@ pub struct ThresholdSignature<C: CipherSuite> {
 impl<C: CipherSuite> ThresholdSignature<C> {
     /// Serialize this [`ThresholdSignature`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -293,7 +293,9 @@ pub(crate) fn compute_challenge<C: CipherSuite>(
     group_key: &GroupVerifyingKey<C>,
     message_hash: &[u8],
 ) -> FrostResult<C, Scalar<C>> {
-    let mut challenge_input = Vec::new();
+    let mut challenge_input = Vec::with_capacity(
+        group_commitment.compressed_size() + group_key.compressed_size() + message_hash.len(),
+    );
     group_commitment
         .serialize_compressed(&mut challenge_input)
         .map_err(|_| Error::CompressionError)?;
@@ -531,7 +533,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// A sorted [`Vec`] of unique [`Signer`]s who have yet to contribute their
     /// partial signatures.
     pub fn get_remaining_signers(&self) -> Vec<Signer<C>> {
-        let mut remaining_signers: Vec<Signer<C>> = Vec::new();
+        let mut remaining_signers = Vec::with_capacity(self.state.signers.len());
 
         for signer in self.state.signers.iter() {
             if self
@@ -869,7 +871,7 @@ mod test {
             let mut signers_states_1 = Vec::<Dkg<_>>::new();
             let mut signers_states_2 = Vec::<Dkg<_>>::new();
 
-            let mut dealers = Vec::new();
+            let mut dealers = Vec::with_capacity(n1 as usize);
             let mut dealers_encrypted_secret_shares_for_signers: Vec<
                 Vec<EncryptedSecretShare<Secp256k1Sha256>>,
             > = (0..n1).map(|_| Vec::new()).collect();

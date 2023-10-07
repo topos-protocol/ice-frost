@@ -115,7 +115,7 @@ pub struct CommitmentShare<C: CipherSuite> {
 impl<C: CipherSuite> CommitmentShare<C> {
     /// Serialize this [`CommitmentShare`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -160,7 +160,7 @@ pub struct SecretCommitmentShareList<C: CipherSuite> {
 impl<C: CipherSuite> SecretCommitmentShareList<C> {
     /// Serialize this [`SecretCommitmentShareList`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -190,7 +190,7 @@ pub struct PublicCommitmentShareList<C: CipherSuite> {
 impl<C: CipherSuite> PublicCommitmentShareList<C> {
     /// Serialize this [`PublicCommitmentShareList`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -305,7 +305,7 @@ mod test {
             let secret = Fr::rand(&mut rng);
             let commit = Projective::generator().mul(secret);
             let commitment = Commitment::<Secp256k1Sha256> { secret, commit };
-            let mut bytes = Vec::new();
+            let mut bytes = Vec::with_capacity(commitment.compressed_size());
 
             commitment.serialize_compressed(&mut bytes).unwrap();
             assert_eq!(
@@ -320,7 +320,7 @@ mod test {
             let binding = Commitment::<Secp256k1Sha256> { secret, commit };
             let hiding = binding.clone();
             let commitment_share = CommitmentShare { binding, hiding };
-            let mut bytes = Vec::new();
+            let mut bytes = Vec::with_capacity(commitment_share.compressed_size());
 
             commitment_share.serialize_compressed(&mut bytes).unwrap();
             assert_eq!(
