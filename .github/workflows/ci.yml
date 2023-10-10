@@ -8,6 +8,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        toolchain: [stable]
         os: [ubuntu-latest]
 
     steps:
@@ -24,6 +25,7 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
+        toolchain: [stable]
         target:
           - wasm32-unknown-unknown
 
