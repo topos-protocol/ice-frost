@@ -32,18 +32,18 @@ pub struct Signer<C: CipherSuite> {
 
 impl<C: CipherSuite> Ord for Signer<C> {
     fn cmp(&self, other: &Signer<C>) -> Ordering {
-        self.partial_cmp(other).unwrap()
+        match self.participant_index.cmp(&other.participant_index) {
+            Ordering::Less => Ordering::Less,
+            // WARNING: Distinct participants cannot have identical indices, so `dedup()` MUST be called.
+            Ordering::Equal => Ordering::Equal,
+            Ordering::Greater => Ordering::Greater,
+        }
     }
 }
 
 impl<C: CipherSuite> PartialOrd for Signer<C> {
     fn partial_cmp(&self, other: &Signer<C>) -> Option<Ordering> {
-        match self.participant_index.cmp(&other.participant_index) {
-            Ordering::Less => Some(Ordering::Less),
-            // WARNING: Participants cannot have identical indices, so dedup() MUST be called.
-            Ordering::Equal => Some(Ordering::Equal),
-            Ordering::Greater => Some(Ordering::Greater),
-        }
+        Some(self.cmp(other))
     }
 }
 
