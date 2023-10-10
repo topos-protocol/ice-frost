@@ -271,7 +271,7 @@ impl<C: CipherSuite> Participant<C> {
 
     /// Serialize this [`Participant`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;

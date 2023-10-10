@@ -118,7 +118,7 @@ impl<C: CipherSuite> Complaint<C> {
 
     /// Serialize this [`Complaint`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -146,7 +146,7 @@ pub struct ComplaintProof<C: CipherSuite> {
 impl<C: CipherSuite> ComplaintProof<C> {
     /// Serialize this [`ComplaintProof`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;

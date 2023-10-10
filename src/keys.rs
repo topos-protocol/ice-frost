@@ -24,7 +24,7 @@ pub struct DiffieHellmanPrivateKey<C: CipherSuite>(pub(crate) <C::G as Group>::S
 impl<C: CipherSuite> DiffieHellmanPrivateKey<C> {
     /// Serialize this [`DiffieHellmanPrivateKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -62,7 +62,7 @@ impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
 
     /// Serialize this [`DiffieHellmanPublicKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -99,7 +99,7 @@ pub struct IndividualVerifyingKey<C: CipherSuite> {
 impl<C: CipherSuite> IndividualVerifyingKey<C> {
     /// Serialize this [`IndividualVerifyingKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -138,7 +138,7 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
         let mut rhs: C::G = <C as CipherSuite>::G::zero();
         let term: <C::G as Group>::ScalarField = self.index.into();
 
-        let mut index_vector: Vec<u32> = Vec::new();
+        let mut index_vector = Vec::with_capacity(commitments.len());
         for commitment in commitments.iter() {
             index_vector.push(commitment.index);
         }
@@ -194,7 +194,7 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
         let mut share: C::G = <C as CipherSuite>::G::zero();
         let term: <C::G as Group>::ScalarField = participant_index.into();
 
-        let mut index_vector: Vec<u32> = Vec::new();
+        let mut index_vector = Vec::with_capacity(commitments.len());
         for commitment in commitments.iter() {
             index_vector.push(commitment.index);
         }
@@ -233,7 +233,7 @@ pub struct IndividualSigningKey<C: CipherSuite> {
 impl<C: CipherSuite> IndividualSigningKey<C> {
     /// Serialize this [`IndividualSigningKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -310,7 +310,7 @@ impl<C: CipherSuite> GroupVerifyingKey<C> {
 
     /// Serialize this [`GroupVerifyingKey`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;

@@ -33,7 +33,7 @@ pub struct Coefficients<C: CipherSuite>(pub(crate) Vec<Scalar<C>>);
 impl<C: CipherSuite> Coefficients<C> {
     /// Serialize this `coefficients` to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -75,7 +75,7 @@ impl<C: CipherSuite> Drop for SecretShare<C> {
 impl<C: CipherSuite> SecretShare<C> {
     /// Serialize this [`SecretShare`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -178,7 +178,7 @@ impl<C: CipherSuite> EncryptedSecretShare<C> {
 
     /// Serialize this [`EncryptedSecretShare`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -205,7 +205,7 @@ pub struct VerifiableSecretSharingCommitment<C: CipherSuite> {
 impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
     /// Serialize this [`VerifiableSecretSharingCommitment`] to a vector of bytes.
     pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::new();
+        let mut bytes = Vec::with_capacity(self.compressed_size());
 
         self.serialize_compressed(&mut bytes)
             .map_err(|_| Error::SerializationError)?;
@@ -263,7 +263,7 @@ pub(crate) fn encrypt_share<C: CipherSuite>(
     let cipher = Aes128::new(final_aes_key);
     let mut cipher = Aes128Ctr::from_block_cipher(cipher, nonce);
 
-    let mut share_bytes = Vec::new();
+    let mut share_bytes = Vec::with_capacity(share.polynomial_evaluation.compressed_size());
     share
         .polynomial_evaluation
         .serialize_compressed(&mut share_bytes)
@@ -326,7 +326,7 @@ mod test {
                 receiver_index: rng.next_u32(),
                 polynomial_evaluation: Fr::rand(&mut rng),
             };
-            let mut bytes = Vec::new();
+            let mut bytes = Vec::with_capacity(secret_share.compressed_size());
             secret_share.serialize_compressed(&mut bytes).unwrap();
             assert_eq!(
                 secret_share,
@@ -345,7 +345,7 @@ mod test {
                 nonce,
                 encrypted_polynomial_evaluation,
             );
-            let mut bytes = Vec::new();
+            let mut bytes = Vec::with_capacity(encrypted_secret_share.compressed_size());
             encrypted_secret_share
                 .serialize_compressed(&mut bytes)
                 .unwrap();
