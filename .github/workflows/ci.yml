@@ -8,11 +8,16 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        toolchain: [stable]
         os: [ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@main
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{matrix.toolchain}}
+          override: true
       - name: Run tests
         uses: actions-rs/cargo@v1
         with:
@@ -21,15 +26,21 @@ jobs:
 
   build:
     name: Build target ${{ matrix.target }}
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     strategy:
       matrix:
+        toolchain: [stable]
+        os: [ubuntu-latest]
         target:
           - wasm32-unknown-unknown
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@main
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{matrix.toolchain}}
+          override: true
       - name: Add target
         run: rustup target add ${{ matrix.target }}
       - name: cargo fetch
@@ -41,11 +52,19 @@ jobs:
 
   bitrot:
     name: Bitrot check
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        toolchain: [stable]
+        os: [ubuntu-latest]
 
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@main
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{matrix.toolchain}}
+          override: true
       # Build benchmarks to prevent bitrot
       - name: Build benchmarks
         uses: actions-rs/cargo@v1
@@ -58,9 +77,12 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@main
+      - name: Install minimal nightly with clippy
+        uses: actions-rs/toolchain@v1
         with:
+          profile: minimal
+          toolchain: nightly
           components: clippy
           override: true
       - name: Run clippy
@@ -75,8 +97,14 @@ jobs:
     timeout-minutes: 30
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions-rs/toolchain@v1
+      - uses: actions/checkout@main
+      - name: Install minimal nightly with rustfmt
+        uses: actions-rs/toolchain@v1
+        with:
+          profile: minimal
+          toolchain: nightly
+          components: rustfmt
+          override: true
       # Ensure all code has been formatted with rustfmt
       - run: rustup component add rustfmt
       - name: Check formatting
