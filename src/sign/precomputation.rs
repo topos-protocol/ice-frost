@@ -298,7 +298,7 @@ mod test {
     }
 
     #[test]
-    fn test_serialisation() {
+    fn test_serialization() {
         let mut rng = OsRng;
 
         for _ in 0..100 {

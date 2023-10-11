@@ -61,7 +61,7 @@ mod test {
     use rand::{rngs::OsRng, RngCore};
 
     #[test]
-    fn test_serialisation() {
+    fn test_serialization() {
         let mut rng = OsRng;
 
         for _ in 0..100 {
