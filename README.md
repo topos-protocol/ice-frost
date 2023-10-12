@@ -1,7 +1,7 @@
 # ICE-FROST
 
-[![codecov](https://codecov.io/gh/topos-network/ice-frost/branch/main/graph/badge.svg?token=CP8FGXD8VP)](https://codecov.io/gh/topos-network/ice-frost)
-![example workflow](https://github.com/topos-network/ice_frost/actions/workflows/ci.yml/badge.svg)
+[![codecov](https://codecov.io/gh/topos-protocol/ice-frost/branch/main/graph/badge.svg?token=CP8FGXD8VP)](https://codecov.io/gh/topos-protocol/ice-frost)
+![example workflow](https://github.com/topos-protocol/ice_frost/actions/workflows/ci.yml/badge.svg)
 
 A modular Rust implementation of [ICE-FROST: Identifiable Cheating Entity Flexible Round-Optimised Schnorr Threshold signatures](https://eprint.iacr.org/2021/1658) supporting static group keys.
 
