@@ -7,6 +7,7 @@
 
 use core::marker::PhantomData;
 
+use crate::serialization::impl_serialization_traits;
 use crate::utils::{Scalar, ToString, Vec};
 use crate::{Error, FrostResult};
 
@@ -30,22 +31,7 @@ use zeroize::Zeroize;
 #[derive(Debug, Clone, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
 pub struct Coefficients<C: CipherSuite>(pub(crate) Vec<Scalar<C>>);
 
-impl<C: CipherSuite> Coefficients<C> {
-    /// Serialize this `coefficients` to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a `coefficients` from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(Coefficients<CipherSuite>);
 
 impl<C: CipherSuite> Drop for Coefficients<C> {
     fn drop(&mut self) {
@@ -66,6 +52,8 @@ pub struct SecretShare<C: CipherSuite> {
     pub(crate) polynomial_evaluation: Scalar<C>,
 }
 
+impl_serialization_traits!(SecretShare<CipherSuite>);
+
 impl<C: CipherSuite> Drop for SecretShare<C> {
     fn drop(&mut self) {
         self.zeroize();
@@ -73,21 +61,6 @@ impl<C: CipherSuite> Drop for SecretShare<C> {
 }
 
 impl<C: CipherSuite> SecretShare<C> {
-    /// Serialize this [`SecretShare`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`SecretShare`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-
     /// Evaluate the polynomial, `f(x)` for the secret coefficients at the value of `x` .
     pub(crate) fn evaluate_polynomial(
         sender_index: &u32,
@@ -153,6 +126,8 @@ pub struct EncryptedSecretShare<C: CipherSuite> {
     _phantom: PhantomData<C>,
 }
 
+impl_serialization_traits!(EncryptedSecretShare<CipherSuite>);
+
 impl<C: CipherSuite> Drop for EncryptedSecretShare<C> {
     fn drop(&mut self) {
         self.zeroize();
@@ -175,21 +150,6 @@ impl<C: CipherSuite> EncryptedSecretShare<C> {
             _phantom: PhantomData,
         }
     }
-
-    /// Serialize this [`EncryptedSecretShare`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`EncryptedSecretShare`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
 }
 
 /// A commitment to a participant's secret polynomial coefficients for Feldman's
@@ -202,22 +162,9 @@ pub struct VerifiableSecretSharingCommitment<C: CipherSuite> {
     pub points: Vec<C::G>,
 }
 
+impl_serialization_traits!(VerifiableSecretSharingCommitment<CipherSuite>);
+
 impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
-    /// Serialize this [`VerifiableSecretSharingCommitment`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`VerifiableSecretSharingCommitment`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-
     /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the prime-order basepoint.
     pub fn public_key(&self) -> Option<&C::G> {
         if !self.points.is_empty() {

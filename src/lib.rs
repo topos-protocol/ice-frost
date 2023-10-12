@@ -1227,6 +1227,10 @@ pub(crate) const HASH_SEC_PARAM: usize = 128;
 mod error;
 pub use error::{Error, FrostResult};
 
+/// A module defining traits for implementing convenient encoding and decoding to/from bytes.
+mod serialization;
+pub use serialization::{FromBytes, ToBytes};
+
 /// A module defining the different key types used by an ICE-FROST instance.
 pub mod keys;
 /// A module defining the [`ThresholdParameters`](crate::parameters::ThresholdParameters) type used by an ICE-FROST instance.

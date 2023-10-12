@@ -3,6 +3,7 @@
 //! their public aggregation.
 
 use crate::ciphersuite::CipherSuite;
+use crate::serialization::impl_serialization_traits;
 
 use ark_ec::{Group, VariableBaseMSM};
 use ark_ff::{Field, Zero};
@@ -61,22 +62,7 @@ pub struct PartialThresholdSignature<C: CipherSuite> {
     pub(crate) z: Scalar<C>,
 }
 
-impl<C: CipherSuite> PartialThresholdSignature<C> {
-    /// Serialize this [`PartialThresholdSignature`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`PartialThresholdSignature`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(PartialThresholdSignature<CipherSuite>);
 
 /// A complete, aggregated threshold signature.
 #[derive(Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
@@ -85,22 +71,7 @@ pub struct ThresholdSignature<C: CipherSuite> {
     pub(crate) z: Scalar<C>,
 }
 
-impl<C: CipherSuite> ThresholdSignature<C> {
-    /// Serialize this [`ThresholdSignature`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`ThresholdSignature`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(ThresholdSignature<CipherSuite>);
 
 /// A struct for storing signers' binding factors with their index.
 #[derive(Debug, Default, CanonicalSerialize, CanonicalDeserialize)]
@@ -746,6 +717,7 @@ mod test {
     use crate::keys::DiffieHellmanPrivateKey;
     use crate::sign::{generate_commitment_share_lists, PublicCommitmentShareList};
     use crate::testing::Secp256k1Sha256;
+    use crate::{FromBytes, ToBytes};
 
     use ark_secp256k1::{Fr, Projective};
 

@@ -1,6 +1,7 @@
 //! The complaint module for handling disputes during an ICE-FROST
 //! Distributed Key Generation session.
 
+use crate::serialization::impl_serialization_traits;
 use crate::utils::{Scalar, Vec};
 use crate::{Error, FrostResult};
 
@@ -28,6 +29,8 @@ pub struct Complaint<C: CipherSuite> {
     /// The complaint proof.
     pub proof: ComplaintProof<C>,
 }
+
+impl_serialization_traits!(Complaint<CipherSuite>);
 
 impl<C: CipherSuite> Complaint<C> {
     pub(crate) fn new(
@@ -115,21 +118,6 @@ impl<C: CipherSuite> Complaint<C> {
 
         Ok(())
     }
-
-    /// Serialize this [`Complaint`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`Complaint`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
 }
 
 /// A proof that a generated complaint is valid.
@@ -143,19 +131,4 @@ pub struct ComplaintProof<C: CipherSuite> {
     pub z: Scalar<C>,
 }
 
-impl<C: CipherSuite> ComplaintProof<C> {
-    /// Serialize this [`ComplaintProof`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`ComplaintProof`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(ComplaintProof<CipherSuite>);

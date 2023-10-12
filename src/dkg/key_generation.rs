@@ -471,7 +471,8 @@ use ark_ff::{Field, Zero};
 use ark_serialize::CanonicalDeserialize;
 use ark_serialize::CanonicalSerialize;
 
-use core::ops::Mul;
+use core::ops::DerefMut;
+use core::ops::{Deref, Mul};
 use rand::CryptoRng;
 use rand::RngCore;
 
@@ -490,6 +491,8 @@ use crate::keys::{
     DiffieHellmanPrivateKey, DiffieHellmanPublicKey, GroupVerifyingKey, IndividualSigningKey,
 };
 use crate::parameters::ThresholdParameters;
+use crate::FromBytes;
+use crate::ToBytes;
 use crate::{Error, FrostResult};
 
 use crate::utils::calculate_lagrange_coefficients;
@@ -497,11 +500,14 @@ use crate::utils::{Box, Scalar, ToString, Vec};
 
 /// State machine structures for holding intermediate values during a
 /// distributed key generation protocol run, to prevent misuse.
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct DistributedKeyGeneration<S: DkgState, C: CipherSuite> {
-    state: Box<ActualState<C>>,
+    state: BoxedState<C>,
     data: S,
 }
+
+impl<S: DkgState, C: CipherSuite> ToBytes<C> for DistributedKeyGeneration<S, C> {}
+impl<S: DkgState, C: CipherSuite> FromBytes<C> for DistributedKeyGeneration<S, C> {}
 
 /// Shared state which occurs across all rounds of a threshold signing protocol run.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
@@ -529,6 +535,59 @@ struct ActualState<C: CipherSuite> {
     my_secret_shares: Option<Vec<SecretShare<C>>>,
 }
 
+#[derive(Clone, Debug)]
+struct BoxedState<C: CipherSuite>(Box<ActualState<C>>);
+
+impl<C: CipherSuite> Deref for BoxedState<C> {
+    type Target = ActualState<C>;
+    fn deref(&self) -> &ActualState<C> {
+        &self.0
+    }
+}
+
+impl<C: CipherSuite> DerefMut for BoxedState<C> {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl<C: CipherSuite> BoxedState<C> {
+    fn new(state: ActualState<C>) -> Self {
+        Self(Box::new(state))
+    }
+}
+
+// Required trait to implement `CanonicalDeserialize` below.
+impl<C: CipherSuite> ark_serialize::Valid for BoxedState<C> {
+    fn check(&self) -> Result<(), ark_serialize::SerializationError> {
+        self.0.check()
+    }
+}
+
+impl<C: CipherSuite> CanonicalSerialize for BoxedState<C> {
+    fn serialize_with_mode<W: ark_serialize::Write>(
+        &self,
+        writer: W,
+        compress: ark_serialize::Compress,
+    ) -> Result<(), ark_serialize::SerializationError> {
+        self.0.serialize_with_mode(writer, compress)
+    }
+
+    fn serialized_size(&self, compress: ark_serialize::Compress) -> usize {
+        self.0.serialized_size(compress)
+    }
+}
+
+impl<C: CipherSuite> CanonicalDeserialize for BoxedState<C> {
+    fn deserialize_with_mode<R: ark_serialize::Read>(
+        reader: R,
+        compress: ark_serialize::Compress,
+        validate: ark_serialize::Validate,
+    ) -> Result<Self, ark_serialize::SerializationError> {
+        ActualState::<C>::deserialize_with_mode(reader, compress, validate).map(Self::new)
+    }
+}
+
 /// Output of the first round of the Distributed Key Generation.
 #[derive(Clone, Debug, CanonicalSerialize, CanonicalDeserialize)]
 pub struct DKGParticipantList<C: CipherSuite> {
@@ -539,34 +598,6 @@ pub struct DKGParticipantList<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
-    /// Serialize this [`DistributedKeyGeneration<RoundOne, _>`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes =
-            Vec::with_capacity(self.state.compressed_size() + self.data.compressed_size());
-
-        self.state
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        self.data
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`DistributedKeyGeneration<RoundOne, _>`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        let state = Box::new(
-            ActualState::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?,
-        );
-
-        let data =
-            RoundOne::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?;
-
-        Ok(Self { state, data })
-    }
-
     /// Bootstrap the very first ICE-FROST DKG session for a group of participants. This assumes that no
     /// prior DKG has been performed, from which previous participants would reshare their secrets. If a
     /// prior ICE-FROST DKG has been ran successfully, participants from a new set should run the `new`
@@ -733,7 +764,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
             return Ok((
                 DistributedKeyGeneration::<RoundOne, C> {
-                    state: Box::new(state),
+                    state: BoxedState::new(state),
                     data: RoundOne {},
                 },
                 DKGParticipantList {
@@ -787,7 +818,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
         Ok((
             DistributedKeyGeneration::<RoundOne, C> {
-                state: Box::new(state),
+                state: BoxedState::new(state),
                 data: RoundOne {},
             },
             DKGParticipantList {
@@ -898,34 +929,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 }
 
 impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
-    /// Serialize this [`DistributedKeyGeneration<RoundTwo, _>`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes =
-            Vec::with_capacity(self.state.compressed_size() + self.data.compressed_size());
-
-        self.state
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        self.data
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`DistributedKeyGeneration<RoundTwo, _>`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        let state = Box::new(
-            ActualState::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?,
-        );
-
-        let data =
-            RoundTwo::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?;
-
-        Ok(Self { state, data })
-    }
-
     /// Calculate this threshold signing protocol participant's long-lived
     /// secret signing keyshare and the group's public verification key.
     ///
@@ -1076,6 +1079,7 @@ mod test {
     use crate::dkg::{ComplaintProof, NizkPokOfSecretKey};
     use crate::keys::IndividualVerifyingKey;
     use crate::testing::Secp256k1Sha256;
+    use crate::{FromBytes, ToBytes};
 
     use ark_ec::Group;
     use ark_ff::UniformRand;

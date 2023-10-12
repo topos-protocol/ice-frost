@@ -4,6 +4,7 @@ use core::marker::PhantomData;
 use core::ops::{Deref, Mul};
 
 use crate::dkg::secret_share::VerifiableSecretSharingCommitment;
+use crate::serialization::impl_serialization_traits;
 use crate::sign::{compute_challenge, ThresholdSignature};
 use crate::utils::calculate_lagrange_coefficients;
 use crate::utils::{ToString, Vec};
@@ -21,22 +22,7 @@ use zeroize::Zeroize;
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
 pub struct DiffieHellmanPrivateKey<C: CipherSuite>(pub(crate) <C::G as Group>::ScalarField);
 
-impl<C: CipherSuite> DiffieHellmanPrivateKey<C> {
-    /// Serialize this [`DiffieHellmanPrivateKey`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`DiffieHellmanPrivateKey`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(DiffieHellmanPrivateKey<CipherSuite>);
 
 impl<C: CipherSuite> Drop for DiffieHellmanPrivateKey<C> {
     fn drop(&mut self) {
@@ -51,6 +37,8 @@ pub struct DiffieHellmanPublicKey<C: CipherSuite> {
     _phantom: PhantomData<C>,
 }
 
+impl_serialization_traits!(DiffieHellmanPublicKey<CipherSuite>);
+
 impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
     /// Instantiates a new [`DiffieHellmanPublicKey`] key.
     pub fn new(key: C::G) -> Self {
@@ -58,21 +46,6 @@ impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
             key,
             _phantom: PhantomData,
         }
-    }
-
-    /// Serialize this [`DiffieHellmanPublicKey`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`DiffieHellmanPublicKey`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
 
@@ -96,22 +69,9 @@ pub struct IndividualVerifyingKey<C: CipherSuite> {
     pub share: <C as CipherSuite>::G,
 }
 
+impl_serialization_traits!(IndividualVerifyingKey<CipherSuite>);
+
 impl<C: CipherSuite> IndividualVerifyingKey<C> {
-    /// Serialize this [`IndividualVerifyingKey`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`IndividualVerifyingKey`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-
     /// Any participant can compute the public verification share of any other participant.
     ///
     /// This is done by re-computing each [`IndividualVerifyingKey`] as \\(Y\_i\\) s.t.:
@@ -230,22 +190,7 @@ pub struct IndividualSigningKey<C: CipherSuite> {
     pub(crate) key: <C::G as Group>::ScalarField,
 }
 
-impl<C: CipherSuite> IndividualSigningKey<C> {
-    /// Serialize this [`IndividualSigningKey`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`IndividualSigningKey`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(IndividualSigningKey<CipherSuite>);
 
 impl<C: CipherSuite> Drop for IndividualSigningKey<C> {
     fn drop(&mut self) {
@@ -278,6 +223,8 @@ pub struct GroupVerifyingKey<C: CipherSuite> {
     _phantom: PhantomData<C>,
 }
 
+impl_serialization_traits!(GroupVerifyingKey<CipherSuite>);
+
 impl<C: CipherSuite> GroupVerifyingKey<C> {
     /// Instantiates a new [`GroupVerifyingKey`] key.
     pub fn new(key: C::G) -> Self {
@@ -306,20 +253,5 @@ impl<C: CipherSuite> GroupVerifyingKey<C> {
             true => Ok(()),
             false => Err(Error::InvalidSignature),
         }
-    }
-
-    /// Serialize this [`GroupVerifyingKey`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`GroupVerifyingKey`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 }
