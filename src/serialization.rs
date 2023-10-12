@@ -1,5 +1,6 @@
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
+use crate::utils::Vec;
 use crate::{CipherSuite, Error, FrostResult};
 
 /// Utility trait for serializing an ICE-FROST object to a vector of bytes.
