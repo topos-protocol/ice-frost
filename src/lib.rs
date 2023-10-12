@@ -1228,7 +1228,7 @@ mod error;
 pub use error::{Error, FrostResult};
 
 /// A module defining traits for implementing convenient encoding and decoding to/from bytes.
-pub mod serialization;
+mod serialization;
 pub use serialization::{FromBytes, ToBytes};
 
 /// A module defining the different key types used by an ICE-FROST instance.
