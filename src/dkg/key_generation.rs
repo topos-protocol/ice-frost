@@ -490,6 +490,7 @@ use crate::keys::{
     DiffieHellmanPrivateKey, DiffieHellmanPublicKey, GroupVerifyingKey, IndividualSigningKey,
 };
 use crate::parameters::ThresholdParameters;
+use crate::serialization::impl_serialization_traits;
 use crate::{Error, FrostResult};
 
 use crate::utils::calculate_lagrange_coefficients;
@@ -1076,6 +1077,7 @@ mod test {
     use crate::dkg::{ComplaintProof, NizkPokOfSecretKey};
     use crate::keys::IndividualVerifyingKey;
     use crate::testing::Secp256k1Sha256;
+    use crate::{FromBytes, ToBytes};
 
     use ark_ec::Group;
     use ark_ff::UniformRand;

@@ -3,8 +3,8 @@
 use core::marker::PhantomData;
 
 use crate::ciphersuite::CipherSuite;
+use crate::serialization::impl_serialization_traits;
 use crate::utils::Vec;
-use crate::{Error, FrostResult};
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
@@ -18,6 +18,8 @@ pub struct ThresholdParameters<C: CipherSuite> {
     pub t: u32,
     _phantom: PhantomData<C>,
 }
+
+impl_serialization_traits!(ThresholdParameters<CipherSuite>);
 
 impl<C: CipherSuite> ThresholdParameters<C> {
     /// Initialize a new set of threshold parameters.
@@ -37,27 +39,13 @@ impl<C: CipherSuite> ThresholdParameters<C> {
             _phantom: PhantomData,
         }
     }
-
-    /// Serialize this [`ThresholdParameters`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`ThresholdParameters`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
 }
 
 #[cfg(test)]
 mod test {
     use super::*;
     use crate::testing::Secp256k1Sha256;
+    use crate::{FromBytes, ToBytes};
     use rand::{rngs::OsRng, RngCore};
 
     #[test]

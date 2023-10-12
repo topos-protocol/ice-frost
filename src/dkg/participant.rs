@@ -18,6 +18,7 @@ use crate::dkg::{
 };
 use crate::keys::{DiffieHellmanPrivateKey, DiffieHellmanPublicKey, IndividualSigningKey};
 use crate::parameters::ThresholdParameters;
+use crate::serialization::impl_serialization_traits;
 use crate::{Error, FrostResult};
 
 use crate::utils::{Scalar, Vec};
@@ -44,6 +45,8 @@ pub struct Participant<C: CipherSuite> {
     /// It is computed similarly to the proof_of_secret_key.
     pub proof_of_dh_private_key: NizkPokOfSecretKey<C>,
 }
+
+impl_serialization_traits!(Participant<CipherSuite>);
 
 impl<C: CipherSuite> Participant<C> {
     /// Construct a new dealer for the distributed key generation protocol,
@@ -267,21 +270,6 @@ impl<C: CipherSuite> Participant<C> {
             .clone();
 
         Ok((dealer, encrypted_shares, participant_lists))
-    }
-
-    /// Serialize this [`Participant`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`Participant`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
     }
 
     /// Retrieve \\( \alpha_{i0} * B \\), where \\( B \\) is the prime-order basepoint.

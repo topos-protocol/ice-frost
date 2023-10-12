@@ -5,8 +5,10 @@
 use core::ops::Mul;
 
 use crate::keys::IndividualSigningKey;
+use crate::serialization::impl_serialization_traits;
 use crate::utils::{Scalar, Vec};
-use crate::{Error, FrostResult};
+use crate::FrostResult;
+use crate::ToBytes;
 
 use crate::ciphersuite::CipherSuite;
 
@@ -112,22 +114,7 @@ pub struct CommitmentShare<C: CipherSuite> {
     pub(crate) binding: Commitment<C>,
 }
 
-impl<C: CipherSuite> CommitmentShare<C> {
-    /// Serialize this [`CommitmentShare`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`CommitmentShare`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(CommitmentShare<CipherSuite>);
 
 impl<C: CipherSuite> Drop for CommitmentShare<C> {
     fn drop(&mut self) {
@@ -157,22 +144,7 @@ pub struct SecretCommitmentShareList<C: CipherSuite> {
     pub commitments: Vec<CommitmentShare<C>>,
 }
 
-impl<C: CipherSuite> SecretCommitmentShareList<C> {
-    /// Serialize this [`SecretCommitmentShareList`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`SecretCommitmentShareList`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(SecretCommitmentShareList<CipherSuite>);
 
 /// A public commitment share list, containing only the hiding and binding
 /// commitments, *not* their committed-to secret values.
@@ -187,22 +159,7 @@ pub struct PublicCommitmentShareList<C: CipherSuite> {
     pub commitments: Vec<(C::G, C::G)>,
 }
 
-impl<C: CipherSuite> PublicCommitmentShareList<C> {
-    /// Serialize this [`PublicCommitmentShareList`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`PublicCommitmentShareList`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-}
+impl_serialization_traits!(PublicCommitmentShareList<CipherSuite>);
 
 /// Pre-compute a list of [`CommitmentShare`]s for single-round threshold signing.
 ///

@@ -6,6 +6,7 @@ use ark_ff::UniformRand;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use crate::ciphersuite::CipherSuite;
+use crate::serialization::impl_serialization_traits;
 use crate::utils::{Scalar, Vec};
 use crate::{Error, FrostResult};
 
@@ -34,22 +35,9 @@ pub struct NizkPokOfSecretKey<C: CipherSuite> {
     r: Scalar<C>,
 }
 
+impl_serialization_traits!(NizkPokOfSecretKey<CipherSuite>);
+
 impl<C: CipherSuite> NizkPokOfSecretKey<C> {
-    /// Serialize this [`NizkPokOfSecretKey`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes = Vec::with_capacity(self.compressed_size());
-
-        self.serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`NizkPokOfSecretKey`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        Self::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)
-    }
-
     /// Prove knowledge of a secret key.
     pub fn prove(
         index: u32,
