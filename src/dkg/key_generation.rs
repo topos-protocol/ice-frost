@@ -491,6 +491,8 @@ use crate::keys::{
     DiffieHellmanPrivateKey, DiffieHellmanPublicKey, GroupVerifyingKey, IndividualSigningKey,
 };
 use crate::parameters::ThresholdParameters;
+use crate::FromBytes;
+use crate::ToBytes;
 use crate::{Error, FrostResult};
 
 use crate::utils::calculate_lagrange_coefficients;
@@ -503,6 +505,9 @@ pub struct DistributedKeyGeneration<S: DkgState, C: CipherSuite> {
     state: BoxedState<C>,
     data: S,
 }
+
+impl<S: DkgState, C: CipherSuite> ToBytes<C> for DistributedKeyGeneration<S, C> {}
+impl<S: DkgState, C: CipherSuite> FromBytes<C> for DistributedKeyGeneration<S, C> {}
 
 /// Shared state which occurs across all rounds of a threshold signing protocol run.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
@@ -593,34 +598,6 @@ pub struct DKGParticipantList<C: CipherSuite> {
 }
 
 impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
-    /// Serialize this [`DistributedKeyGeneration<RoundOne, _>`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes =
-            Vec::with_capacity(self.state.compressed_size() + self.data.compressed_size());
-
-        self.state
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        self.data
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`DistributedKeyGeneration<RoundOne, _>`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        let state = BoxedState::new(
-            ActualState::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?,
-        );
-
-        let data =
-            RoundOne::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?;
-
-        Ok(Self { state, data })
-    }
-
     /// Bootstrap the very first ICE-FROST DKG session for a group of participants. This assumes that no
     /// prior DKG has been performed, from which previous participants would reshare their secrets. If a
     /// prior ICE-FROST DKG has been ran successfully, participants from a new set should run the `new`
@@ -952,34 +929,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 }
 
 impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
-    /// Serialize this [`DistributedKeyGeneration<RoundTwo, _>`] to a vector of bytes.
-    pub fn to_bytes(&self) -> FrostResult<C, Vec<u8>> {
-        let mut bytes =
-            Vec::with_capacity(self.state.compressed_size() + self.data.compressed_size());
-
-        self.state
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        self.data
-            .serialize_compressed(&mut bytes)
-            .map_err(|_| Error::SerializationError)?;
-
-        Ok(bytes)
-    }
-
-    /// Attempt to deserialize a [`DistributedKeyGeneration<RoundTwo, _>`] from a vector of bytes.
-    pub fn from_bytes(bytes: &[u8]) -> FrostResult<C, Self> {
-        let state = BoxedState::new(
-            ActualState::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?,
-        );
-
-        let data =
-            RoundTwo::deserialize_compressed(bytes).map_err(|_| Error::DeserializationError)?;
-
-        Ok(Self { state, data })
-    }
-
     /// Calculate this threshold signing protocol participant's long-lived
     /// secret signing keyshare and the group's public verification key.
     ///
