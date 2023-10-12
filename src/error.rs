@@ -5,7 +5,8 @@ use crate::ciphersuite::CipherSuite;
 use crate::dkg::Complaint;
 use crate::utils::{String, Vec};
 
-/// Errors that may happen during Key Generation
+/// Errors that may happen during Key Generation/Resharing
+/// or Signing phases of ICE-FROST.
 #[derive(Debug, PartialEq, Eq)]
 pub enum Error<C: CipherSuite> {
     /// Serialization error
