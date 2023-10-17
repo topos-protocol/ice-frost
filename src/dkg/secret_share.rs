@@ -12,6 +12,9 @@ use crate::serialization::impl_serialization_traits;
 use crate::utils::{Scalar, ToString, Vec};
 use crate::{Error, FrostResult};
 
+#[cfg(not(feature = "std"))]
+use alloc::vec;
+
 use crate::ciphersuite::CipherSuite;
 
 use ark_ec::{CurveGroup, Group};
