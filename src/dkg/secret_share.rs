@@ -158,6 +158,9 @@ impl<C: CipherSuite> ark_serialize::Valid for EncryptedSecretShare<C> {
     fn check(&self) -> Result<(), ark_serialize::SerializationError> {
         self.sender_index.check()?;
         self.receiver_index.check()?;
+        // Collecting is not ideal for this and the `serialize_with_mode` / `deserialize_with_mode`
+        // implementation below, but is necessary, at least until the `GenericArray` dependency of
+        // the aead trait gets bumped to 1.0.
         self.nonce.to_vec().check()?;
         self.encrypted_polynomial_evaluation.check()
     }
