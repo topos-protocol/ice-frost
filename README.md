@@ -20,7 +20,7 @@ Note however that two parameters are not modular, at least in the current versio
 
 - the hash function targeted security parameter: this crate assumes 128 bits of collision security for the ciphersuite's internal hashers. One **MUST** provide
   a hasher with _at least_ 128 bits of collision security when instantiating an ICE-FROST ciphersuite.
-- the secret share encryption mechanism: this part of the distributed key generation currently relies on AES128-CTR with HKDF instantiated from SHA-256.
+- the secret share encryption mechanism: this part of the distributed key generation currently relies on AES128-GCM with HKDF instantiated from SHA-256.
 
 This library also provides by default an example instantiation over the Secp256k1 curve with SHA-256, to be used in tests and benchmarks.
 

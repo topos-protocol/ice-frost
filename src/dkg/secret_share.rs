@@ -2,7 +2,7 @@
 //! and their public commitments, along with their encrypted versions
 //! post Diffie-Hellman key exchange.
 //!
-//! This module currently only supports AES128-CTR with HKDF instantiated
+//! This module currently only supports AES128-GCM with HKDF instantiated
 //! from SHA-256.
 
 use core::marker::PhantomData;
@@ -17,10 +17,13 @@ use ark_ec::{CurveGroup, Group};
 use ark_ff::{Field, Zero};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
+use digest::generic_array::GenericArray;
 use rand::{CryptoRng, RngCore};
 
-use aes::cipher::{generic_array::GenericArray, FromBlockCipher, NewBlockCipher, StreamCipher};
-use aes::{Aes128, Aes128Ctr};
+use aes_gcm::{
+    aead::{Aead, AeadCore, KeyInit},
+    Aes128Gcm, Key,
+};
 use hkdf::Hkdf;
 use sha2::Sha256;
 
@@ -118,8 +121,8 @@ pub struct EncryptedSecretShare<C: CipherSuite> {
     pub sender_index: u32,
     /// The participant index that this secret share was calculated for.
     pub receiver_index: u32,
-    /// The nonce to be used for decryption with AES-CTR mode.
-    pub nonce: [u8; 16],
+    /// The nonce to be used for decryption with AES-GCM mode. It is 96-bit long.
+    pub nonce: [u8; 12],
     /// The encrypted polynomial evaluation.
     pub(crate) encrypted_polynomial_evaluation: Vec<u8>,
     #[zeroize(skip)]
@@ -139,7 +142,7 @@ impl<C: CipherSuite> EncryptedSecretShare<C> {
     pub fn new(
         sender_index: u32,
         receiver_index: u32,
-        nonce: [u8; 16],
+        nonce: [u8; 12],
         encrypted_polynomial_evaluation: Vec<u8>,
     ) -> Self {
         Self {
@@ -195,33 +198,32 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
 pub(crate) fn encrypt_share<C: CipherSuite>(
     share: &SecretShare<C>,
     aes_key: &[u8],
-    mut rng: impl RngCore + CryptoRng,
+    rng: impl RngCore + CryptoRng,
 ) -> FrostResult<C, EncryptedSecretShare<C>> {
     let hkdf = Hkdf::<Sha256>::new(None, aes_key);
     let mut final_aes_key = [0u8; 16];
     hkdf.expand(&[], &mut final_aes_key)
         .map_err(|_| Error::Custom("KDF expansion failed unexpectedly".to_string()))?;
 
-    let mut nonce_array = [0u8; 16];
-    rng.fill_bytes(&mut nonce_array);
-
-    let final_aes_key = GenericArray::from_slice(&final_aes_key);
-    let nonce = GenericArray::from_slice(&nonce_array);
-    let cipher = Aes128::new(final_aes_key);
-    let mut cipher = Aes128Ctr::from_block_cipher(cipher, nonce);
+    let key = Key::<Aes128Gcm>::from_slice(&final_aes_key);
+    let nonce = Aes128Gcm::generate_nonce(rng);
+    let cipher = Aes128Gcm::new(&key);
 
     let mut share_bytes = Vec::with_capacity(share.polynomial_evaluation.compressed_size());
     share
         .polynomial_evaluation
         .serialize_compressed(&mut share_bytes)
         .map_err(|_| Error::CompressionError)?;
-    cipher.apply_keystream(&mut share_bytes);
+
+    let encrypted_polynomial_evaluation = cipher
+        .encrypt(&nonce, share_bytes.as_ref())
+        .map_err(|_| Error::EncryptionError)?;
 
     Ok(EncryptedSecretShare::<C> {
         sender_index: share.sender_index,
         receiver_index: share.receiver_index,
-        nonce: nonce_array,
-        encrypted_polynomial_evaluation: share_bytes,
+        nonce: (*nonce).try_into().unwrap(), // This unwrap cannot fail.
+        encrypted_polynomial_evaluation,
         _phantom: PhantomData,
     })
 }
@@ -235,17 +237,20 @@ pub(crate) fn decrypt_share<C: CipherSuite>(
     hkdf.expand(&[], &mut final_aes_key)
         .expect("KDF expansion failed unexpectedly");
 
-    let final_aes_key = GenericArray::from_slice(&final_aes_key);
+    let key = Key::<Aes128Gcm>::from_slice(&final_aes_key);
 
     let nonce = GenericArray::from_slice(&encrypted_share.nonce);
-    let cipher = Aes128::new(final_aes_key);
-    let mut cipher = Aes128Ctr::from_block_cipher(cipher, nonce);
+    let cipher = Aes128Gcm::new(&key);
 
-    let mut bytes = encrypted_share.encrypted_polynomial_evaluation.clone();
-    cipher.apply_keystream(&mut bytes);
+    let bytes = cipher
+        .decrypt(
+            nonce,
+            encrypted_share.encrypted_polynomial_evaluation.as_ref(),
+        )
+        .map_err(|_| Error::DecryptionError)?;
 
     let evaluation =
-        Scalar::<C>::deserialize_compressed(&bytes[..]).map_err(|_| Error::DecryptionError)?;
+        Scalar::<C>::deserialize_compressed(&bytes[..]).map_err(|_| Error::DecompressionError)?;
 
     Ok(SecretShare {
         sender_index: encrypted_share.sender_index,
@@ -282,8 +287,8 @@ mod test {
         }
 
         for _ in 0..100 {
-            let mut nonce = [0u8; 16];
-            let mut encrypted_polynomial_evaluation = vec![0u8; 16];
+            let mut nonce = [0u8; 12];
+            let mut encrypted_polynomial_evaluation = vec![0u8; 12];
             rng.fill_bytes(&mut nonce);
             rng.fill_bytes(&mut encrypted_polynomial_evaluation);
             let encrypted_secret_share = EncryptedSecretShare::<Secp256k1Sha256>::new(
