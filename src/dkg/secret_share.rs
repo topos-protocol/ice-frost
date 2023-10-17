@@ -20,10 +20,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 use digest::generic_array::GenericArray;
 use rand::{CryptoRng, RngCore};
 
-use aes_gcm::{
-    aead::{Aead, AeadCore, KeyInit},
-    Aes128Gcm, Key,
-};
+use aead::{Aead, AeadCore, Key, KeyInit};
 use hkdf::Hkdf;
 use sha2::Sha256;
 
@@ -205,9 +202,9 @@ pub(crate) fn encrypt_share<C: CipherSuite>(
     hkdf.expand(&[], &mut final_aes_key)
         .map_err(|_| Error::Custom("KDF expansion failed unexpectedly".to_string()))?;
 
-    let key = Key::<Aes128Gcm>::from_slice(&final_aes_key);
-    let nonce = Aes128Gcm::generate_nonce(rng);
-    let cipher = Aes128Gcm::new(&key);
+    let key = Key::<C::Cipher>::from_slice(&final_aes_key);
+    let nonce = C::Cipher::generate_nonce(rng);
+    let cipher = C::Cipher::new(key);
 
     let mut share_bytes = Vec::with_capacity(share.polynomial_evaluation.compressed_size());
     share
@@ -237,10 +234,10 @@ pub(crate) fn decrypt_share<C: CipherSuite>(
     hkdf.expand(&[], &mut final_aes_key)
         .expect("KDF expansion failed unexpectedly");
 
-    let key = Key::<Aes128Gcm>::from_slice(&final_aes_key);
+    let key = Key::<C::Cipher>::from_slice(&final_aes_key);
 
     let nonce = GenericArray::from_slice(&encrypted_share.nonce);
-    let cipher = Aes128Gcm::new(&key);
+    let cipher = C::Cipher::new(&key);
 
     let bytes = cipher
         .decrypt(

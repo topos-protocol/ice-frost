@@ -3,6 +3,7 @@
 use core::fmt::Debug;
 use core::marker::{Send, Sync};
 
+use aead::{Aead, KeyInit};
 use zeroize::Zeroize;
 
 use ark_ec::CurveGroup;
@@ -26,6 +27,9 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
 
     /// The underlying hasher used to construct all random oracles of this [`CipherSuite`] .
     type InnerHasher: Default + Clone + Digest + DynDigest;
+
+    /// The underlying hasher used to construct all random oracles of this [`CipherSuite`] .
+    type Cipher: Aead + KeyInit;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 
