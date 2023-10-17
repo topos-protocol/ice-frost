@@ -29,7 +29,7 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     type InnerHasher: Default + Clone + Digest + DynDigest;
 
     /// The underlying hasher used to construct all random oracles of this [`CipherSuite`] .
-    type Cipher: Aead + KeyInit;
+    type Cipher: Aead + KeyInit + Clone;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 

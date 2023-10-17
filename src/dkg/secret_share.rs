@@ -5,6 +5,7 @@
 //! This module currently only supports AES128-GCM with HKDF instantiated
 //! from SHA-256.
 
+use core::fmt::Debug;
 use core::marker::PhantomData;
 
 use crate::serialization::impl_serialization_traits;
@@ -17,10 +18,9 @@ use ark_ec::{CurveGroup, Group};
 use ark_ff::{Field, Zero};
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
-use digest::generic_array::GenericArray;
 use rand::{CryptoRng, RngCore};
 
-use aead::{Aead, AeadCore, Key, KeyInit};
+use aead::{Aead, AeadCore, Key, KeyInit, Nonce};
 use hkdf::Hkdf;
 use sha2::Sha256;
 
@@ -112,18 +112,102 @@ impl<C: CipherSuite> SecretShare<C> {
 }
 
 /// A secret share encrypted with a participant's public key
-#[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
+#[derive(Clone, Zeroize)]
 pub struct EncryptedSecretShare<C: CipherSuite> {
     /// The index of the share maker.
     pub sender_index: u32,
     /// The participant index that this secret share was calculated for.
     pub receiver_index: u32,
-    /// The nonce to be used for decryption with AES-GCM mode. It is 96-bit long.
-    pub nonce: [u8; 12],
+    /// The nonce to be used for decryption of this encrypted share.
+    pub nonce: Nonce<C::Cipher>,
     /// The encrypted polynomial evaluation.
     pub(crate) encrypted_polynomial_evaluation: Vec<u8>,
     #[zeroize(skip)]
     _phantom: PhantomData<C>,
+}
+
+impl<C: CipherSuite> PartialEq for EncryptedSecretShare<C> {
+    fn eq(&self, other: &Self) -> bool {
+        self.sender_index == other.sender_index
+            && self.receiver_index == other.receiver_index
+            && self.nonce.as_slice() == other.nonce.as_slice()
+            && self.encrypted_polynomial_evaluation == other.encrypted_polynomial_evaluation
+    }
+}
+
+impl<C: CipherSuite> Eq for EncryptedSecretShare<C> {}
+
+impl<C: CipherSuite> Debug for EncryptedSecretShare<C> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        write!(
+            f,
+            "EncryptedSecretShare {{ sender_index: {}, receiver_index: {}, nonce: {:?}, encrypted_polynomial_evaluation: {:?} }}",
+            self.sender_index,
+            self.receiver_index,
+            self.nonce,
+            self.encrypted_polynomial_evaluation
+        )
+    }
+}
+
+// Required trait to implement `CanonicalDeserialize` below.
+impl<C: CipherSuite> ark_serialize::Valid for EncryptedSecretShare<C> {
+    fn check(&self) -> Result<(), ark_serialize::SerializationError> {
+        self.sender_index.check()?;
+        self.receiver_index.check()?;
+        self.nonce.to_vec().check()?;
+        self.encrypted_polynomial_evaluation.check()
+    }
+}
+
+impl<C: CipherSuite> CanonicalSerialize for EncryptedSecretShare<C> {
+    fn serialize_with_mode<W: ark_serialize::Write>(
+        &self,
+        mut writer: W,
+        compress: ark_serialize::Compress,
+    ) -> Result<(), ark_serialize::SerializationError> {
+        self.sender_index
+            .serialize_with_mode(&mut writer, compress)?;
+        self.receiver_index
+            .serialize_with_mode(&mut writer, compress)?;
+        self.nonce
+            .to_vec()
+            .serialize_with_mode(&mut writer, compress)?;
+        self.encrypted_polynomial_evaluation
+            .serialize_with_mode(&mut writer, compress)
+    }
+
+    fn serialized_size(&self, compress: ark_serialize::Compress) -> usize {
+        self.sender_index.serialized_size(compress)
+            + self.receiver_index.serialized_size(compress)
+            + self.nonce.serialized_size(compress)
+            + self
+                .encrypted_polynomial_evaluation
+                .serialized_size(compress)
+    }
+}
+
+impl<C: CipherSuite> CanonicalDeserialize for EncryptedSecretShare<C> {
+    fn deserialize_with_mode<R: ark_serialize::Read>(
+        mut reader: R,
+        compress: ark_serialize::Compress,
+        validate: ark_serialize::Validate,
+    ) -> Result<Self, ark_serialize::SerializationError> {
+        let sender_index = u32::deserialize_with_mode(&mut reader, compress, validate)?;
+        let receiver_index = u32::deserialize_with_mode(&mut reader, compress, validate)?;
+        let nonce_vec = Vec::<u8>::deserialize_with_mode(&mut reader, compress, validate)?;
+        let nonce = Nonce::<C::Cipher>::from_exact_iter(nonce_vec)
+            .ok_or(ark_serialize::SerializationError::InvalidData)?;
+        let encrypted_polynomial_evaluation =
+            Vec::<u8>::deserialize_with_mode(&mut reader, compress, validate)?;
+
+        Ok(EncryptedSecretShare::<C>::new(
+            sender_index,
+            receiver_index,
+            nonce,
+            encrypted_polynomial_evaluation,
+        ))
+    }
 }
 
 impl_serialization_traits!(EncryptedSecretShare<CipherSuite>);
@@ -139,7 +223,7 @@ impl<C: CipherSuite> EncryptedSecretShare<C> {
     pub fn new(
         sender_index: u32,
         receiver_index: u32,
-        nonce: [u8; 12],
+        nonce: Nonce<C::Cipher>,
         encrypted_polynomial_evaluation: Vec<u8>,
     ) -> Self {
         Self {
@@ -219,7 +303,7 @@ pub(crate) fn encrypt_share<C: CipherSuite>(
     Ok(EncryptedSecretShare::<C> {
         sender_index: share.sender_index,
         receiver_index: share.receiver_index,
-        nonce: (*nonce).try_into().unwrap(), // This unwrap cannot fail.
+        nonce,
         encrypted_polynomial_evaluation,
         _phantom: PhantomData,
     })
@@ -235,9 +319,8 @@ pub(crate) fn decrypt_share<C: CipherSuite>(
         .expect("KDF expansion failed unexpectedly");
 
     let key = Key::<C::Cipher>::from_slice(&final_aes_key);
-
-    let nonce = GenericArray::from_slice(&encrypted_share.nonce);
-    let cipher = C::Cipher::new(&key);
+    let nonce = Nonce::<C::Cipher>::from_slice(&encrypted_share.nonce);
+    let cipher = C::Cipher::new(key);
 
     let bytes = cipher
         .decrypt(
@@ -291,7 +374,7 @@ mod test {
             let encrypted_secret_share = EncryptedSecretShare::<Secp256k1Sha256>::new(
                 rng.next_u32(),
                 rng.next_u32(),
-                nonce,
+                nonce.into(),
                 encrypted_polynomial_evaluation,
             );
             let mut bytes = Vec::with_capacity(encrypted_secret_share.compressed_size());
@@ -300,7 +383,7 @@ mod test {
                 .unwrap();
             assert_eq!(
                 encrypted_secret_share,
-                EncryptedSecretShare::deserialize_compressed(&bytes[..]).unwrap()
+                EncryptedSecretShare::deserialize_compressed(&bytes[..]).unwrap(),
             );
         }
     }

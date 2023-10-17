@@ -2075,7 +2075,7 @@ mod test {
             // Wrong decryption from nonce
             {
                 let mut wrong_encrypted_secret_share = p1_their_encrypted_secret_shares[1].clone();
-                wrong_encrypted_secret_share.nonce = [42; 12];
+                wrong_encrypted_secret_share.nonce = [42; 12].into();
                 let p1_my_encrypted_secret_shares = vec![
                     p1_their_encrypted_secret_shares[0].clone(),
                     p2_their_encrypted_secret_shares[0].clone(),
@@ -2404,7 +2404,7 @@ mod test {
 
             {
                 let wrong_encrypted_secret_share =
-                    EncryptedSecretShare::new(1, 2, [0; 12], vec![0]);
+                    EncryptedSecretShare::new(1, 2, [0; 12].into(), vec![0]);
 
                 let p1_my_encrypted_secret_shares = vec![
                     p1_their_encrypted_secret_shares[0].clone(),
