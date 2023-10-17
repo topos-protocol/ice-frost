@@ -20,7 +20,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use rand::{CryptoRng, RngCore};
 
-use aead::{Aead, AeadCore, Key, KeyInit, Nonce};
+use aead::{Aead, AeadCore, Key, KeyInit, KeySizeUser, Nonce};
 use hkdf::Hkdf;
 use sha2::Sha256;
 
@@ -276,19 +276,26 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
     }
 }
 
+/// Encrypt a `SecretShare` given an initial slice of bytes.
+///
+/// This will perform an HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
+/// expansion over the Initial Key Material passed as input. The obtained Output Key
+/// Material will then be passed to this `Ciphersuite`'s cipher along with a random
+/// nonce to encrypt the private polynomial evaluation corresponding to this secret share.
 pub(crate) fn encrypt_share<C: CipherSuite>(
     share: &SecretShare<C>,
-    aes_key: &[u8],
+    initial_key_bytes: &[u8],
     rng: impl RngCore + CryptoRng,
 ) -> FrostResult<C, EncryptedSecretShare<C>> {
-    let hkdf = Hkdf::<Sha256>::new(None, aes_key);
-    let mut final_aes_key = [0u8; 16];
-    hkdf.expand(&[], &mut final_aes_key)
+    let hkdf = Hkdf::<Sha256>::new(None, initial_key_bytes);
+    let mut final_aead_key = vec![0u8; <C::Cipher as KeySizeUser>::key_size()];
+    hkdf.expand(&[], &mut final_aead_key)
         .map_err(|_| Error::Custom("KDF expansion failed unexpectedly".to_string()))?;
 
-    let key = Key::<C::Cipher>::from_slice(&final_aes_key);
-    let nonce = C::Cipher::generate_nonce(rng);
+    let key = Key::<C::Cipher>::from_slice(&final_aead_key); // This cannot panic.
     let cipher = C::Cipher::new(key);
+
+    let nonce = C::Cipher::generate_nonce(rng);
 
     let mut share_bytes = Vec::with_capacity(share.polynomial_evaluation.compressed_size());
     share
@@ -309,22 +316,27 @@ pub(crate) fn encrypt_share<C: CipherSuite>(
     })
 }
 
+/// Decrypt an `EncryptedSecretShare` given an initial slice of bytes.
+///
+/// This will perform an HMAC-based Extract-and-Expand Key Derivation Function (HKDF)
+/// expansion over the Initial Key Material passed as input. The obtained Output Key
+/// Material will then be passed to this `Ciphersuite`'s cipher along with the associated
+/// nonce used to obtain this `EncryptedSecretShare` to decrypt it.
 pub(crate) fn decrypt_share<C: CipherSuite>(
     encrypted_share: &EncryptedSecretShare<C>,
-    aes_key: &[u8],
+    initial_key_bytes: &[u8],
 ) -> FrostResult<C, SecretShare<C>> {
-    let hkdf = Hkdf::<Sha256>::new(None, aes_key);
-    let mut final_aes_key = [0u8; 16];
-    hkdf.expand(&[], &mut final_aes_key)
-        .expect("KDF expansion failed unexpectedly");
+    let hkdf = Hkdf::<Sha256>::new(None, initial_key_bytes);
+    let mut final_aead_key = vec![0u8; <C::Cipher as KeySizeUser>::key_size()];
+    hkdf.expand(&[], &mut final_aead_key)
+        .map_err(|_| Error::Custom("KDF expansion failed unexpectedly".to_string()))?;
 
-    let key = Key::<C::Cipher>::from_slice(&final_aes_key);
-    let nonce = Nonce::<C::Cipher>::from_slice(&encrypted_share.nonce);
+    let key = Key::<C::Cipher>::from_slice(&final_aead_key); // This cannot panic.
     let cipher = C::Cipher::new(key);
 
     let bytes = cipher
         .decrypt(
-            nonce,
+            &encrypted_share.nonce,
             encrypted_share.encrypted_polynomial_evaluation.as_ref(),
         )
         .map_err(|_| Error::DecryptionError)?;
