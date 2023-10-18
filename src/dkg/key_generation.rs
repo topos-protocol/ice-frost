@@ -903,11 +903,10 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                                     .is_err()
                             {
                                 complaints.push(Complaint::<C>::new(
-                                    self.state.index,
-                                    encrypted_share.sender_index,
                                     &pk.1,
                                     &self.state.dh_private_key.0,
                                     &dh_shared_key,
+                                    encrypted_share,
                                     &mut rng,
                                 )?);
                                 break;
@@ -1016,13 +1015,12 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     }
 
     /// Every participant can verify a complaint and determine who is the malicious
-    /// party. The relevant encrypted share is assumed to exist and publicly retrievable
+    /// party. The associated encrypted share is assumed to exist and publicly retrievable
     /// by any participant.
-    pub fn blame(
-        &self,
-        encrypted_share: &EncryptedSecretShare<C>,
-        complaint: &Complaint<C>,
-    ) -> u32 {
+    pub fn blame(&self, complaint: &Complaint<C>) -> u32 {
+        let maker_index = complaint.encrypted_share.receiver_index;
+        let accused_index = complaint.encrypted_share.sender_index;
+
         let mut pk_maker = <C as CipherSuite>::G::zero();
         let mut pk_accused = <C as CipherSuite>::G::zero();
         let mut commitment_accused = VerifiableSecretSharingCommitment {
@@ -1031,30 +1029,30 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         };
 
         for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
-            if commitment.index == complaint.accused_index {
+            if commitment.index == accused_index {
                 commitment_accused = commitment.clone();
             }
         }
 
         if commitment_accused.points.is_empty() {
-            return complaint.maker_index;
+            return maker_index;
         }
 
         for (index, pk) in self.state.their_dh_public_keys.iter() {
-            if index == &complaint.maker_index {
+            if index == &maker_index {
                 pk_maker = **pk;
-            } else if index == &complaint.accused_index {
+            } else if index == &accused_index {
                 pk_accused = **pk;
             }
         }
 
         if pk_maker == <C as CipherSuite>::G::zero() || pk_accused == <C as CipherSuite>::G::zero()
         {
-            return complaint.maker_index;
+            return maker_index;
         }
 
         if complaint.verify(&pk_maker, &pk_accused).is_err() {
-            return complaint.maker_index;
+            return maker_index;
         }
 
         let mut dh_key_bytes = Vec::with_capacity(complaint.dh_shared_key.compressed_size());
@@ -1063,16 +1061,16 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             .serialize_compressed(&mut dh_key_bytes)
             .is_err()
         {
-            return complaint.maker_index;
+            return maker_index;
         };
 
-        let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
+        let share = decrypt_share(&complaint.encrypted_share, &dh_key_bytes[..]);
         if share.is_err() {
-            return complaint.accused_index;
+            return accused_index;
         }
         match share.unwrap().verify(&commitment_accused) {
-            Ok(()) => complaint.maker_index,
-            Err(_) => complaint.accused_index,
+            Ok(()) => maker_index,
+            Err(_) => accused_index,
         }
     }
 }
@@ -2114,7 +2112,7 @@ mod test {
                 if let Error::Complaint(complaints) = complaints {
                     assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                    let bad_index = p3_state.blame(&complaints[0]);
                     assert!(bad_index == 1);
 
                     let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
@@ -2166,7 +2164,7 @@ mod test {
                 if let Error::Complaint(complaints) = complaints {
                     assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                    let bad_index = p3_state.blame(&complaints[0]);
                     assert!(bad_index == 1);
 
                     let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
@@ -2225,7 +2223,7 @@ mod test {
                 if let Error::Complaint(complaints) = complaints {
                     assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                    let bad_index = p3_state.blame(&complaints[0]);
                     assert!(bad_index == 1);
 
                     let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
@@ -2259,7 +2257,7 @@ mod test {
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
 
-                let bad_index = p3_state.blame(&p1_their_encrypted_secret_shares[0], &complaint);
+                let bad_index = p3_state.blame(&complaint);
                 assert!(bad_index == 2);
             }
 
@@ -2437,7 +2435,7 @@ mod test {
                 if let Error::Complaint(complaints) = complaints {
                     assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                    let bad_index = p3_state.blame(&complaints[0]);
 
                     assert!(bad_index == 1);
 
