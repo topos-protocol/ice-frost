@@ -732,13 +732,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             Ok(_) => {
                                 valid_participants.push(p.clone());
                                 their_commitments.push(p.commitments.as_ref().unwrap().clone());
-                                their_dh_public_keys.push((p.index, p.dh_public_key.clone()));
+                                their_dh_public_keys.push((p.index, p.dh_public_key));
                             }
                             Err(_) => misbehaving_participants.push(p.index),
                         }
                     } else {
                         valid_participants.push(p.clone());
-                        their_dh_public_keys.push((p.index, p.dh_public_key.clone()));
+                        their_dh_public_keys.push((p.index, p.dh_public_key));
                     }
                 }
                 Err(_) => misbehaving_participants.push(p.index),
