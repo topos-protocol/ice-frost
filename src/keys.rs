@@ -31,7 +31,7 @@ impl<C: CipherSuite> Drop for DiffieHellmanPrivateKey<C> {
 }
 
 /// A Diffie-Hellman public key wrapper type around a CurveGroup.
-#[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct DiffieHellmanPublicKey<C: CipherSuite> {
     pub(crate) key: C::G,
     _phantom: PhantomData<C>,
