@@ -43,11 +43,14 @@ impl<C: CipherSuite> Drop for NoncePair<C> {
 }
 
 impl<C: CipherSuite> NoncePair<C> {
-    pub fn new(secret_key: &IndividualSigningKey<C>, mut csprng: impl CryptoRng + Rng) -> Self {
-        NoncePair(
-            nonce_generate(secret_key, &mut csprng).unwrap(),
-            nonce_generate(secret_key, &mut csprng).unwrap(),
-        )
+    pub fn new(
+        secret_key: &IndividualSigningKey<C>,
+        mut csprng: impl CryptoRng + Rng,
+    ) -> FrostResult<C, Self> {
+        Ok(NoncePair(
+            nonce_generate(secret_key, &mut csprng)?,
+            nonce_generate(secret_key, &mut csprng)?,
+        ))
     }
 }
 
@@ -176,14 +179,14 @@ pub fn generate_commitment_share_lists<C: CipherSuite>(
     mut csprng: impl CryptoRng + Rng,
     participant_secret_key: &IndividualSigningKey<C>,
     number_of_shares: usize,
-) -> (PublicCommitmentShareList<C>, SecretCommitmentShareList<C>) {
+) -> FrostResult<C, (PublicCommitmentShareList<C>, SecretCommitmentShareList<C>)> {
     let mut commitments: Vec<CommitmentShare<C>> = Vec::with_capacity(number_of_shares);
 
     for _ in 0..number_of_shares {
         commitments.push(CommitmentShare::from(NoncePair::new(
             participant_secret_key,
             &mut csprng,
-        )));
+        )?));
     }
 
     let mut published: Vec<(C::G, C::G)> = Vec::with_capacity(number_of_shares);
@@ -192,13 +195,13 @@ pub fn generate_commitment_share_lists<C: CipherSuite>(
         published.push(commitment.publish());
     }
 
-    (
+    Ok((
         PublicCommitmentShareList {
             participant_index: participant_secret_key.index,
             commitments: published,
         },
         SecretCommitmentShareList { commitments },
-    )
+    ))
 }
 
 impl<C: CipherSuite> SecretCommitmentShareList<C> {
@@ -251,7 +254,7 @@ mod test {
             key: Fr::zero(),
         };
         let _commitment_share: CommitmentShare<Secp256k1Sha256> =
-            NoncePair::new(&secret_key, &mut OsRng).into();
+            NoncePair::new(&secret_key, &mut OsRng).unwrap().into();
     }
 
     #[test]
@@ -301,7 +304,7 @@ mod test {
             key: Fr::zero(),
         };
         let (public_share_list, secret_share_list) =
-            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &secret_key, 1);
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &secret_key, 1).unwrap();
 
         assert_eq!(
             public_share_list.commitments[0].0.into_affine(),
@@ -317,7 +320,7 @@ mod test {
             key: Fr::zero(),
         };
         let (_public_share_list, mut secret_share_list) =
-            generate_commitment_share_lists(&mut OsRng, &secret_key, 8);
+            generate_commitment_share_lists(&mut OsRng, &secret_key, 8).unwrap();
 
         assert!(secret_share_list.commitments.len() == 8);
 

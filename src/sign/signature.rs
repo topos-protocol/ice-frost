@@ -147,7 +147,9 @@ impl<C: CipherSuite> DerefMut for IndividualPublicKeys<C> {
     }
 }
 
-fn encode_group_commitment_list<C: CipherSuite>(commitment_list: &[(u32, C::G, C::G)]) -> Vec<u8> {
+fn encode_group_commitment_list<C: CipherSuite>(
+    commitment_list: &[(u32, C::G, C::G)],
+) -> FrostResult<C, Vec<u8>> {
     let mut encoded_group_commitment =
         Vec::with_capacity(commitment_list.len() * 2 * commitment_list[0].1.compressed_size());
     for (identifier, hiding_nonce_commitment, binding_nonce_commitment) in commitment_list.iter() {
@@ -155,13 +157,13 @@ fn encode_group_commitment_list<C: CipherSuite>(commitment_list: &[(u32, C::G, C
         encoded_group_commitment.extend(&identifier.to_le_bytes()[..]);
         hiding_nonce_commitment
             .serialize_compressed(&mut encoded_group_commitment)
-            .unwrap();
+            .map_err(|_| Error::SerializationError)?;
         binding_nonce_commitment
             .serialize_compressed(&mut encoded_group_commitment)
-            .unwrap();
+            .map_err(|_| Error::SerializationError)?;
     }
 
-    encoded_group_commitment
+    Ok(encoded_group_commitment)
 }
 
 fn compute_binding_factors<C: CipherSuite>(
@@ -180,7 +182,7 @@ fn compute_binding_factors<C: CipherSuite>(
         commitment_list.push((signer.participant_index, hiding, binding));
     }
 
-    let encoded_comm_hash = C::h5(&encode_group_commitment_list::<C>(&commitment_list))?;
+    let encoded_comm_hash = C::h5(&encode_group_commitment_list::<C>(&commitment_list)?)?;
     // [`extend`] operates in place, hence msg_hash is now equal to [`rho_input_prefix`] .
     msg_hash.extend(encoded_comm_hash.as_ref());
 
@@ -228,7 +230,7 @@ fn commitment_for_participant<C: CipherSuite>(
         }
     }
 
-    let encoded_comm_hash = C::h5(&encode_group_commitment_list::<C>(&commitment_list))?;
+    let encoded_comm_hash = C::h5(&encode_group_commitment_list::<C>(&commitment_list)?)?;
     // [`extend`] operates in place, hence msg_hash is now equal to [`rho_input_prefix`] .
     msg_hash.extend(encoded_comm_hash.as_ref());
 
@@ -275,7 +277,7 @@ pub(crate) fn compute_challenge<C: CipherSuite>(
         .map_err(|_| Error::CompressionError)?;
     challenge_input.extend(message_hash);
 
-    Ok(C::h2(&challenge_input).unwrap())
+    C::h2(&challenge_input)
 }
 
 impl<C: CipherSuite> IndividualSigningKey<C> {
@@ -321,12 +323,12 @@ impl<C: CipherSuite> IndividualSigningKey<C> {
         let all_participant_indices: Vec<u32> =
             signers.iter().map(|x| x.participant_index).collect();
         let lambda: Scalar<C> =
-            calculate_lagrange_coefficients::<C>(self.index, &all_participant_indices).unwrap();
+            calculate_lagrange_coefficients::<C>(self.index, &all_participant_indices)?;
 
         let my_commitment_share =
             my_secret_commitment_share_list.commitments[my_commitment_share_index].clone();
 
-        let challenge = compute_challenge::<C>(&group_commitment, group_key, message_hash).unwrap();
+        let challenge = compute_challenge::<C>(&group_commitment, group_key, message_hash)?;
 
         let z = my_commitment_share.hiding.secret
             + (my_commitment_share.binding.secret * binding_factor)
@@ -644,8 +646,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
                     let lambda = calculate_lagrange_coefficients::<C>(
                         signer.participant_index,
                         &all_participant_indices,
-                    )
-                    .unwrap();
+                    )?;
 
                     // This cannot fail, and has already been performed previously.
                     let partial_sig = self
@@ -668,8 +669,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
                         signer.participant_index,
                         self.aggregator.message_hash.as_ref(),
                         &self.state.signers,
-                    )
-                    .unwrap();
+                    )?;
 
                     if check != participant_commitment + (pk_i.mul(challenge * lambda)) {
                         misbehaving_participants.push(signer.participant_index);
@@ -692,8 +692,7 @@ impl<C: CipherSuite> ThresholdSignature<C> {
         group_key: &GroupVerifyingKey<C>,
         message_hash: &[u8],
     ) -> FrostResult<C, ()> {
-        let challenge =
-            compute_challenge::<C>(&self.group_commitment, group_key, message_hash).unwrap();
+        let challenge = compute_challenge::<C>(&self.group_commitment, group_key, message_hash)?;
 
         let retrieved_commitment: C::G = <C as CipherSuite>::G::msm(
             &[C::G::generator().into(), (-group_key.key).into()],
@@ -749,8 +748,7 @@ mod test {
         let mut dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
 
         for i in 1..n1 + 1 {
-            let (p, c, dh_sk) =
-                Participant::<Secp256k1Sha256>::new_dealer(&params, i, rng).unwrap();
+            let (p, c, dh_sk) = Participant::<Secp256k1Sha256>::new_dealer(&params, i, rng)?;
             participants.push(p);
             coefficients.push(c);
             dh_secret_keys.push(dh_sk);
@@ -773,10 +771,8 @@ mod test {
                 &coefficients[i as usize],
                 &participants,
                 rng,
-            )
-            .unwrap();
-            let pi_their_encrypted_secret_shares =
-                pi_state.their_encrypted_secret_shares().unwrap();
+            )?;
+            let pi_their_encrypted_secret_shares = pi_state.their_encrypted_secret_shares()?;
             participants_encrypted_secret_shares[i as usize] =
                 pi_their_encrypted_secret_shares.clone();
             participants_states_1.push(pi_state);
@@ -790,8 +786,7 @@ mod test {
         participants_states_2.push(
             participants_states_1[0]
                 .clone()
-                .to_round_two(p1_my_encrypted_secret_shares, rng)
-                .unwrap(),
+                .to_round_two(p1_my_encrypted_secret_shares, rng)?,
         );
 
         for i in 2..n1 + 1 {
@@ -806,20 +801,16 @@ mod test {
             participants_states_2.push(
                 participants_states_1[(i - 1) as usize]
                     .clone()
-                    .to_round_two(pi_my_encrypted_secret_shares, rng)
-                    .unwrap(),
+                    .to_round_two(pi_my_encrypted_secret_shares, rng)?,
             );
         }
 
         let mut participants_secret_keys = Vec::<IndividualSigningKey<Secp256k1Sha256>>::new();
-        let (group_key, p1_sk) = participants_states_2[0].clone().finish().unwrap();
+        let (group_key, p1_sk) = participants_states_2[0].clone().finish()?;
         participants_secret_keys.push(p1_sk);
 
         for i in 2..n1 + 1 {
-            let (_, pi_sk) = participants_states_2[(i - 1) as usize]
-                .clone()
-                .finish()
-                .unwrap();
+            let (_, pi_sk) = participants_states_2[(i - 1) as usize].clone().finish()?;
             participants_secret_keys.push(pi_sk);
         }
 
@@ -830,8 +821,7 @@ mod test {
             let mut signers_dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
 
             for i in 1..n2 + 1 {
-                let (p, dh_sk) =
-                    Participant::<Secp256k1Sha256>::new_signer(&params, i, rng).unwrap();
+                let (p, dh_sk) = Participant::<Secp256k1Sha256>::new_signer(&params, i, rng)?;
                 signers.push(p);
                 signers_dh_secret_keys.push(dh_sk);
             }
@@ -885,15 +875,14 @@ mod test {
                 signers_states_2.push(
                     signers_states_1[i]
                         .clone()
-                        .to_round_two(signers_encrypted_secret_shares[i].clone(), rng)
-                        .unwrap(),
+                        .to_round_two(signers_encrypted_secret_shares[i].clone(), rng)?,
                 );
             }
 
             let mut signers_secret_keys = Vec::<IndividualSigningKey<Secp256k1Sha256>>::new();
 
             for signers_state in signers_states_2.iter() {
-                let (_, pi_sk) = signers_state.clone().finish().unwrap();
+                let (_, pi_sk) = signers_state.clone().finish()?;
                 signers_secret_keys.push(pi_sk);
             }
 
@@ -916,7 +905,7 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1).unwrap();
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -957,7 +946,7 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1).unwrap();
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -994,7 +983,7 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1).unwrap();
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1033,11 +1022,11 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1).unwrap();
         let (p3_public_comshares, mut p3_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p3_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p3_sk, 1).unwrap();
         let (p4_public_comshares, mut p4_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p4_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p4_sk, 1).unwrap();
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1097,9 +1086,9 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1).unwrap();
         let (p2_public_comshares, mut p2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p2_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p2_sk, 1).unwrap();
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1157,9 +1146,9 @@ mod test {
 
             let message = b"This is a test of the tsunami alert system. This is only a test.";
             let (d1_public_comshares, mut d1_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &d1_sk, 1).unwrap();
             let (d2_public_comshares, mut d2_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &d2_sk, 1).unwrap();
 
             let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1203,9 +1192,9 @@ mod test {
 
             let message = b"This is a test of the tsunami alert system. This is only a test.";
             let (s1_public_comshares, mut s1_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &s1_sk, 1).unwrap();
             let (s2_public_comshares, mut s2_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &s2_sk, 1).unwrap();
 
             let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
@@ -1272,9 +1261,9 @@ mod test {
 
             let message = b"This is a test of the tsunami alert system. This is only a test.";
             let (d1_public_comshares, mut d1_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &d1_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &d1_sk, 1).unwrap();
             let (d2_public_comshares, mut d2_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &d2_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &d2_sk, 1).unwrap();
 
             let mut aggregator = SignatureAggregator::new(d_params, group_key, &message[..]);
 
@@ -1318,11 +1307,11 @@ mod test {
 
             let message = b"This is a test of the tsunami alert system. This is only a test.";
             let (s1_public_comshares, mut s1_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &s1_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &s1_sk, 1).unwrap();
             let (s2_public_comshares, mut s2_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &s2_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &s2_sk, 1).unwrap();
             let (s3_public_comshares, mut s3_secret_comshares) =
-                generate_commitment_share_lists(&mut OsRng, &s3_sk, 1);
+                generate_commitment_share_lists(&mut OsRng, &s3_sk, 1).unwrap();
 
             let mut aggregator = SignatureAggregator::new(s_params, group_key, &message[..]);
 
@@ -1396,9 +1385,9 @@ mod test {
         };
 
         let (p1_public_comshares, _) =
-            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p1_sk, 1);
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p1_sk, 1).unwrap();
         let (p2_public_comshares, _) =
-            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p2_sk, 1);
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p2_sk, 1).unwrap();
 
         let mut aggregator = SignatureAggregator::new(
             params,
@@ -1437,9 +1426,9 @@ mod test {
 
         let message = b"This is a test of the tsunami alert system. This is only a test.";
         let (p1_public_comshares, mut p1_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p1_sk, 1).unwrap();
         let (p2_public_comshares, mut p2_secret_comshares) =
-            generate_commitment_share_lists(&mut OsRng, &p2_sk, 1);
+            generate_commitment_share_lists(&mut OsRng, &p2_sk, 1).unwrap();
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 

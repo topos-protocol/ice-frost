@@ -112,11 +112,11 @@ fn signing_and_verification_3_out_of_5() {
 
     let message = b"This is a test of the tsunami alert system. This is only a test.";
     let (p1_public_comshares, mut p1_secret_comshares) =
-        generate_commitment_share_lists(&mut OsRng, &p1_sk, 1);
+        generate_commitment_share_lists(&mut OsRng, &p1_sk, 1).unwrap();
     let (p3_public_comshares, mut p3_secret_comshares) =
-        generate_commitment_share_lists(&mut OsRng, &p3_sk, 1);
+        generate_commitment_share_lists(&mut OsRng, &p3_sk, 1).unwrap();
     let (p4_public_comshares, mut p4_secret_comshares) =
-        generate_commitment_share_lists(&mut OsRng, &p4_sk, 1);
+        generate_commitment_share_lists(&mut OsRng, &p4_sk, 1).unwrap();
 
     let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 

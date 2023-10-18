@@ -233,7 +233,7 @@ pub(crate) fn decrypt_share<C: CipherSuite>(
     let hkdf = Hkdf::<Sha256>::new(None, aes_key);
     let mut final_aes_key = [0u8; 16];
     hkdf.expand(&[], &mut final_aes_key)
-        .expect("KDF expansion failed unexpectedly");
+        .map_err(|_| Error::Custom("KDF expansion failed unexpectedly".to_string()))?;
 
     let final_aes_key = GenericArray::from_slice(&final_aes_key);
 

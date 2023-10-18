@@ -723,6 +723,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                                 continue;
                             }
                         };
+
+                        // The two unwrap() below cannot fail, as the participants here are dealers and hence
+                        // always have a proof of secret key and commitments to their private polynomial evaluations.
                         match p
                             .proof_of_secret_key
                             .as_ref()
@@ -789,6 +792,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             Vec::with_capacity(parameters.n as usize - 1);
 
         for p in participants.iter() {
+            // This unwrap() cannot fail, as we would have already ended if the participant was a signer.
             let share =
                 SecretShare::<C>::evaluate_polynomial(my_index, &p.index, my_coefficients.unwrap());
 
@@ -885,9 +889,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
                     for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
                         if commitment.index == encrypted_share.sender_index {
-                            // If the decrypted share is incorrect, P_i builds
-                            // a complaint
+                            // If the decrypted share is incorrect, P_i builds a complaint.
 
+                            // This unwrap() cannot fail.
                             if decrypted_share.is_err()
                                 || decrypted_share_ref
                                     .as_ref()
@@ -986,22 +990,22 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// my_commitment is needed for now, but won't be when the distinction
     /// dealers/signers is implemented.
     pub(crate) fn calculate_group_key(&self) -> FrostResult<C, GroupVerifyingKey<C>> {
-        let mut index_vector =
-            Vec::with_capacity(self.state.their_commitments.as_ref().unwrap().len());
+        let commitments = self
+            .state
+            .their_commitments
+            .as_ref()
+            .ok_or(Error::InvalidGroupKey)?;
+        let mut index_vector = Vec::with_capacity(commitments.len());
 
-        for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
+        for commitment in commitments.iter() {
             index_vector.push(commitment.index);
         }
 
         let mut group_key = <C as CipherSuite>::G::zero();
 
         // The group key is the interpolation at 0 of all index 0 of the dealers' commitments.
-        for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
-            let coeff = match calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)
-            {
-                Ok(s) => s,
-                Err(error) => return Err(Error::Custom(error.to_string())),
-            };
+        for commitment in commitments.iter() {
+            let coeff = calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)?;
 
             group_key += commitment.public_key().unwrap().mul(coeff);
         }
@@ -1060,13 +1064,14 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             return complaint.maker_index;
         };
 
-        let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
-        if share.is_err() {
-            return complaint.accused_index;
-        }
-        match share.unwrap().verify(&commitment_accused) {
-            Ok(()) => complaint.maker_index,
+        let share_res = decrypt_share(encrypted_share, &dh_key_bytes[..]);
+
+        match share_res {
             Err(_) => complaint.accused_index,
+            Ok(share) => match share.verify(&commitment_accused) {
+                Ok(()) => complaint.maker_index,
+                Err(_) => complaint.accused_index,
+            },
         }
     }
 }
@@ -2569,11 +2574,11 @@ mod test {
 
             // Check that the generated IndividualVerifyingKey from other participants match
             let p1_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(1, &commitments);
+                IndividualVerifyingKey::generate_from_commitments(1, &commitments)?;
             let p2_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(2, &commitments);
+                IndividualVerifyingKey::generate_from_commitments(2, &commitments)?;
             let p3_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(3, &commitments);
+                IndividualVerifyingKey::generate_from_commitments(3, &commitments)?;
 
             assert_eq!(p1_public_key, p1_recovered_public_key);
             assert_eq!(p2_public_key, p2_recovered_public_key);

@@ -85,6 +85,7 @@ impl<C: CipherSuite> Participant<C> {
     ) -> FrostResult<C, (Self, Coefficients<C>, DiffieHellmanPrivateKey<C>)> {
         let (dealer, coeff_option, dh_private_key) =
             Self::new_internal(parameters, false, index, None, &mut rng)?;
+        // This unwrap() cannot fail, as we always have at least an empty vector of coefficients.
         Ok((dealer, coeff_option.unwrap(), dh_private_key))
     }
 
@@ -249,7 +250,7 @@ impl<C: CipherSuite> Participant<C> {
             &mut rng,
         )?;
 
-        // Unwrapping cannot panic here
+        // This unwrap() cannot fail, as we always have at least an empty vector of coefficients.
         let coefficients = coeff_option.unwrap();
 
         let (participant_state, participant_lists) = DistributedKeyGeneration::new_state_internal(
@@ -263,11 +264,7 @@ impl<C: CipherSuite> Participant<C> {
             &mut rng,
         )?;
 
-        // Unwrapping cannot panic here
-        let encrypted_shares = participant_state
-            .their_encrypted_secret_shares()
-            .unwrap()
-            .clone();
+        let encrypted_shares = participant_state.their_encrypted_secret_shares()?.clone();
 
         Ok((dealer, encrypted_shares, participant_lists))
     }
@@ -276,11 +273,7 @@ impl<C: CipherSuite> Participant<C> {
     ///
     /// This is used to pass into the final call to [`DistributedKeyGeneration::<RoundTwo, C>::finish()`] .
     pub fn public_key(&self) -> Option<&C::G> {
-        if self.commitments.is_some() {
-            return self.commitments.as_ref().unwrap().public_key();
-        }
-
-        None
+        self.commitments.as_ref().map(|c| c.public_key())?
     }
 }
 

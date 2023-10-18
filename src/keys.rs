@@ -150,7 +150,7 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
     pub fn generate_from_commitments(
         participant_index: u32,
         commitments: &[VerifiableSecretSharingCommitment<C>],
-    ) -> Self {
+    ) -> FrostResult<C, Self> {
         let mut share: C::G = <C as CipherSuite>::G::zero();
         let term: <C::G as Group>::ScalarField = participant_index.into();
 
@@ -169,15 +169,14 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
                 }
             }
 
-            let coeff =
-                calculate_lagrange_coefficients::<C>(commitment.index, &index_vector).unwrap();
+            let coeff = calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)?;
             share += tmp * coeff;
         }
 
-        IndividualVerifyingKey {
+        Ok(IndividualVerifyingKey {
             index: participant_index,
             share,
-        }
+        })
     }
 }
 
@@ -240,8 +239,7 @@ impl<C: CipherSuite> GroupVerifyingKey<C> {
         signature: &ThresholdSignature<C>,
         message_hash: &[u8],
     ) -> FrostResult<C, ()> {
-        let challenge =
-            compute_challenge::<C>(&signature.group_commitment, self, message_hash).unwrap();
+        let challenge = compute_challenge::<C>(&signature.group_commitment, self, message_hash)?;
 
         let retrieved_commitment: C::G = <C as CipherSuite>::G::msm(
             &[C::G::generator().into(), (-self.key).into()],
