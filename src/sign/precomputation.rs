@@ -30,7 +30,8 @@ fn nonce_generate<C: CipherSuite>(
 
     let mut nonce_input = random_bytes.as_ref().to_vec();
     nonce_input.extend(&secret_key.to_bytes()?);
-    C::h3(&nonce_input)
+
+    Ok(C::h3(&nonce_input))
 }
 
 #[derive(Debug, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
@@ -188,7 +189,7 @@ pub fn generate_commitment_share_lists<C: CipherSuite>(
 
     let mut published: Vec<(C::G, C::G)> = Vec::with_capacity(number_of_shares);
 
-    for commitment in commitments.iter() {
+    for commitment in &commitments {
         published.push(commitment.publish());
     }
 
@@ -276,7 +277,7 @@ mod test {
             let commit = Projective::generator().mul(secret);
             let binding = Commitment::<Secp256k1Sha256> { secret, commit };
             let hiding = binding.clone();
-            let commitment_share = CommitmentShare { binding, hiding };
+            let commitment_share = CommitmentShare { hiding, binding };
             let mut bytes = Vec::with_capacity(commitment_share.compressed_size());
 
             commitment_share.serialize_compressed(&mut bytes).unwrap();

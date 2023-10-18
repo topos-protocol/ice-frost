@@ -79,7 +79,7 @@ impl<C: CipherSuite> Participant<C> {
     /// Diffie-Hellman private key for secret shares encryption which
     /// must be kept private.
     pub fn new_dealer(
-        parameters: &ThresholdParameters<C>,
+        parameters: ThresholdParameters<C>,
         index: u32,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, Coefficients<C>, DiffieHellmanPrivateKey<C>)> {
@@ -112,7 +112,7 @@ impl<C: CipherSuite> Participant<C> {
     /// signers's Diffie-Hellman private key for secret shares encryption
     /// which must be kept private.
     pub fn new_signer(
-        parameters: &ThresholdParameters<C>,
+        parameters: ThresholdParameters<C>,
         index: u32,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, DiffieHellmanPrivateKey<C>)> {
@@ -122,7 +122,7 @@ impl<C: CipherSuite> Participant<C> {
     }
 
     fn new_internal(
-        parameters: &ThresholdParameters<C>,
+        parameters: ThresholdParameters<C>,
         is_signer: bool,
         index: u32,
         secret_key: Option<Scalar<C>>,
@@ -236,8 +236,8 @@ impl<C: CipherSuite> Participant<C> {
     /// It also returns a list of the valid / misbehaving participants
     /// of the new set for handling outside of this crate.
     pub fn reshare(
-        parameters: &ThresholdParameters<C>,
-        secret_key: IndividualSigningKey<C>,
+        parameters: ThresholdParameters<C>,
+        secret_key: &IndividualSigningKey<C>,
         signers: &[Participant<C>],
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, Vec<EncryptedSecretShare<C>>, DKGParticipantList<C>)> {
@@ -255,7 +255,7 @@ impl<C: CipherSuite> Participant<C> {
         let (participant_state, participant_lists) = DistributedKeyGeneration::new_state_internal(
             parameters,
             &dh_private_key,
-            &secret_key.index,
+            secret_key.index,
             Some(&coefficients),
             signers,
             true,
@@ -311,7 +311,7 @@ mod test {
         let params = ThresholdParameters::new(3, 2);
         let rng = OsRng;
 
-        let result = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, rng);
+        let result = Participant::<Secp256k1Sha256>::new_dealer(params, 0, rng);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Error::IndexIsZero);
     }

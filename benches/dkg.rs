@@ -25,11 +25,11 @@ fn criterion_benchmark(c: &mut Criterion) {
     let rng = OsRng;
 
     c.bench_function("Participant creation (dealer)", move |b| {
-        b.iter(|| ParticipantDKG::new_dealer(&params, 1, rng))
+        b.iter(|| ParticipantDKG::new_dealer(params, 1, rng))
     });
 
     c.bench_function("Participant creation (signer)", move |b| {
-        b.iter(|| ParticipantDKG::new_signer(&params, 1, rng))
+        b.iter(|| ParticipantDKG::new_signer(params, 1, rng))
     });
 
     let mut participants = Vec::<ParticipantDKG>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
@@ -37,7 +37,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut dh_secret_keys = Vec::<DHSkey>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 1..NUMBER_OF_PARTICIPANTS + 1 {
-        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, rng).unwrap();
+        let (p, c, dh_sk) = ParticipantDKG::new_dealer(params, i, rng).unwrap();
         participants.push(p);
         coefficients.push(c);
         dh_secret_keys.push(dh_sk);
@@ -60,9 +60,9 @@ fn criterion_benchmark(c: &mut Criterion) {
     c.bench_function("Round One (dealer)", move |b| {
         b.iter(|| {
             Dkg::<_>::bootstrap(
-                &params,
+                params,
                 &p1_dh_sk,
-                &p1.index,
+                p1.index,
                 &coefficient,
                 &participants_copy,
                 rng,
@@ -72,9 +72,9 @@ fn criterion_benchmark(c: &mut Criterion) {
 
     for i in 0..NUMBER_OF_PARTICIPANTS {
         let (pi_state, _participant_lists) = Dkg::<_>::bootstrap(
-            &params,
+            params,
             &dh_secret_keys[i as usize],
-            &participants[i as usize].index.clone(),
+            participants[i as usize].index,
             &coefficients[i as usize],
             &participants,
             rng,
@@ -96,7 +96,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     participants_states_2.push(
         participants_states_1[0]
             .clone()
-            .to_round_two(p1_my_encrypted_secret_shares.clone(), rng)
+            .to_round_two(&p1_my_encrypted_secret_shares.clone(), rng)
             .unwrap(),
     );
 
@@ -113,7 +113,7 @@ fn criterion_benchmark(c: &mut Criterion) {
         participants_states_2.push(
             participants_states_1[(i - 1) as usize]
                 .clone()
-                .to_round_two(pi_my_encrypted_secret_shares, rng)
+                .to_round_two(&pi_my_encrypted_secret_shares, rng)
                 .unwrap(),
         );
     }
@@ -127,13 +127,13 @@ fn criterion_benchmark(c: &mut Criterion) {
         b.iter(|| {
             p1_state
                 .clone()
-                .to_round_two(p1_my_encrypted_secret_shares_copy.clone(), rng)
+                .to_round_two(&p1_my_encrypted_secret_shares_copy, rng)
         });
     });
 
     let p1_state = participants_states_1[0]
         .clone()
-        .to_round_two(p1_my_encrypted_secret_shares.clone(), rng)
+        .to_round_two(&p1_my_encrypted_secret_shares, rng)
         .unwrap();
 
     c.bench_function("Finish", move |b| {
@@ -143,22 +143,22 @@ fn criterion_benchmark(c: &mut Criterion) {
     let (_group_key, p1_sk) = participants_states_2[0].clone().finish().unwrap();
 
     let mut signers = Vec::<ParticipantDKG>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
-    let (s1, s1_dh_sk) = ParticipantDKG::new_signer(&params, 1, rng).unwrap();
+    let (s1, s1_dh_sk) = ParticipantDKG::new_signer(params, 1, rng).unwrap();
     signers.push(s1.clone());
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
-        let (s, _) = ParticipantDKG::new_signer(&params, i, rng).unwrap();
+        let (s, _) = ParticipantDKG::new_signer(params, i, rng).unwrap();
         signers.push(s);
     }
 
     c.bench_function("Reshare", move |b| {
-        b.iter(|| ParticipantDKG::reshare(&params, p1_sk.clone(), &signers, rng));
+        b.iter(|| ParticipantDKG::reshare(params, &p1_sk, &signers, rng));
     });
 
     let dealers = participants.clone();
 
     c.bench_function("Round One (signer)", move |b| {
-        b.iter(|| Dkg::<_>::new(&params, &s1_dh_sk, &s1.index, &dealers, rng));
+        b.iter(|| Dkg::<_>::new(params, &s1_dh_sk, s1.index, &dealers, rng));
     });
 }
 
