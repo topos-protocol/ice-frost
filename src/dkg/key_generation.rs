@@ -900,7 +900,6 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                                     encrypted_share.sender_index,
                                     &pk.1,
                                     &self.state.dh_private_key.0,
-                                    &self.state.dh_public_key.key,
                                     &dh_shared_key,
                                     &mut rng,
                                 )?);

@@ -38,7 +38,6 @@ impl<C: CipherSuite> Complaint<C> {
         accused_index: u32,
         accused_pk: &C::G,
         dh_skey: &Scalar<C>,
-        dh_pkey: &C::G,
         dh_shared_key: &C::G,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, Self> {
@@ -50,6 +49,8 @@ impl<C: CipherSuite> Complaint<C> {
         let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<Scalar<C>>>::new(
             "Complaint Context".as_bytes(),
         );
+
+        let dh_pkey = C::G::generator() * dh_skey;
 
         let mut message = my_index.to_le_bytes().to_vec();
         message.extend(&accused_index.to_le_bytes());
