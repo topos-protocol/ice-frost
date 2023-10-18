@@ -313,6 +313,11 @@
 //! The participants then use these secret shares from the other participants to advance to
 //! the second round of the distributed key generation protocol.
 //!
+//! Note that this library doesn't enforce that the indices in the encrypted secret shares
+//! are valid (i.e. within the bounds defined by the parameters of this key generation session).
+//! It is the responsibility of implementors to pre-check those before proceeding to `round_two`,
+//! otherwise they will abort without succeeding in generating a group key.
+//!
 //! ```rust
 //! # use ice_frost::dkg::DistributedKeyGeneration;
 //! # use ice_frost::parameters::ThresholdParameters;
