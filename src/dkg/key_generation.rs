@@ -869,6 +869,14 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         // Step 2.1: Each P_i decrypts their shares with
         //           key k_il = pk_l^sk_i
         for encrypted_share in my_encrypted_secret_shares.iter() {
+            // This sanity check to ensure we are indeed the intended receiver of this secret share
+            // is not technically necessary, as ensuring that we only include our dedicated shares
+            // is out of scope of this library.
+            // Because we assume communication channels to be authentified, and indices within an
+            // `EncryptedSecretShare` being public, external implementations should ensure that the
+            // receiver index of this encrypted share has not been tampered with.
+            debug_assert_eq!(encrypted_share.receiver_index, self.state.index);
+
             for pk in self.state.their_dh_public_keys.iter() {
                 if pk.0 == encrypted_share.sender_index {
                     let dh_shared_key = *pk.1 * self.state.dh_private_key.0;
@@ -885,8 +893,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
                     for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
                         if commitment.index == encrypted_share.sender_index {
-                            // If the decrypted share is incorrect, P_i builds
-                            // a complaint
+                            // If the decrypted share is incorrect, P_i builds a complaint.
 
                             if decrypted_share.is_err()
                                 || decrypted_share_ref
@@ -896,7 +903,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                                     .is_err()
                             {
                                 complaints.push(Complaint::<C>::new(
-                                    encrypted_share.receiver_index,
+                                    self.state.index,
                                     encrypted_share.sender_index,
                                     &pk.1,
                                     &self.state.dh_private_key.0,
