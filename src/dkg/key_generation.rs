@@ -158,9 +158,14 @@
 //!
 //! // The participants then use these secret shares from the other participants to advance to
 //! // round two of the distributed key generation protocol.
-//! let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! let (alice_state, alice_complaints) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (bob_state, bob_complaints) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! let (carol_state, carol_complaints) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alice_complaints.is_empty());
+//! assert!(bob_complaints.is_empty());
+//! assert!(carol_complaints.is_empty());
 //!
 //! // Each participant can now derive their long-lived secret keys and the group's
 //! // public key.
@@ -295,9 +300,14 @@
 //!
 //! // The participants then use these secret shares from the other participants to advance to
 //! // round two of the distributed key generation protocol.
-//! let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! let (alice_state, alice_complaints) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (bob_state, bob_complaints) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! let (carol_state, carol_complaints) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alice_complaints.is_empty());
+//! assert!(bob_complaints.is_empty());
+//! assert!(carol_complaints.is_empty());
 //!
 //! // Each participant can now derive their long-lived secret keys and the group's
 //! // public key.
@@ -447,10 +457,16 @@
 //! // DKG ran by Alice, Bob and Carol. The final group key of the 3-out-of-4 threshold scheme
 //! // configuration will be identical to the one of the 2-out-of-3 original one.
 //!
-//! let alexis_state = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
-//! let barbara_state = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
-//! let claire_state = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
-//! let david_state = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
+//! let (alexis_state, alexis_complaints) = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
+//! let (barbara_state, barbara_complaints) = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
+//! let (claire_state, claire_complaints) = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
+//! let (david_state, david_complaints) = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alexis_complaints.is_empty());
+//! assert!(barbara_complaints.is_empty());
+//! assert!(claire_complaints.is_empty());
+//! assert!(david_complaints.is_empty());
 //!
 //! let (alexis_group_key, alexis_secret_key) = alexis_state.finish()?;
 //! let (barbara_group_key, barbara_secret_key) = barbara_state.finish()?;
@@ -848,7 +864,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         mut self,
         my_encrypted_secret_shares: Vec<EncryptedSecretShare<C>>,
         mut rng: impl RngCore + CryptoRng,
-    ) -> FrostResult<C, DistributedKeyGeneration<RoundTwo, C>> {
+    ) -> FrostResult<C, (DistributedKeyGeneration<RoundTwo, C>, Vec<Complaint<C>>)> {
         // Sanity check
         assert_eq!(self.data, RoundOne {});
 
@@ -918,16 +934,20 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             }
         }
 
-        if !complaints.is_empty() {
+        // If there are less than `t` participants remaining (i.e. honest) we can only abort.
+        if self.state.parameters.n - (complaints.len() as u32) < self.state.parameters.t {
             return Err(Error::Complaint(complaints));
         }
 
         self.state.my_secret_shares = Some(my_secret_shares);
 
-        Ok(DistributedKeyGeneration::<RoundTwo, C> {
-            state: self.state,
-            data: RoundTwo {},
-        })
+        Ok((
+            DistributedKeyGeneration::<RoundTwo, C> {
+                state: self.state,
+                data: RoundTwo {},
+            },
+            complaints,
+        ))
     }
 }
 
@@ -1187,9 +1207,10 @@ mod test {
             .unwrap();
         let p1_my_encrypted_secret_shares =
             p1_state.their_encrypted_secret_shares().unwrap().clone();
-        let p1_state = p1_state
+        let (p1_state, complaints) = p1_state
             .to_round_two(p1_my_encrypted_secret_shares, rng)
             .unwrap();
+        assert!(complaints.is_empty());
         let result = p1_state.finish();
 
         assert!(result.is_ok());
@@ -1343,21 +1364,26 @@ mod test {
             p5_their_encrypted_secret_shares[4].clone(),
         ];
 
-        let p1_state = p1_state
+        let (p1_state, complaints) = p1_state
             .to_round_two(p1_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p2_state = p2_state
+        assert!(complaints.is_empty());
+        let (p2_state, complaints) = p2_state
             .to_round_two(p2_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p3_state = p3_state
+        assert!(complaints.is_empty());
+        let (p3_state, complaints) = p3_state
             .to_round_two(p3_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p4_state = p4_state
+        assert!(complaints.is_empty());
+        let (p4_state, complaints) = p4_state
             .to_round_two(p4_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p5_state = p5_state
+        assert!(complaints.is_empty());
+        let (p5_state, complaints) = p5_state
             .to_round_two(p5_my_encrypted_secret_shares, rng)
             .unwrap();
+        assert!(complaints.is_empty());
 
         let (p1_group_key, p1_secret_key) = p1_state.finish().unwrap();
         let (p2_group_key, p2_secret_key) = p2_state.finish().unwrap();
@@ -1471,9 +1497,15 @@ mod test {
                 p3_their_encrypted_secret_shares[2].clone(),
             ];
 
-            let p1_state = p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+            let (p1_state, complaints) =
+                p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p2_state, complaints) =
+                p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p3_state, complaints) =
+                p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -1570,12 +1602,15 @@ mod test {
                 dealer3_their_encrypted_secret_shares[2].clone(),
             ];
 
-            let dealer1_state =
+            let (dealer1_state, complaints) =
                 dealer1_state.to_round_two(dealer1_my_encrypted_secret_shares, rng)?;
-            let dealer2_state =
+            assert!(complaints.is_empty());
+            let (dealer2_state, complaints) =
                 dealer2_state.to_round_two(dealer2_my_encrypted_secret_shares, rng)?;
-            let dealer3_state =
+            assert!(complaints.is_empty());
+            let (dealer3_state, complaints) =
                 dealer3_state.to_round_two(dealer3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (dealer1_group_key, dealer1_secret_key) = dealer1_state.finish()?;
             let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
@@ -1647,12 +1682,15 @@ mod test {
                 dealer3_encrypted_shares_for_signers[2].clone(),
             ];
 
-            let signer1_state =
+            let (signer1_state, complaints) =
                 signer1_state.to_round_two(signer1_my_encrypted_secret_shares, rng)?;
-            let signer2_state =
+            assert!(complaints.is_empty());
+            let (signer2_state, complaints) =
                 signer2_state.to_round_two(signer2_my_encrypted_secret_shares, rng)?;
-            let signer3_state =
+            assert!(complaints.is_empty());
+            let (signer3_state, complaints) =
                 signer3_state.to_round_two(signer3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (signer1_group_key, _signer1_secret_key) = signer1_state.finish()?;
             let (signer2_group_key, _signer2_secret_key) = signer2_state.finish()?;
@@ -1751,12 +1789,15 @@ mod test {
                 dealer3_their_encrypted_secret_shares[2].clone(),
             ];
 
-            let dealer1_state =
+            let (dealer1_state, complaints) =
                 dealer1_state.to_round_two(dealer1_my_encrypted_secret_shares, rng)?;
-            let dealer2_state =
+            assert!(complaints.is_empty());
+            let (dealer2_state, complaints) =
                 dealer2_state.to_round_two(dealer2_my_encrypted_secret_shares, rng)?;
-            let dealer3_state =
+            assert!(complaints.is_empty());
+            let (dealer3_state, complaints) =
                 dealer3_state.to_round_two(dealer3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (dealer1_group_key, dealer1_secret_key) = dealer1_state.finish()?;
             let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
@@ -1868,16 +1909,21 @@ mod test {
                 dealer3_encrypted_shares_for_signers[4].clone(),
             ];
 
-            let signer1_state =
+            let (signer1_state, complaints) =
                 signer1_state.to_round_two(signer1_my_encrypted_secret_shares, rng)?;
-            let signer2_state =
+            assert!(complaints.is_empty());
+            let (signer2_state, complaints) =
                 signer2_state.to_round_two(signer2_my_encrypted_secret_shares, rng)?;
-            let signer3_state =
+            assert!(complaints.is_empty());
+            let (signer3_state, complaints) =
                 signer3_state.to_round_two(signer3_my_encrypted_secret_shares, rng)?;
-            let signer4_state =
+            assert!(complaints.is_empty());
+            let (signer4_state, complaints) =
                 signer4_state.to_round_two(signer4_my_encrypted_secret_shares, rng)?;
-            let signer5_state =
+            assert!(complaints.is_empty());
+            let (signer5_state, complaints) =
                 signer5_state.to_round_two(signer5_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (signer1_group_key, _signer1_secret_key) = signer1_state.finish()?;
             let (signer2_group_key, _signer2_secret_key) = signer2_state.finish()?;
@@ -1996,9 +2042,15 @@ mod test {
                 p3_their_encrypted_secret_shares[2].clone(),
             ];
 
-            let p1_state = p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+            let (p1_state, complaints) =
+                p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p2_state, complaints) =
+                p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p3_state, complaints) =
+                p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2096,35 +2148,34 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let p1_state = p1_state
+                let (p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state
+                let (p2_state, complaints) = p2_state
                     .clone()
-                    .to_round_two(p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                    .to_round_two(p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                    assert!(bad_index == 1);
+                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                // p2 can still finish the DKG
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key == p3_group_key);
+                assert!(p1_group_key == p2_group_key);
+                assert!(p2_group_key == p3_group_key);
 
-                    // Copy for next test and change dh_key
-                    complaint = complaints[0].clone();
-                    complaint.dh_shared_key.double_in_place();
-                } else {
-                    return Err(Error::Custom("Unexpected error".to_string()));
-                }
+                // Copy for next test and change dh_key
+                complaint = complaints[0].clone();
+                complaint.dh_shared_key.double_in_place();
             }
 
             // Wrong decryption of polynomial evaluation
@@ -2148,31 +2199,29 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let p1_state = p1_state
+                let (p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state
+                let (p2_state, complaints) = p2_state
                     .clone()
-                    .to_round_two(p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                    .to_round_two(p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                    assert!(bad_index == 1);
+                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key == p3_group_key);
-                } else {
-                    return Err(Error::Custom("Unexpected error".to_string()));
-                }
+                assert!(p1_group_key == p2_group_key);
+                assert!(p2_group_key == p3_group_key);
             }
 
             // Wrong encrypted share
@@ -2207,31 +2256,29 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let p1_state = p1_state
+                let (p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state
+                let (p2_state, complaints) = p2_state
                     .clone()
-                    .to_round_two(p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                    .to_round_two(p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                    assert!(bad_index == 1);
+                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key == p3_group_key);
-                } else {
-                    return Err(Error::Custom("Unexpected error".to_string()));
-                }
+                assert!(p1_group_key == p2_group_key);
+                assert!(p2_group_key == p3_group_key);
             }
 
             // Wrong complaint leads to blaming the complaint maker
@@ -2252,7 +2299,7 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let p3_state = p3_state
+                let (p3_state, _) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
 
@@ -2376,15 +2423,18 @@ mod test {
 
                 // Continue KeyGen
 
-                let p1_state = p1_state
+                let (p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(p1_my_encrypted_secret_shares, rng)?;
-                let p2_state = p2_state
+                assert!(complaints.is_empty());
+                let (p2_state, complaints) = p2_state
                     .clone()
                     .to_round_two(p2_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
                 let (p1_group_key, _p1_secret_key) = p1_state.clone().finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2425,36 +2475,37 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let p1_state = p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+                let (p1_state, complaints) =
+                    p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
+                let (p3_state, complaints) =
+                    p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state.to_round_two(p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                let (p2_state, complaints) =
+                    p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
 
-                    assert!(bad_index == 1);
+                assert!(bad_index == 1);
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key == p3_group_key);
+                assert!(p1_group_key == p2_group_key);
+                assert!(p2_group_key == p3_group_key);
 
-                    // Check serialization
+                // Check serialization
 
-                    let bytes = complaints[0].proof.to_bytes()?;
-                    assert_eq!(complaints[0].proof, ComplaintProof::from_bytes(&bytes)?);
+                let bytes = complaints[0].proof.to_bytes()?;
+                assert_eq!(complaints[0].proof, ComplaintProof::from_bytes(&bytes)?);
 
-                    let bytes = complaints[0].to_bytes()?;
-                    assert_eq!(complaints[0], Complaint::from_bytes(&bytes)?);
+                let bytes = complaints[0].to_bytes()?;
+                assert_eq!(complaints[0], Complaint::from_bytes(&bytes)?);
 
-                    Ok(())
-                } else {
-                    Err(Error::Custom("Unexpected error".to_string()))
-                }
+                Ok(())
             }
         }
 
@@ -2540,9 +2591,15 @@ mod test {
                 p3_their_encrypted_secret_shares[2].clone(),
             ];
 
-            let p1_state = p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+            let (p1_state, complaints) =
+                p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p2_state, complaints) =
+                p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p3_state, complaints) =
+                p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (p1_group_key, p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, p2_secret_key) = p2_state.finish()?;

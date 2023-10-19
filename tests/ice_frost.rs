@@ -88,21 +88,26 @@ fn signing_and_verification_3_out_of_5() {
         p5_their_encrypted_secret_shares[4].clone(),
     ];
 
-    let p1_state = p1_state
+    let (p1_state, complaints) = p1_state
         .to_round_two(p1_my_encrypted_secret_shares, rng)
         .unwrap();
-    let p2_state = p2_state
+    assert!(complaints.is_empty());
+    let (p2_state, complaints) = p2_state
         .to_round_two(p2_my_encrypted_secret_shares, rng)
         .unwrap();
-    let p3_state = p3_state
+    assert!(complaints.is_empty());
+    let (p3_state, complaints) = p3_state
         .to_round_two(p3_my_encrypted_secret_shares, rng)
         .unwrap();
-    let p4_state = p4_state
+    assert!(complaints.is_empty());
+    let (p4_state, complaints) = p4_state
         .to_round_two(p4_my_encrypted_secret_shares, rng)
         .unwrap();
-    let p5_state = p5_state
+    assert!(complaints.is_empty());
+    let (p5_state, complaints) = p5_state
         .to_round_two(p5_my_encrypted_secret_shares, rng)
         .unwrap();
+    assert!(complaints.is_empty());
 
     let (group_key, p1_sk) = p1_state.finish().unwrap();
     let (_, _) = p2_state.finish().unwrap();

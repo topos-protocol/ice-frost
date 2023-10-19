@@ -791,7 +791,8 @@ mod test {
             participants_states_1[0]
                 .clone()
                 .to_round_two(p1_my_encrypted_secret_shares, rng)
-                .unwrap(),
+                .unwrap()
+                .0,
         );
 
         for i in 2..n1 + 1 {
@@ -807,7 +808,8 @@ mod test {
                 participants_states_1[(i - 1) as usize]
                     .clone()
                     .to_round_two(pi_my_encrypted_secret_shares, rng)
-                    .unwrap(),
+                    .unwrap()
+                    .0,
             );
         }
 
@@ -886,7 +888,8 @@ mod test {
                     signers_states_1[i]
                         .clone()
                         .to_round_two(signers_encrypted_secret_shares[i].clone(), rng)
-                        .unwrap(),
+                        .unwrap()
+                        .0,
                 );
             }
 

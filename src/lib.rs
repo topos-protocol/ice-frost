@@ -360,9 +360,14 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! let (alice_state, alice_complaints) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (bob_state, bob_complaints) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! let (carol_state, carol_complaints) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alice_complaints.is_empty());
+//! assert!(bob_complaints.is_empty());
+//! assert!(carol_complaints.is_empty());
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
 //!
@@ -413,9 +418,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -481,9 +486,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //!
 //! let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -559,9 +564,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! # let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! # let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -674,9 +679,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! # let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! # let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -728,10 +733,16 @@
 //! #                                   bob_encrypted_shares[3].clone(),
 //! #                                   carol_encrypted_shares[3].clone()];
 //! #
-//! let alexis_state = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
-//! let barbara_state = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
-//! let claire_state = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
-//! let david_state = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
+//! let (alexis_state, alexis_complaints) = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
+//! let (barbara_state, barbara_complaints) = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
+//! let (claire_state, claire_complaints) = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
+//! let (david_state, david_complaints) = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alexis_complaints.is_empty());
+//! assert!(barbara_complaints.is_empty());
+//! assert!(claire_complaints.is_empty());
+//! assert!(david_complaints.is_empty());
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
 //!
@@ -781,9 +792,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! # let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! # let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -833,10 +844,10 @@
 //! #                                   bob_encrypted_shares[3].clone(),
 //! #                                   carol_encrypted_shares[3].clone()];
 //! #
-//! # let alexis_state = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
-//! # let barbara_state = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
-//! # let claire_state = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
-//! # let david_state = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alexis_state, _) = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
+//! # let (barbara_state, _) = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
+//! # let (claire_state, _) = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
+//! # let (david_state, _) = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! let (alexis_group_key, alexis_secret_key) = alexis_state.finish()?;
 //! let (barbara_group_key, barbara_secret_key) = barbara_state.finish()?;
@@ -900,9 +911,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! # let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! # let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -979,9 +990,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! # let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! # let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -1053,9 +1064,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! # let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! # let (bob_group_key, bob_secret_key) = bob_state.finish()?;
@@ -1127,9 +1138,9 @@
 //! #                                   bob_their_encrypted_secret_shares[2].clone(),
 //! #                                   carol_their_encrypted_secret_shares[2].clone()];
 //! #
-//! # let alice_state = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let bob_state = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! # let carol_state = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! # let (alice_group_key, alice_secret_key) = alice_state.finish()?;
 //! # let (bob_group_key, bob_secret_key) = bob_state.finish()?;

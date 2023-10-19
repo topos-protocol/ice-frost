@@ -97,7 +97,8 @@ fn criterion_benchmark(c: &mut Criterion) {
         participants_states_1[0]
             .clone()
             .to_round_two(p1_my_encrypted_secret_shares.clone(), rng)
-            .unwrap(),
+            .unwrap()
+            .0,
     );
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
@@ -114,7 +115,8 @@ fn criterion_benchmark(c: &mut Criterion) {
             participants_states_1[(i - 1) as usize]
                 .clone()
                 .to_round_two(pi_my_encrypted_secret_shares, rng)
-                .unwrap(),
+                .unwrap()
+                .0,
         );
     }
 
@@ -134,7 +136,8 @@ fn criterion_benchmark(c: &mut Criterion) {
     let p1_state = participants_states_1[0]
         .clone()
         .to_round_two(p1_my_encrypted_secret_shares.clone(), rng)
-        .unwrap();
+        .unwrap()
+        .0;
 
     c.bench_function("Finish", move |b| {
         b.iter(|| p1_state.clone().finish());
