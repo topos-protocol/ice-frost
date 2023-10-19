@@ -496,7 +496,7 @@ use crate::ToBytes;
 use crate::{Error, FrostResult};
 
 use crate::utils::calculate_lagrange_coefficients;
-use crate::utils::{Box, Scalar, ToString, Vec};
+use crate::utils::{BTreeMap, Box, Scalar, ToString, Vec};
 
 /// State machine structures for holding intermediate values during a
 /// distributed key generation protocol run, to prevent misuse.
@@ -528,7 +528,7 @@ struct ActualState<C: CipherSuite> {
     their_commitments: Option<Vec<VerifiableSecretSharingCommitment<C>>>,
     /// A vector of ECPoints containing the index of each participant and that
     /// respective participant's DH public key.
-    their_dh_public_keys: Vec<(u32, DiffieHellmanPublicKey<C>)>,
+    their_dh_public_keys: BTreeMap<u32, DiffieHellmanPublicKey<C>>,
     /// The encrypted secret shares this participant has calculated for all the other participants.
     their_encrypted_secret_shares: Option<Vec<EncryptedSecretShare<C>>>,
     /// The secret shares this participant has received from all the other participants.
@@ -694,8 +694,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
     ) -> FrostResult<C, (Self, DKGParticipantList<C>)> {
         let mut their_commitments: Vec<VerifiableSecretSharingCommitment<C>> =
             Vec::with_capacity(parameters.t as usize);
-        let mut their_dh_public_keys: Vec<(u32, DiffieHellmanPublicKey<C>)> =
-            Vec::with_capacity(parameters.t as usize);
+        let mut their_dh_public_keys: BTreeMap<u32, DiffieHellmanPublicKey<C>> = BTreeMap::new();
         let mut valid_participants: Vec<Participant<C>> = Vec::with_capacity(parameters.n as usize);
         let mut misbehaving_participants: Vec<u32> = Vec::new();
 
@@ -732,13 +731,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             Ok(_) => {
                                 valid_participants.push(p.clone());
                                 their_commitments.push(p.commitments.as_ref().unwrap().clone());
-                                their_dh_public_keys.push((p.index, p.dh_public_key.clone()));
+                                their_dh_public_keys.insert(p.index, p.dh_public_key.clone());
                             }
                             Err(_) => misbehaving_participants.push(p.index),
                         }
                     } else {
                         valid_participants.push(p.clone());
-                        their_dh_public_keys.push((p.index, p.dh_public_key.clone()));
+                        their_dh_public_keys.insert(p.index, p.dh_public_key.clone());
                     }
                 }
                 Err(_) => misbehaving_participants.push(p.index),
@@ -869,49 +868,53 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         // Step 2.1: Each P_i decrypts their shares with
         //           key k_il = pk_l^sk_i
         for encrypted_share in my_encrypted_secret_shares.iter() {
-            for pk in self.state.their_dh_public_keys.iter() {
-                if pk.0 == encrypted_share.sender_index {
-                    let dh_shared_key = *pk.1 * self.state.dh_private_key.0;
-                    let mut dh_key_bytes = Vec::with_capacity(dh_shared_key.compressed_size());
-                    dh_shared_key
-                        .serialize_compressed(&mut dh_key_bytes)
-                        .map_err(|_| Error::CompressionError)?;
+            if let Some(pk) = self
+                .state
+                .their_dh_public_keys
+                .get(&encrypted_share.sender_index)
+            {
+                let dh_shared_key = **pk * self.state.dh_private_key.0;
+                let mut dh_key_bytes = Vec::with_capacity(dh_shared_key.compressed_size());
+                dh_shared_key
+                    .serialize_compressed(&mut dh_key_bytes)
+                    .map_err(|_| Error::CompressionError)?;
 
-                    // Step 2.2: Each share is verified by calculating:
-                    //           g^{f_l(i)} ?= \Prod_{k=0}^{t-1} \phi_{lk}^{i^{k} mod q},
-                    //           creating a complaint if the check fails.
-                    let decrypted_share = decrypt_share(encrypted_share, &dh_key_bytes);
-                    let decrypted_share_ref = &decrypted_share;
+                // Step 2.2: Each share is verified by calculating:
+                //           g^{f_l(i)} ?= \Prod_{k=0}^{t-1} \phi_{lk}^{i^{k} mod q},
+                //           creating a complaint if the check fails.
+                let decrypted_share = decrypt_share(encrypted_share, &dh_key_bytes);
+                let decrypted_share_ref = &decrypted_share;
 
-                    for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
-                        if commitment.index == encrypted_share.sender_index {
-                            // If the decrypted share is incorrect, P_i builds
-                            // a complaint
+                for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
+                    if commitment.index == encrypted_share.sender_index {
+                        // If the decrypted share is incorrect, P_i builds
+                        // a complaint
 
-                            if decrypted_share.is_err()
-                                || decrypted_share_ref
-                                    .as_ref()
-                                    .unwrap()
-                                    .verify(commitment)
-                                    .is_err()
-                            {
-                                complaints.push(Complaint::<C>::new(
-                                    encrypted_share.receiver_index,
-                                    encrypted_share.sender_index,
-                                    &pk.1,
-                                    &self.state.dh_private_key.0,
-                                    &self.state.dh_public_key.key,
-                                    &dh_shared_key,
-                                    &mut rng,
-                                )?);
-                                break;
-                            }
+                        if decrypted_share.is_err()
+                            || decrypted_share_ref
+                                .as_ref()
+                                .unwrap()
+                                .verify(commitment)
+                                .is_err()
+                        {
+                            complaints.push(Complaint::<C>::new(
+                                encrypted_share.receiver_index,
+                                encrypted_share.sender_index,
+                                pk,
+                                &self.state.dh_private_key.0,
+                                &self.state.dh_public_key.key,
+                                &dh_shared_key,
+                                &mut rng,
+                            )?);
+                            break;
                         }
                     }
-                    if let Ok(share) = decrypted_share {
-                        my_secret_shares.push(share);
-                    }
                 }
+                if let Ok(share) = decrypted_share {
+                    my_secret_shares.push(share);
+                }
+            } else {
+                return Err(Error::Custom("to_round_two() was called with encrypted secret shares containing invalid indices".to_string()));
             }
         }
 
