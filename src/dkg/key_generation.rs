@@ -724,17 +724,15 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             }
                         };
 
-                        // The two unwrap() below cannot fail, as the participants here are dealers and hence
-                        // always have a proof of secret key and commitments to their private polynomial evaluations.
                         match p
                             .proof_of_secret_key
                             .as_ref()
-                            .unwrap()
+                            .expect("Dealers always have a proof of secret key.")
                             .verify(p.index, public_key)
                         {
                             Ok(_) => {
                                 valid_participants.push(p.clone());
-                                their_commitments.push(p.commitments.as_ref().unwrap().clone());
+                                their_commitments.push(p.commitments.as_ref().expect("Dealers always have commitments to their secret polynomial evaluations.").clone());
                                 their_dh_public_keys.push((p.index, p.dh_public_key.clone()));
                             }
                             Err(_) => misbehaving_participants.push(p.index),
@@ -792,9 +790,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             Vec::with_capacity(parameters.n as usize - 1);
 
         for p in participants.iter() {
-            // This unwrap() cannot fail, as we would have already ended if the participant was a signer.
-            let share =
-                SecretShare::<C>::evaluate_polynomial(my_index, &p.index, my_coefficients.unwrap());
+            let share = SecretShare::<C>::evaluate_polynomial(
+                my_index,
+                &p.index,
+                my_coefficients.expect(
+                    "Dealers always have coefficients to generate/redistribute secret shares.",
+                ),
+            );
 
             let dh_key = p.dh_public_key.key * dh_private_key.0;
             let mut dh_key_bytes = Vec::with_capacity(dh_key.compressed_size());
@@ -887,15 +889,14 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                     let decrypted_share = decrypt_share(encrypted_share, &dh_key_bytes);
                     let decrypted_share_ref = &decrypted_share;
 
-                    for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
+                    for commitment in self.state.their_commitments.as_ref().expect("Dealers always have commitments to their secret polynomial evaluations.").iter() {
                         if commitment.index == encrypted_share.sender_index {
                             // If the decrypted share is incorrect, P_i builds a complaint.
 
-                            // This unwrap() cannot fail.
                             if decrypted_share.is_err()
                                 || decrypted_share_ref
                                     .as_ref()
-                                    .unwrap()
+                                    .expect("This cannot fail.")
                                     .verify(commitment)
                                     .is_err()
                             {
@@ -1007,7 +1008,10 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         for commitment in commitments.iter() {
             let coeff = calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)?;
 
-            group_key += commitment.public_key().unwrap().mul(coeff);
+            group_key += commitment
+                .public_key()
+                .expect("We should always be able to retrieve a public key from ")
+                .mul(coeff);
         }
 
         Ok(GroupVerifyingKey::new(group_key))
@@ -1028,7 +1032,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             points: Vec::new(),
         };
 
-        for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
+        for commitment in self
+            .state
+            .their_commitments
+            .as_ref()
+            .expect("Dealers always have commitments to their secret polynomial evaluations.")
+            .iter()
+        {
             if commitment.index == complaint.accused_index {
                 commitment_accused = commitment.clone();
             }

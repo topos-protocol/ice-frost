@@ -614,13 +614,11 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
         // We first combine all partial signatures together, to remove the need for individual
         // signature verification in case the final group signature is valid.
         for signer in self.state.signers.iter() {
-            // This unwrap() cannot fail, because [`SignatureAggregator<Initial>::finalize()`]
-            // checks that we have partial signature for every expected signer.
             let partial_sig = self
                 .state
                 .partial_signatures
                 .get(&signer.participant_index)
-                .unwrap();
+                .expect("The SignatureAggregator ensured no partial signature was missing when calling finalize().");
 
             z += partial_sig;
         }
@@ -637,7 +635,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
             Err(_) => {
                 let mut misbehaving_participants = Vec::new();
                 for signer in self.state.signers.iter() {
-                    // This unwrap() cannot fail, since the attempted division by zero in
+                    // This cannot error, since the attempted division by zero in
                     // the calculation of the Lagrange interpolation cannot happen,
                     // because we use the typestate pattern,
                     // i.e. [`SignatureAggregator<Initial>::finalize()`], to ensure that
@@ -648,23 +646,20 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
                         &all_participant_indices,
                     )?;
 
-                    // This cannot fail, and has already been performed previously.
                     let partial_sig = self
                         .state
                         .partial_signatures
                         .get(&signer.participant_index)
-                        .unwrap();
+                        .expect("This has already been performed before.");
 
-                    // This cannot fail, as it is checked when calling finalize().
                     let pk_i = self
                         .state
                         .public_keys
                         .get(&signer.participant_index)
-                        .unwrap();
+                        .expect("This has already been checked when calling finalize().");
 
                     let check = C::G::generator() * partial_sig;
 
-                    // This cannot fail, as the group commitment has already been computed.
                     let participant_commitment = commitment_for_participant(
                         signer.participant_index,
                         self.aggregator.message_hash.as_ref(),
