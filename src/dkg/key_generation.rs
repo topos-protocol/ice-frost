@@ -541,7 +541,7 @@ struct ActualState<C: CipherSuite> {
     /// A vector of tuples containing the index of each participant and that
     /// respective participant's commitments to their private polynomial
     /// coefficients.
-    their_commitments: Option<Vec<VerifiableSecretSharingCommitment<C>>>,
+    their_commitments: Option<BTreeMap<u32, VerifiableSecretSharingCommitment<C>>>,
     /// A vector of ECPoints containing the index of each participant and that
     /// respective participant's DH public key.
     their_dh_public_keys: BTreeMap<u32, DiffieHellmanPublicKey<C>>,
@@ -708,8 +708,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         from_signer: bool,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, DKGParticipantList<C>)> {
-        let mut their_commitments: Vec<VerifiableSecretSharingCommitment<C>> =
-            Vec::with_capacity(parameters.t as usize);
+        let mut their_commitments: BTreeMap<u32, VerifiableSecretSharingCommitment<C>> =
+            BTreeMap::new();
         let mut their_dh_public_keys: BTreeMap<u32, DiffieHellmanPublicKey<C>> = BTreeMap::new();
         let mut valid_participants: Vec<Participant<C>> = Vec::with_capacity(parameters.n as usize);
         let mut misbehaving_participants: Vec<u32> = Vec::new();
@@ -746,7 +746,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                         {
                             Ok(_) => {
                                 valid_participants.push(p.clone());
-                                their_commitments.push(p.commitments.as_ref().unwrap().clone());
+                                their_commitments
+                                    .insert(p.index, p.commitments.as_ref().unwrap().clone());
                                 their_dh_public_keys.insert(p.index, p.dh_public_key.clone());
                             }
                             Err(_) => misbehaving_participants.push(p.index),
@@ -901,8 +902,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                 let decrypted_share = decrypt_share(encrypted_share, &dh_key_bytes);
                 let decrypted_share_ref = &decrypted_share;
 
-                for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
-                    if commitment.index == encrypted_share.sender_index {
+                for (&index, commitment) in self.state.their_commitments.as_ref().unwrap().iter() {
+                    if index == encrypted_share.sender_index {
                         // If the decrypted share is incorrect, P_i builds
                         // a complaint
 
@@ -977,7 +978,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             .as_mut()
             .expect("We should always be able to retrieve participants' secret shares.");
 
-        let index_vector: Vec<u32> = my_secret_shares.keys().cloned().collect();
+        let index_vector: Vec<u32> = my_secret_shares.keys().copied().collect();
 
         let mut key = Scalar::<C>::ZERO;
 
@@ -1007,19 +1008,20 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// my_commitment is needed for now, but won't be when the distinction
     /// dealers/signers is implemented.
     pub(crate) fn calculate_group_key(&self) -> FrostResult<C, GroupVerifyingKey<C>> {
-        let mut index_vector =
-            Vec::with_capacity(self.state.their_commitments.as_ref().unwrap().len());
-
-        for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
-            index_vector.push(commitment.index);
-        }
+        let index_vector: Vec<u32> = self
+            .state
+            .their_commitments
+            .as_ref()
+            .unwrap()
+            .keys()
+            .copied()
+            .collect();
 
         let mut group_key = <C as CipherSuite>::G::zero();
 
         // The group key is the interpolation at 0 of all index 0 of the dealers' commitments.
-        for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
-            let coeff = match calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)
-            {
+        for (&index, commitment) in self.state.their_commitments.as_ref().unwrap().iter() {
+            let coeff = match calculate_lagrange_coefficients::<C>(index, &index_vector) {
                 Ok(s) => s,
                 Err(error) => return Err(Error::Custom(error.to_string())),
             };
@@ -1040,20 +1042,18 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     ) -> u32 {
         let mut pk_maker = <C as CipherSuite>::G::zero();
         let mut pk_accused = <C as CipherSuite>::G::zero();
-        let mut commitment_accused = VerifiableSecretSharingCommitment {
-            index: 0,
-            points: Vec::new(),
-        };
 
-        for commitment in self.state.their_commitments.as_ref().unwrap().iter() {
-            if commitment.index == complaint.accused_index {
-                commitment_accused = commitment.clone();
-            }
-        }
-
-        if commitment_accused.points.is_empty() {
+        let commitment_accused = if let Some(idx) = self
+            .state
+            .their_commitments
+            .as_ref()
+            .unwrap()
+            .get(&complaint.accused_index)
+        {
+            idx
+        } else {
             return complaint.maker_index;
-        }
+        };
 
         for (index, pk) in self.state.their_dh_public_keys.iter() {
             if index == &complaint.maker_index {
