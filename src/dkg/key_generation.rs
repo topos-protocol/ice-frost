@@ -879,7 +879,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
         let mut complaints: Vec<Complaint<C>> = Vec::new();
 
-        if my_encrypted_secret_shares.len() != self.state.parameters.n as usize {
+        // This should in theory never happen, as users should make sure they don't call this
+        // method before having received all the encrypted secret shares they expect.
+        if my_encrypted_secret_shares.len() < self.state.parameters.t as usize {
             return Err(Error::MissingShares);
         }
 

@@ -1441,8 +1441,11 @@ mod test {
         let params = ThresholdParameters::new(5, 3);
         let rng = OsRng;
 
-        let (p1, p1coeffs, dh_sk1) =
+        // p1 will be malicious on the first round of the DKG
+        let (mut p1, p1coeffs, dh_sk1) =
             Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
+        p1.dh_public_key.key = p1.dh_public_key.double();
+
         let (p2, p2coeffs, dh_sk2) =
             Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
         let (p3, p3coeffs, dh_sk3) =
@@ -1480,7 +1483,7 @@ mod test {
 
         let participants: Vec<Participant<Secp256k1Sha256>> =
             vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
-        let (p1_state, _participant_lists) =
+        let (_p1_state, _participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &dh_sk1,
@@ -1490,9 +1493,8 @@ mod test {
                 rng,
             )
             .unwrap();
-        let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
 
-        let (p2_state, _participant_lists) =
+        let (p2_state, p2_participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &dh_sk2,
@@ -1504,7 +1506,7 @@ mod test {
             .unwrap();
         let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
 
-        let (p3_state, _participant_lists) =
+        let (p3_state, p3_participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &dh_sk3,
@@ -1516,7 +1518,7 @@ mod test {
             .unwrap();
         let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
 
-        let (p4_state, _participant_lists) =
+        let (p4_state, p4_participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &dh_sk4,
@@ -1528,7 +1530,7 @@ mod test {
             .unwrap();
         let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
 
-        let (p5_state, _participant_lists) =
+        let (p5_state, p5_participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
                 &params,
                 &dh_sk5,
@@ -1540,35 +1542,35 @@ mod test {
             .unwrap();
         let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
 
-        let p1_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-            p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-            p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-            p4_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-            p5_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-        ];
+        // Participants all identified p1 as malicious
+        assert!(p2_participant_lists.misbehaving_participants.is_some());
+        assert!(p3_participant_lists.misbehaving_participants.is_some());
+        assert!(p4_participant_lists.misbehaving_participants.is_some());
+        assert!(p5_participant_lists.misbehaving_participants.is_some());
+
+        assert!(p2_participant_lists.misbehaving_participants.unwrap() == vec![1]);
+        assert!(p3_participant_lists.misbehaving_participants.unwrap() == vec![1]);
+        assert!(p4_participant_lists.misbehaving_participants.unwrap() == vec![1]);
+        assert!(p5_participant_lists.misbehaving_participants.unwrap() == vec![1]);
 
         // Wrong share inserted here!
-        let mut wrong_encrypted_secret_share_from_p1_to_p2 =
-            p1_their_encrypted_secret_shares.get(&2).unwrap().clone();
-        wrong_encrypted_secret_share_from_p1_to_p2.nonce = [42; 16];
+        let mut wrong_encrypted_secret_share_from_p4_to_p2 =
+            p4_their_encrypted_secret_shares.get(&2).unwrap().clone();
+        wrong_encrypted_secret_share_from_p4_to_p2.nonce = [42; 16];
         let p2_my_encrypted_secret_shares = vec![
-            wrong_encrypted_secret_share_from_p1_to_p2.clone(),
             p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
             p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
-            p4_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            wrong_encrypted_secret_share_from_p4_to_p2.clone(),
             p5_their_encrypted_secret_shares.get(&2).unwrap().clone(),
         ];
 
         let p3_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
             p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
             p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
             p4_their_encrypted_secret_shares.get(&3).unwrap().clone(),
             p5_their_encrypted_secret_shares.get(&3).unwrap().clone(),
         ];
         let p4_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares.get(&4).unwrap().clone(),
             p2_their_encrypted_secret_shares.get(&4).unwrap().clone(),
             p3_their_encrypted_secret_shares.get(&4).unwrap().clone(),
             p4_their_encrypted_secret_shares.get(&4).unwrap().clone(),
@@ -1576,25 +1578,15 @@ mod test {
         ];
 
         // Wrong shares inserted here!
-        let mut wrong_encrypted_secret_share_from_p1_to_p5 =
-            p1_their_encrypted_secret_shares.get(&5).unwrap().clone();
-        wrong_encrypted_secret_share_from_p1_to_p5.nonce = [42; 16];
-        let mut wrong_encrypted_secret_share_from_p4 =
+        let mut wrong_encrypted_secret_share_from_p4_to_p5 =
             p4_their_encrypted_secret_shares.get(&5).unwrap().clone();
-        wrong_encrypted_secret_share_from_p4.nonce = [42; 16];
+        wrong_encrypted_secret_share_from_p4_to_p5.nonce = [42; 16];
         let p5_my_encrypted_secret_shares = vec![
-            wrong_encrypted_secret_share_from_p1_to_p5.clone(),
             p2_their_encrypted_secret_shares.get(&5).unwrap().clone(),
             p3_their_encrypted_secret_shares.get(&5).unwrap().clone(),
-            wrong_encrypted_secret_share_from_p4.clone(),
+            wrong_encrypted_secret_share_from_p4_to_p5.clone(),
             p5_their_encrypted_secret_shares.get(&5).unwrap().clone(),
         ];
-
-        let (p1_state, complaints) = p1_state
-            .clone()
-            .to_round_two(p1_my_encrypted_secret_shares, rng)
-            .unwrap();
-        assert!(complaints.is_empty());
 
         let (mut p2_state, p2_complaints) = p2_state
             .clone()
@@ -1618,52 +1610,44 @@ mod test {
             .clone()
             .to_round_two(p5_my_encrypted_secret_shares, rng)
             .unwrap();
-        assert!(p5_complaints.len() == 2);
+        assert!(p5_complaints.len() == 1);
 
-        // Anyone can blame the malicious participants.
         let bad_index = p2_state.blame(
-            &wrong_encrypted_secret_share_from_p1_to_p2,
+            &wrong_encrypted_secret_share_from_p4_to_p2,
             &p2_complaints[0],
         );
-        assert!(bad_index == 1);
+        assert!(bad_index == 4);
         let bad_index = p3_state.blame(
-            &wrong_encrypted_secret_share_from_p1_to_p2,
+            &wrong_encrypted_secret_share_from_p4_to_p2,
             &p2_complaints[0],
         );
-        assert!(bad_index == 1);
+        assert!(bad_index == 4);
         let bad_index = p5_state.blame(
-            &wrong_encrypted_secret_share_from_p1_to_p2,
+            &wrong_encrypted_secret_share_from_p4_to_p2,
             &p2_complaints[0],
         );
-        assert!(bad_index == 1);
+        assert!(bad_index == 4);
 
-        // Checking the first complaint won't update the states, as we already got rid of p1 who tried to cheat p2 before.
+        // Checking the second complaint won't update the states, as we already got rid of p4 who tried to cheat p2 before.
         let bad_index = p2_state.blame(
-            &wrong_encrypted_secret_share_from_p1_to_p5,
+            &wrong_encrypted_secret_share_from_p4_to_p5,
             &p5_complaints[0],
         );
-        assert!(bad_index == 1, "Got {bad_index}");
+        assert!(bad_index == 4);
         let bad_index = p3_state.blame(
-            &wrong_encrypted_secret_share_from_p1_to_p5,
+            &wrong_encrypted_secret_share_from_p4_to_p5,
             &p5_complaints[0],
         );
-        assert!(bad_index == 1);
+        assert!(bad_index == 4);
         let bad_index = p5_state.blame(
-            &wrong_encrypted_secret_share_from_p1_to_p5,
+            &wrong_encrypted_secret_share_from_p4_to_p5,
             &p5_complaints[0],
         );
-        assert!(bad_index == 1);
-
-        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p4, &p5_complaints[1]);
-        assert!(bad_index == 4);
-        let bad_index = p3_state.blame(&wrong_encrypted_secret_share_from_p4, &p5_complaints[1]);
-        assert!(bad_index == 4);
-        let bad_index = p5_state.blame(&wrong_encrypted_secret_share_from_p4, &p5_complaints[1]);
         assert!(bad_index == 4);
 
-        // Everyone can finish the DKG. However, only honest participants will be able to generate publicly verifiable
-        // individual private/public keys.
-        let (p1_group_key, _p1_secret_key) = p1_state.finish().unwrap();
+        // Everyone can finish the DKG.
+        // However, only honest participants will be able to generate
+        // publicly verifiable individual private/public keys.
         let (p2_group_key, p2_secret_key) = p2_state.finish().unwrap();
         let (p3_group_key, p3_secret_key) = p3_state.finish().unwrap();
         let (p4_group_key, _p4_secret_key) = p4_state.finish().unwrap();
@@ -1672,7 +1656,6 @@ mod test {
         assert!(p2_group_key == p3_group_key);
         assert!(p3_group_key == p5_group_key);
 
-        assert!(p1_group_key != p2_group_key);
         assert!(p4_group_key != p2_group_key);
 
         let group_key = p5_group_key;
