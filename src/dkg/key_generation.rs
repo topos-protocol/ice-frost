@@ -548,7 +548,7 @@ struct ActualState<C: CipherSuite> {
     /// The encrypted secret shares this participant has calculated for all the other participants.
     their_encrypted_secret_shares: Option<Vec<EncryptedSecretShare<C>>>,
     /// The secret shares this participant has received from all the other participants.
-    my_secret_shares: Option<Vec<SecretShare<C>>>,
+    my_secret_shares: Option<BTreeMap<u32, SecretShare<C>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -879,7 +879,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             return Err(Error::MissingShares);
         }
 
-        let mut my_secret_shares: Vec<SecretShare<C>> = Vec::new();
+        let mut my_secret_shares: BTreeMap<u32, SecretShare<C>> = BTreeMap::new();
 
         // Step 2.1: Each P_i decrypts their shares with
         //           key k_il = pk_l^sk_i
@@ -927,7 +927,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                     }
                 }
                 if let Ok(share) = decrypted_share {
-                    my_secret_shares.push(share);
+                    my_secret_shares.insert(share.sender_index, share);
                 }
             } else {
                 return Err(Error::Custom("to_round_two() was called with encrypted secret shares containing invalid indices".to_string()));
@@ -964,34 +964,32 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         let secret_key = self.calculate_signing_key()?;
         let group_key = self.calculate_group_key()?;
 
-        self.state.my_secret_shares.zeroize();
-
         Ok((group_key, secret_key))
     }
 
     /// Calculate this threshold signing participant's long-lived secret signing
     /// key by interpolating all of the polynomial evaluations from the other
     /// participants.
-    pub(crate) fn calculate_signing_key(&self) -> FrostResult<C, IndividualSigningKey<C>> {
-        let my_secret_shares = self.state.my_secret_shares.as_ref().ok_or_else(|| {
-            Error::Custom("Could not retrieve participant's secret shares".to_string())
-        })?;
+    pub(crate) fn calculate_signing_key(&mut self) -> FrostResult<C, IndividualSigningKey<C>> {
+        let my_secret_shares = self
+            .state
+            .my_secret_shares
+            .as_mut()
+            .expect("We should always be able to retrieve participants' secret shares.");
 
-        let mut index_vector = Vec::with_capacity(my_secret_shares.len());
-
-        for share in my_secret_shares.iter() {
-            index_vector.push(share.sender_index);
-        }
+        let index_vector: Vec<u32> = my_secret_shares.keys().cloned().collect();
 
         let mut key = Scalar::<C>::ZERO;
 
-        for share in my_secret_shares.iter() {
-            let coeff =
-                match calculate_lagrange_coefficients::<C>(share.sender_index, &index_vector) {
-                    Ok(s) => s,
-                    Err(error) => return Err(Error::Custom(error.to_string())),
-                };
+        for (&index, share) in my_secret_shares.iter_mut() {
+            let coeff = match calculate_lagrange_coefficients::<C>(index, &index_vector) {
+                Ok(s) => s,
+                Err(error) => return Err(Error::Custom(error.to_string())),
+            };
             key += share.polynomial_evaluation * coeff;
+
+            // Erase the share after use.
+            share.zeroize();
         }
 
         Ok(IndividualSigningKey {
