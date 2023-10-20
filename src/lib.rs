@@ -125,6 +125,10 @@
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
 //!
+//! The `participant_lists` output along `alice_state` contains a list of honest participants to continue the DKG
+//! with, and a list of malicious ones whose NIZK proofs could not be verified. The logic for malicious participant
+//! handling is explained in more details [here](#malicious-participants-and-complaints-handling).
+//!
 //! Alice then collects their secret shares which they send to the other participants:
 //!
 //! ```rust
@@ -360,9 +364,12 @@
 //! #                                   bob_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
 //! #                                   carol_their_encrypted_secret_shares.get(&carol.index).unwrap().clone()];
 //! #
-//! let (alice_state, alice_complaints) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
-//! let (bob_state, bob_complaints) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
-//! let (carol_state, carol_complaints) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! let (alice_state, alice_complaints) =
+//!     alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (bob_state, bob_complaints) =
+//!     bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! let (carol_state, carol_complaints) =
+//!     carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
 //!
 //! // Everything should have run smoothly.
 //! assert!(alice_complaints.is_empty());
@@ -370,6 +377,9 @@
 //! assert!(carol_complaints.is_empty());
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
+//!
+//! Participants may have generated local complaints for secret shares that were destined to them and incorrectly generated.
+//! The logic for complaint handling is explained in more details [here](#malicious-participants-and-complaints-handling).
 //!
 //! Each participant can now derive their long-lived, personal signing keys and the group's
 //! public key.  They should all derive the same group public key.  They
@@ -432,6 +442,94 @@
 //! let alice_public_key = alice_secret_key.to_public();
 //! let bob_public_key = bob_secret_key.to_public();
 //! let carol_public_key = carol_secret_key.to_public();
+//! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
+//! ```
+//!
+//! Anybody can compute the [`IndividualVerifyingKey`](crate::keys::IndividualVerifyingKey) of a given participant and assert its correctness against the
+//! list of available commitments. Note that this list should only contain commitments from the honest remaining participants
+//! at the end of the DKG session. See [here](#malicious-participants-and-complaints-handling) for an example in case of adversarial presence.
+//!
+//! ```rust
+//! # use ice_frost::dkg::DistributedKeyGeneration;
+//! # use ice_frost::parameters::ThresholdParameters;
+//! # use ice_frost::keys::IndividualVerifyingKey;
+//! # use ice_frost::dkg::Participant;
+//! # use ice_frost::CipherSuite;
+//! # use ice_frost::FrostResult;
+//! # use rand::rngs::OsRng;
+//! # use ark_secp256k1::Projective as G;
+//! # use sha2::Sha256;
+//! # use zeroize::Zeroize;
+//! # use ice_frost::testing::Secp256k1Sha256;
+//! #
+//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+//! # let params = ThresholdParameters::new(3,2);
+//! # let mut rng = OsRng;
+//! #
+//! let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
+//! let (bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
+//! let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
+//! #
+//! # let participants: Vec<Participant<Secp256k1Sha256>> = vec![alice.clone(), bob.clone(), carol.clone()];
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &alice_dh_sk, &alice.index, &alice_coefficients,
+//! #                                                      &participants, &mut rng)?;
+//! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
+//! #
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &bob_dh_sk, &bob.index, &bob_coefficients,
+//! #                                                    &participants, &mut rng)?;
+//! # let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;
+//! #
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(&params, &carol_dh_sk, &carol.index, &carol_coefficients,
+//! #                                                      &participants, &mut rng)?;
+//! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
+//! # let alice_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//! #                                   bob_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//! #                                   carol_their_encrypted_secret_shares.get(&alice.index).unwrap().clone()];
+//! # let bob_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
+//! #                                 bob_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
+//! #                                 carol_their_encrypted_secret_shares.get(&bob.index).unwrap().clone()];
+//! # let carol_my_encrypted_secret_shares = vec![alice_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//! #                                   bob_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//! #                                   carol_their_encrypted_secret_shares.get(&carol.index).unwrap().clone()];
+//! #
+//! # let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let (bob_state, _) = bob_state.to_round_two(bob_my_encrypted_secret_shares, &mut rng)?;
+//! # let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! #
+//!
+//! // Proceed to DKG...
+//!
+//! let (alice_group_key, alice_secret_key) = alice_state.finish()?;
+//! let (bob_group_key, bob_secret_key) = bob_state.finish()?;
+//! let (carol_group_key, carol_secret_key) = carol_state.finish()?;
+//!
+//! let alice_public_key = alice_secret_key.to_public();
+//! let bob_public_key = bob_secret_key.to_public();
+//! let carol_public_key = carol_secret_key.to_public();
+//!
+//! // Commitments do not need to be ordered.
+//! let all_commitments = [
+//!     bob.commitments.unwrap(),
+//!     carol.commitments.unwrap(),
+//!     alice.commitments.unwrap()
+//! ];
+//!
+//! assert_eq!(
+//!     IndividualVerifyingKey::generate_from_commitments(alice.index, &all_commitments),
+//!     alice_public_key
+//! );
+//! assert_eq!(
+//!     IndividualVerifyingKey::generate_from_commitments(bob.index, &all_commitments),
+//!     bob_public_key
+//! );
+//! assert_eq!(
+//!     IndividualVerifyingKey::generate_from_commitments(carol.index, &all_commitments),
+//!     carol_public_key
+//! );
+//!
+//! assert!(alice_public_key.verify(&all_commitments).is_ok());
+//! assert!(bob_public_key.verify(&all_commitments).is_ok());
+//! assert!(carol_public_key.verify(&all_commitments).is_ok());
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
 //!
@@ -733,10 +831,14 @@
 //! #                                   bob_encrypted_shares.get(&david.index).unwrap().clone(),
 //! #                                   carol_encrypted_shares.get(&david.index).unwrap().clone()];
 //! #
-//! let (alexis_state, alexis_complaints) = alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
-//! let (barbara_state, barbara_complaints) = barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
-//! let (claire_state, claire_complaints) = claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
-//! let (david_state, david_complaints) = david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
+//! let (alexis_state, alexis_complaints) =
+//!     alexis_state.to_round_two(alexis_my_encrypted_secret_shares, &mut rng)?;
+//! let (barbara_state, barbara_complaints) =
+//!     barbara_state.to_round_two(barbara_my_encrypted_secret_shares, &mut rng)?;
+//! let (claire_state, claire_complaints) =
+//!     claire_state.to_round_two(claire_my_encrypted_secret_shares, &mut rng)?;
+//! let (david_state, david_complaints) =
+//!     david_state.to_round_two(david_my_encrypted_secret_shares, &mut rng)?;
 //!
 //! // Everything should have run smoothly.
 //! assert!(alexis_complaints.is_empty());
@@ -860,6 +962,259 @@
 //! assert!(david_group_key == alice_group_key);
 //! # Ok(()) } fn main() { assert!(do_test().is_ok()); }
 //! ```
+//!
+//! ## Malicious participants and complaints handling
+//!
+//! ICE-FROST Distributed Key Generation and Resharing processes are robust, meaning that they can terminate
+//! successfully even in presence of malicious adversaries, as long as there remain at least t honest participants
+//! within a t-out-of-n initial session.
+//!
+//! During the initial phase of the DKG, invalid NIZK proofs of DH public keys, or invalid NIZK proofs of secret key
+//! (if any) would result in adversaries being flagged and added to the `misbehaving_participants` list.
+//!
+//! ```rust
+//! # use ice_frost::dkg::DistributedKeyGeneration;
+//! # use ice_frost::parameters::ThresholdParameters;
+//! # use ice_frost::dkg::Participant;
+//! # use ice_frost::CipherSuite;
+//! # use ice_frost::FrostResult;
+//! # use rand::rngs::OsRng;
+//! # use ark_secp256k1::Projective as G;
+//! # use sha2::Sha256;
+//! # use zeroize::Zeroize;
+//! # use ice_frost::testing::Secp256k1Sha256;
+//! #
+//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+//! # let params = ThresholdParameters::new(3,2);
+//! # let mut rng = OsRng;
+//! #
+//! let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
+//! let (mut bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
+//! // Let's change Bob's dh_public_key so that his NIZK proof becomes invalid.
+//! bob.dh_public_key = alice.dh_public_key.clone();
+//! let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
+//!
+//! let participants: Vec<Participant<Secp256k1Sha256>> =
+//!     vec![alice.clone(), bob.clone(), carol.clone()];
+//! let (alice_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params, &alice_dh_sk, &alice.index, &alice_coefficients, &participants, &mut rng
+//!     )?;
+//! assert!(participant_lists.valid_participants == vec![alice.clone(), carol.clone()]);
+//! assert!(participant_lists.misbehaving_participants.is_some());
+//! assert!(participant_lists.misbehaving_participants.unwrap() == vec![bob.index]);
+//!
+//! // Ignore Bob as he would be discarded anyway.
+//!
+//! let (carol_state, participant_lists) =
+//!     DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//!         &params, &carol_dh_sk, &carol.index, &carol_coefficients, &participants, &mut rng
+//!     )?;
+//! assert!(participant_lists.valid_participants == vec![alice, carol]);
+//! assert!(participant_lists.misbehaving_participants.is_some());
+//! assert!(participant_lists.misbehaving_participants.unwrap() == vec![bob.index]);
+//!
+//! # Ok(()) }
+//! # fn main() { assert!(do_test().is_ok()); }
+//! ```
+//!
+//! Upon detected misbehaviour, the remaining honest participants must discard possibly incoming shares
+//! from malicious participants before proceeding to the secound round of the DKG.
+//!
+//! ```rust
+//! # use ice_frost::dkg::DistributedKeyGeneration;
+//! # use ice_frost::parameters::ThresholdParameters;
+//! # use ice_frost::dkg::Participant;
+//! # use ice_frost::CipherSuite;
+//! # use ice_frost::FrostResult;
+//! # use rand::rngs::OsRng;
+//! # use ark_secp256k1::Projective as G;
+//! # use sha2::Sha256;
+//! # use zeroize::Zeroize;
+//! # use ice_frost::testing::Secp256k1Sha256;
+//! #
+//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+//! # let params = ThresholdParameters::new(3,2);
+//! # let mut rng = OsRng;
+//! #
+//! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
+//! # let (mut bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
+//! # // Let's change Bob's dh_public_key so that his NIZK proof becomes invalid.
+//! # bob.dh_public_key = alice.dh_public_key.clone();
+//! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
+//! #
+//! # let participants: Vec<Participant<Secp256k1Sha256>> = vec![alice.clone(), bob.clone(), carol.clone()];
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &alice_dh_sk, &alice.index, &alice_coefficients, &participants, &mut rng)?;
+//! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
+//! #
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &carol_dh_sk, &carol.index, &carol_coefficients, &participants, &mut rng)?;
+//! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
+//! #
+//! // Alice and Carol will ignore encrypted shares they may have received from Bob.
+//! let alice_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&alice.index).unwrap().clone()
+//! ];
+//! let carol_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&carol.index).unwrap().clone()
+//! ];
+//!
+//! let (alice_state, _) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (carol_state, _) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! # Ok(()) }
+//! # fn main() { assert!(do_test().is_ok()); }
+//! ```
+//!
+//! During the second phase of the DKG, invalid encrypted secret shares would result in adversaries being flagged
+//! by generating a complaint. Those complaints would then be publicly shared with every other participant, who would
+//! process them in order to settle on who is to blame between the plaintiff and the defendant.
+//!
+//! Note that this process of complaint verification is *necessary* for honest parties to proceed to the end of the DKG.
+//!
+//! ```rust
+//! # use ice_frost::dkg::DistributedKeyGeneration;
+//! # use ice_frost::parameters::ThresholdParameters;
+//! # use ice_frost::dkg::Participant;
+//! # use ice_frost::CipherSuite;
+//! # use ice_frost::FrostResult;
+//! # use rand::rngs::OsRng;
+//! # use ark_secp256k1::Projective as G;
+//! # use sha2::Sha256;
+//! # use zeroize::Zeroize;
+//! # use ice_frost::testing::Secp256k1Sha256;
+//! #
+//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+//! # let params = ThresholdParameters::new(3,2);
+//! # let mut rng = OsRng;
+//! // Alice, Bob and Carol run the first round of the DKG without trouble...
+//! #
+//! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
+//! # let (bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
+//! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
+//! #
+//! # let participants: Vec<Participant<Secp256k1Sha256>> = vec![alice.clone(), bob.clone(), carol.clone()];
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &alice_dh_sk, &alice.index, &alice_coefficients, &participants, &mut rng)?;
+//! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
+//! #
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &bob_dh_sk, &bob.index, &bob_coefficients, &participants, &mut rng)?;
+//! # let mut bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?.clone();
+//! # bob_their_encrypted_secret_shares.get_mut(&alice.index).unwrap().nonce = [0; 16];
+//! #
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &carol_dh_sk, &carol.index, &carol_coefficients, &participants, &mut rng)?;
+//! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
+//! #
+//!
+//! // Bob will send an invalid share to Alice.
+//! let invalid_share = bob_their_encrypted_secret_shares.get(&alice.index).unwrap();
+//!
+//! let alice_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//!     invalid_share.clone(),
+//!     carol_their_encrypted_secret_shares.get(&alice.index).unwrap().clone()];
+//!
+//! // Ignore Bob as he would be discarded anyway.
+//!
+//! let carol_my_encrypted_secret_shares = vec![
+//!     alice_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//!     bob_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&carol.index).unwrap().clone()
+//! ];
+//!
+//! let (mut alice_state, alice_complaints) =
+//!     alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (mut carol_state, carol_complaints) =
+//!     carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! assert!(alice_complaints.len() == 1);
+//! assert!(carol_complaints.is_empty());
+//!
+//! # Ok(()) }
+//! # fn main() { assert!(do_test().is_ok()); }
+//! ```
+//!
+//! Alice shares her complaint with all other participants. Everyone will process the received complaints,
+//! update their internal state accordingly, and then conclude with this DKG. The complaint handling is done
+//! through the `blame` method which will determine whom of the plaintiff or the defendant is malicious.
+//!
+//! Note that one can process several complaints against the same participant, in which case the subsequent
+//! complaint settlements won't update the state (as this participant will have already been removed, if malicious).
+//!
+//!
+//! ```rust
+//! # use ice_frost::dkg::DistributedKeyGeneration;
+//! # use ice_frost::parameters::ThresholdParameters;
+//! # use ice_frost::dkg::Participant;
+//! # use ice_frost::CipherSuite;
+//! # use ice_frost::FrostResult;
+//! # use rand::rngs::OsRng;
+//! # use ark_secp256k1::Projective as G;
+//! # use sha2::Sha256;
+//! # use zeroize::Zeroize;
+//! # use ice_frost::testing::Secp256k1Sha256;
+//! #
+//! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+//! # let params = ThresholdParameters::new(3,2);
+//! # let mut rng = OsRng;
+//! // Alice, Bob and Carol run the first round of the DKG without trouble...
+//! #
+//! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(&params, 1, &mut rng)?;
+//! # let (bob, bob_coefficients, bob_dh_sk) = Participant::new_dealer(&params, 2, &mut rng)?;
+//! # let (carol, carol_coefficients, carol_dh_sk) = Participant::new_dealer(&params, 3, &mut rng)?;
+//! #
+//! # let participants: Vec<Participant<Secp256k1Sha256>> = vec![alice.clone(), bob.clone(), carol.clone()];
+//! # let (alice_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &alice_dh_sk, &alice.index, &alice_coefficients, &participants, &mut rng)?;
+//! # let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
+//! #
+//! # let (bob_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &bob_dh_sk, &bob.index, &bob_coefficients, &participants, &mut rng)?;
+//! # let mut bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?.clone();
+//! # bob_their_encrypted_secret_shares.get_mut(&alice.index).unwrap().nonce = [0; 16];
+//! #
+//! # let (carol_state, participant_lists) = DistributedKeyGeneration::<_, Secp256k1Sha256>::bootstrap(
+//! #       &params, &carol_dh_sk, &carol.index, &carol_coefficients, &participants, &mut rng)?;
+//! # let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
+//! #
+//! # // Bob will send an invalid share to Alice.
+//! # let invalid_share = bob_their_encrypted_secret_shares.get(&alice.index).unwrap();
+//! #
+//! # let alice_my_encrypted_secret_shares = vec![
+//! #     alice_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//! #     invalid_share.clone(),
+//! #     carol_their_encrypted_secret_shares.get(&alice.index).unwrap().clone()];
+//! #
+//! # // Ignore Bob as he would be discarded anyway.
+//! #
+//! # let carol_my_encrypted_secret_shares = vec![
+//! #     alice_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//! #     bob_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//! #     carol_their_encrypted_secret_shares.get(&carol.index).unwrap().clone()
+//! # ];
+//! #
+//! # let (mut alice_state, alice_complaints) = alice_state.to_round_two(alice_my_encrypted_secret_shares, &mut rng)?;
+//! # let alice_complaint = alice_complaints[0].clone();
+//! # let (mut carol_state, carol_complaints) = carol_state.to_round_two(carol_my_encrypted_secret_shares, &mut rng)?;
+//! #
+//! alice_state.blame(&invalid_share, &alice_complaint);
+//! carol_state.blame(&invalid_share, &alice_complaint);
+//!
+//! // Alice and Carol can now finish correctly their DKG.
+//! let (alice_group_key, alice_secret_key) = alice_state.finish()?;
+//! let (carol_group_key, carol_secret_key) = carol_state.finish()?;
+//!
+//! assert!(alice_group_key == carol_group_key);
+//!
+//! # Ok(()) }
+//! # fn main() { assert!(do_test().is_ok()); }
+//! ```
+//!
 //!
 //! ## Precomputation and Partial Signatures
 //!
