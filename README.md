@@ -14,7 +14,8 @@ Please see the documentation for usage examples.
 This library has a modular backend supporting
 
 - arbitrary curves defined with the arkworks library suite;
-- arbitrary hash functions for the internal random oracles of the ICE-FROST ciphersuite.
+- arbitrary hash functions for the internal random oracles of the ICE-FROST ciphersuite;
+- an arbitrary AEAD for the secret shares encryption part of the DKG / Key resharing phase.
 
 Note however that two parameters are not modular, at least in the current version:
 
