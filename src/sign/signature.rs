@@ -1432,6 +1432,320 @@ mod test {
     }
 
     #[test]
+    fn signature_from_incomplete_set() {
+        let params = ThresholdParameters::new(5, 3);
+        let rng = OsRng;
+
+        let (p1, p1coeffs, dh_sk1) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 1, rng).unwrap();
+        let (p2, p2coeffs, dh_sk2) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 2, rng).unwrap();
+        let (p3, p3coeffs, dh_sk3) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 3, rng).unwrap();
+        let (p4, p4coeffs, dh_sk4) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 4, rng).unwrap();
+        let (p5, p5coeffs, dh_sk5) =
+            Participant::<Secp256k1Sha256>::new_dealer(&params, 5, rng).unwrap();
+
+        p1.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p1.index, p1.public_key().unwrap())
+            .unwrap();
+        p2.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p2.index, p2.public_key().unwrap())
+            .unwrap();
+        p3.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p3.index, p3.public_key().unwrap())
+            .unwrap();
+        p4.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p4.index, p4.public_key().unwrap())
+            .unwrap();
+        p5.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p5.index, p5.public_key().unwrap())
+            .unwrap();
+
+        let participants: Vec<Participant<Secp256k1Sha256>> =
+            vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
+        let (p1_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                &params,
+                &dh_sk1,
+                &p1.index,
+                &p1coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
+
+        let (p2_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                &params,
+                &dh_sk2,
+                &p2.index,
+                &p2coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
+
+        let (p3_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                &params,
+                &dh_sk3,
+                &p3.index,
+                &p3coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
+
+        let (p4_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                &params,
+                &dh_sk4,
+                &p4.index,
+                &p4coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
+
+        let (p5_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                &params,
+                &dh_sk5,
+                &p5.index,
+                &p5coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
+
+        let p1_my_encrypted_secret_shares = vec![
+            p1_their_encrypted_secret_shares[0].clone(),
+            p2_their_encrypted_secret_shares[0].clone(),
+            p3_their_encrypted_secret_shares[0].clone(),
+            p4_their_encrypted_secret_shares[0].clone(),
+            p5_their_encrypted_secret_shares[0].clone(),
+        ];
+
+        // Wrong share inserted here!
+        let mut wrong_encrypted_secret_share_from_p1 = p1_their_encrypted_secret_shares[1].clone();
+        wrong_encrypted_secret_share_from_p1.nonce = [42; 16];
+        let p2_my_encrypted_secret_shares = vec![
+            wrong_encrypted_secret_share_from_p1.clone(),
+            p2_their_encrypted_secret_shares[1].clone(),
+            p3_their_encrypted_secret_shares[1].clone(),
+            p4_their_encrypted_secret_shares[1].clone(),
+            p5_their_encrypted_secret_shares[1].clone(),
+        ];
+
+        let p3_my_encrypted_secret_shares = vec![
+            p1_their_encrypted_secret_shares[2].clone(),
+            p2_their_encrypted_secret_shares[2].clone(),
+            p3_their_encrypted_secret_shares[2].clone(),
+            p4_their_encrypted_secret_shares[2].clone(),
+            p5_their_encrypted_secret_shares[2].clone(),
+        ];
+        let p4_my_encrypted_secret_shares = vec![
+            p1_their_encrypted_secret_shares[3].clone(),
+            p2_their_encrypted_secret_shares[3].clone(),
+            p3_their_encrypted_secret_shares[3].clone(),
+            p4_their_encrypted_secret_shares[3].clone(),
+            p5_their_encrypted_secret_shares[3].clone(),
+        ];
+
+        // Wrong shares inserted here!
+        let mut wrong_encrypted_secret_share_from_p1 = p1_their_encrypted_secret_shares[4].clone();
+        wrong_encrypted_secret_share_from_p1.nonce = [42; 16];
+        let mut wrong_encrypted_secret_share_from_p4 = p4_their_encrypted_secret_shares[4].clone();
+        wrong_encrypted_secret_share_from_p4.nonce = [42; 16];
+        let p5_my_encrypted_secret_shares = vec![
+            wrong_encrypted_secret_share_from_p1.clone(),
+            p2_their_encrypted_secret_shares[4].clone(),
+            p3_their_encrypted_secret_shares[4].clone(),
+            wrong_encrypted_secret_share_from_p4.clone(),
+            p5_their_encrypted_secret_shares[4].clone(),
+        ];
+
+        let (p1_state, complaints) = p1_state
+            .clone()
+            .to_round_two(p1_my_encrypted_secret_shares, rng)
+            .unwrap();
+        assert!(complaints.is_empty());
+
+        let (p2_state, complaints) = p2_state
+            .clone()
+            .to_round_two(p2_my_encrypted_secret_shares, rng)
+            .unwrap();
+        assert!(complaints.len() == 1);
+
+        let (p3_state, complaints) = p3_state
+            .clone()
+            .to_round_two(p3_my_encrypted_secret_shares, rng)
+            .unwrap();
+        assert!(complaints.is_empty());
+
+        let (p4_state, complaints) = p4_state
+            .clone()
+            .to_round_two(p4_my_encrypted_secret_shares, rng)
+            .unwrap();
+        assert!(complaints.is_empty());
+
+        let (p5_state, complaints) = p5_state
+            .clone()
+            .to_round_two(p5_my_encrypted_secret_shares, rng)
+            .unwrap();
+        assert!(complaints.len() == 2);
+
+        // Anyone can blame the malicious participants.
+        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
+        assert!(bad_index == 1);
+        let bad_index = p5_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
+        assert!(bad_index == 1);
+
+        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
+        assert!(bad_index == 1);
+        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p4, &complaints[1]);
+        assert!(bad_index == 4);
+        let bad_index = p3_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
+        assert!(bad_index == 1);
+        let bad_index = p3_state.blame(&wrong_encrypted_secret_share_from_p4, &complaints[1]);
+        assert!(bad_index == 4);
+
+        // Everyone can finish the DKG. However it is the responsability of p2, p3 and p5 to decide
+        // whether to discard p1 and p4 for the signing sessions or not.
+        let (p1_group_key, _p1_secret_key) = p1_state.finish().unwrap();
+        let (p2_group_key, p2_secret_key) = p2_state.finish().unwrap();
+        let (p3_group_key, p3_secret_key) = p3_state.finish().unwrap();
+        let (p4_group_key, _p4_secret_key) = p4_state.finish().unwrap();
+        let (p5_group_key, p5_secret_key) = p5_state.finish().unwrap();
+
+        assert!(p1_group_key == p2_group_key);
+        assert!(p2_group_key == p3_group_key);
+        assert!(p3_group_key == p4_group_key);
+        assert!(p4_group_key == p5_group_key);
+
+        let group_key = p5_group_key;
+
+        // Check the validity of all honest participants `IndividualVerifyingKey`.
+
+        let p2_public_key = p2_secret_key.to_public();
+        let p3_public_key = p3_secret_key.to_public();
+        let p5_public_key = p5_secret_key.to_public();
+
+        // The order does not matter, but we must *only* commitments from remaining (honest) participants.
+        let commitments = [
+            p2.commitments.unwrap(),
+            p5.commitments.unwrap(),
+            p3.commitments.unwrap(),
+        ];
+
+        assert!(p2_public_key.verify(&commitments).is_ok());
+        assert!(p3_public_key.verify(&commitments).is_ok());
+        assert!(p5_public_key.verify(&commitments).is_ok());
+
+        assert!(p2_public_key.verify(&commitments[1..]).is_err());
+
+        // Check that the generated `IndividualVerifyingKey` from other participants match.
+        let p2_recovered_public_key =
+            IndividualVerifyingKey::generate_from_commitments(2, &commitments);
+        let p3_recovered_public_key =
+            IndividualVerifyingKey::generate_from_commitments(3, &commitments);
+        let p5_recovered_public_key =
+            IndividualVerifyingKey::generate_from_commitments(5, &commitments);
+
+        assert_eq!(p2_public_key, p2_recovered_public_key);
+        assert_eq!(p3_public_key, p3_recovered_public_key);
+        assert_eq!(p5_public_key, p5_recovered_public_key);
+
+        // We still have enough signers to generate a valid signature.
+
+        let message = b"This is a test of the tsunami alert system. This is only a test.";
+        let (p2_public_comshares, mut p2_secret_comshares) =
+            generate_commitment_share_lists(&mut OsRng, &p2_secret_key, 1);
+        let (p3_public_comshares, mut p3_secret_comshares) =
+            generate_commitment_share_lists(&mut OsRng, &p3_secret_key, 1);
+        let (p5_public_comshares, mut p5_secret_comshares) =
+            generate_commitment_share_lists(&mut OsRng, &p5_secret_key, 1);
+
+        let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
+
+        aggregator.include_signer(
+            2,
+            p2_public_comshares.commitments[0],
+            (&p2_secret_key).into(),
+        );
+        aggregator.include_signer(
+            3,
+            p3_public_comshares.commitments[0],
+            (&p3_secret_key).into(),
+        );
+        aggregator.include_signer(
+            5,
+            p5_public_comshares.commitments[0],
+            (&p5_secret_key).into(),
+        );
+
+        let signers = aggregator.get_signers();
+        let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
+
+        let p2_partial = p2_secret_key
+            .sign(
+                &message_hash,
+                &group_key,
+                &mut p2_secret_comshares,
+                0,
+                signers,
+            )
+            .unwrap();
+        let p3_partial = p3_secret_key
+            .sign(
+                &message_hash,
+                &group_key,
+                &mut p3_secret_comshares,
+                0,
+                signers,
+            )
+            .unwrap();
+        let p5_partial = p5_secret_key
+            .sign(
+                &message_hash,
+                &group_key,
+                &mut p5_secret_comshares,
+                0,
+                signers,
+            )
+            .unwrap();
+
+        aggregator.include_partial_signature(p2_partial);
+        aggregator.include_partial_signature(p3_partial);
+        aggregator.include_partial_signature(p5_partial);
+
+        let aggregator = aggregator.finalize().unwrap();
+        let threshold_signature = aggregator.aggregate().unwrap();
+        let verification_result1 = threshold_signature.verify(&group_key, &message_hash);
+        let verification_result2 = group_key.verify_signature(&threshold_signature, &message_hash);
+
+        assert!(verification_result1.is_ok());
+        assert!(verification_result2.is_ok());
+    }
+
+    #[test]
     fn test_serialization() {
         let (params, dealers_signing_keys, group_key, _, _) = do_keygen(3, 2, None, None).unwrap();
 

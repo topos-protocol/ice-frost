@@ -2162,6 +2162,11 @@ mod test {
                     .to_round_two(p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
 
+                // Anyone can blame the malicious participant.
+                let bad_index = p1_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
+                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
                 let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
                 assert!(bad_index == 1);
 
@@ -2213,6 +2218,11 @@ mod test {
                     .to_round_two(p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
 
+                // Anyone can blame the malicious participant.
+                let bad_index = p1_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
+                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
                 let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
                 assert!(bad_index == 1);
 
@@ -2270,6 +2280,11 @@ mod test {
                     .to_round_two(p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
 
+                // Anyone can blame the malicious participant.
+                let bad_index = p1_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
+                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
                 let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
                 assert!(bad_index == 1);
 
