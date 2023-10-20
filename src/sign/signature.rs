@@ -757,10 +757,8 @@ mod test {
         }
 
         let mut participants_encrypted_secret_shares: Vec<
-            Vec<EncryptedSecretShare<Secp256k1Sha256>>,
-        > = (0..n1)
-            .map(|_| Vec::with_capacity((n1 - 1) as usize))
-            .collect();
+            BTreeMap<u32, EncryptedSecretShare<Secp256k1Sha256>>,
+        > = (0..n1).map(|_| BTreeMap::new()).collect();
 
         let mut participants_states_1 = Vec::<Dkg<_>>::new();
         let mut participants_states_2 = Vec::<Dkg<_>>::new();
@@ -784,8 +782,12 @@ mod test {
 
         let mut p1_my_encrypted_secret_shares = Vec::<EncryptedSecretShare<Secp256k1Sha256>>::new();
         for j in 0..n1 {
-            p1_my_encrypted_secret_shares
-                .push(participants_encrypted_secret_shares[j as usize][0].clone());
+            p1_my_encrypted_secret_shares.push(
+                participants_encrypted_secret_shares[j as usize]
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+            );
         }
         participants_states_2.push(
             participants_states_1[0]
@@ -800,7 +802,10 @@ mod test {
                 Vec::<EncryptedSecretShare<Secp256k1Sha256>>::new();
             for j in 0..n1 {
                 pi_my_encrypted_secret_shares.push(
-                    participants_encrypted_secret_shares[j as usize][(i - 1) as usize].clone(),
+                    participants_encrypted_secret_shares[j as usize]
+                        .get(&i)
+                        .unwrap()
+                        .clone(),
                 );
             }
 
@@ -847,8 +852,8 @@ mod test {
 
             let mut dealers = Vec::with_capacity(n1 as usize);
             let mut dealers_encrypted_secret_shares_for_signers: Vec<
-                Vec<EncryptedSecretShare<Secp256k1Sha256>>,
-            > = (0..n1).map(|_| Vec::new()).collect();
+                BTreeMap<u32, EncryptedSecretShare<Secp256k1Sha256>>,
+            > = (0..n1).map(|_| BTreeMap::new()).collect();
 
             for i in 0..n1 as usize {
                 let (dealer_for_signers, dealer_encrypted_shares_for_signers, _participant_lists) =
@@ -878,7 +883,7 @@ mod test {
             for i in 0..n2 as usize {
                 let shares_for_signer = dealers_encrypted_secret_shares_for_signers
                     .iter()
-                    .map(|v| v[i].clone())
+                    .map(|v| v.get(&(i as u32 + 1)).unwrap().clone())
                     .collect::<Vec<EncryptedSecretShare<Secp256k1Sha256>>>();
                 signers_encrypted_secret_shares[i] = shares_for_signer;
             }
@@ -895,8 +900,8 @@ mod test {
 
             let mut signers_secret_keys = Vec::<IndividualSigningKey<Secp256k1Sha256>>::new();
 
-            for signers_state in signers_states_2.iter() {
-                let (_, pi_sk) = signers_state.clone().finish().unwrap();
+            for signers_state in signers_states_2.into_iter() {
+                let (_, pi_sk) = signers_state.finish().unwrap();
                 signers_secret_keys.push(pi_sk);
             }
 
@@ -1536,52 +1541,53 @@ mod test {
         let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
 
         let p1_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[0].clone(),
-            p2_their_encrypted_secret_shares[0].clone(),
-            p3_their_encrypted_secret_shares[0].clone(),
-            p4_their_encrypted_secret_shares[0].clone(),
-            p5_their_encrypted_secret_shares[0].clone(),
+            p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&1).unwrap().clone(),
         ];
 
         // Wrong share inserted here!
         let mut wrong_encrypted_secret_share_from_p1_to_p2 =
-            p1_their_encrypted_secret_shares[1].clone();
+            p1_their_encrypted_secret_shares.get(&2).unwrap().clone();
         wrong_encrypted_secret_share_from_p1_to_p2.nonce = [42; 16];
         let p2_my_encrypted_secret_shares = vec![
             wrong_encrypted_secret_share_from_p1_to_p2.clone(),
-            p2_their_encrypted_secret_shares[1].clone(),
-            p3_their_encrypted_secret_shares[1].clone(),
-            p4_their_encrypted_secret_shares[1].clone(),
-            p5_their_encrypted_secret_shares[1].clone(),
+            p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&2).unwrap().clone(),
         ];
 
         let p3_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[2].clone(),
-            p2_their_encrypted_secret_shares[2].clone(),
-            p3_their_encrypted_secret_shares[2].clone(),
-            p4_their_encrypted_secret_shares[2].clone(),
-            p5_their_encrypted_secret_shares[2].clone(),
+            p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&3).unwrap().clone(),
         ];
         let p4_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[3].clone(),
-            p2_their_encrypted_secret_shares[3].clone(),
-            p3_their_encrypted_secret_shares[3].clone(),
-            p4_their_encrypted_secret_shares[3].clone(),
-            p5_their_encrypted_secret_shares[3].clone(),
+            p1_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&4).unwrap().clone(),
         ];
 
         // Wrong shares inserted here!
         let mut wrong_encrypted_secret_share_from_p1_to_p5 =
-            p1_their_encrypted_secret_shares[4].clone();
+            p1_their_encrypted_secret_shares.get(&5).unwrap().clone();
         wrong_encrypted_secret_share_from_p1_to_p5.nonce = [42; 16];
-        let mut wrong_encrypted_secret_share_from_p4 = p4_their_encrypted_secret_shares[4].clone();
+        let mut wrong_encrypted_secret_share_from_p4 =
+            p4_their_encrypted_secret_shares.get(&5).unwrap().clone();
         wrong_encrypted_secret_share_from_p4.nonce = [42; 16];
         let p5_my_encrypted_secret_shares = vec![
             wrong_encrypted_secret_share_from_p1_to_p5.clone(),
-            p2_their_encrypted_secret_shares[4].clone(),
-            p3_their_encrypted_secret_shares[4].clone(),
+            p2_their_encrypted_secret_shares.get(&5).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&5).unwrap().clone(),
             wrong_encrypted_secret_share_from_p4.clone(),
-            p5_their_encrypted_secret_shares[4].clone(),
+            p5_their_encrypted_secret_shares.get(&5).unwrap().clone(),
         ];
 
         let (p1_state, complaints) = p1_state

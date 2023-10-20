@@ -49,43 +49,143 @@ fn signing_and_verification_3_out_of_5() {
     let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
 
     let p1_my_encrypted_secret_shares = vec![
-        p1_their_encrypted_secret_shares[0].clone(),
-        p2_their_encrypted_secret_shares[0].clone(),
-        p3_their_encrypted_secret_shares[0].clone(),
-        p4_their_encrypted_secret_shares[0].clone(),
-        p5_their_encrypted_secret_shares[0].clone(),
+        p1_their_encrypted_secret_shares
+            .get(&1)
+            .unwrap()
+            .clone()
+            .clone(),
+        p2_their_encrypted_secret_shares
+            .get(&1)
+            .unwrap()
+            .clone()
+            .clone(),
+        p3_their_encrypted_secret_shares
+            .get(&1)
+            .unwrap()
+            .clone()
+            .clone(),
+        p4_their_encrypted_secret_shares
+            .get(&1)
+            .unwrap()
+            .clone()
+            .clone(),
+        p5_their_encrypted_secret_shares
+            .get(&1)
+            .unwrap()
+            .clone()
+            .clone(),
     ];
 
     let p2_my_encrypted_secret_shares = vec![
-        p1_their_encrypted_secret_shares[1].clone(),
-        p2_their_encrypted_secret_shares[1].clone(),
-        p3_their_encrypted_secret_shares[1].clone(),
-        p4_their_encrypted_secret_shares[1].clone(),
-        p5_their_encrypted_secret_shares[1].clone(),
+        p1_their_encrypted_secret_shares
+            .get(&2)
+            .unwrap()
+            .clone()
+            .clone(),
+        p2_their_encrypted_secret_shares
+            .get(&2)
+            .unwrap()
+            .clone()
+            .clone(),
+        p3_their_encrypted_secret_shares
+            .get(&2)
+            .unwrap()
+            .clone()
+            .clone(),
+        p4_their_encrypted_secret_shares
+            .get(&2)
+            .unwrap()
+            .clone()
+            .clone(),
+        p5_their_encrypted_secret_shares
+            .get(&2)
+            .unwrap()
+            .clone()
+            .clone(),
     ];
 
     let p3_my_encrypted_secret_shares = vec![
-        p1_their_encrypted_secret_shares[2].clone(),
-        p2_their_encrypted_secret_shares[2].clone(),
-        p3_their_encrypted_secret_shares[2].clone(),
-        p4_their_encrypted_secret_shares[2].clone(),
-        p5_their_encrypted_secret_shares[2].clone(),
+        p1_their_encrypted_secret_shares
+            .get(&3)
+            .unwrap()
+            .clone()
+            .clone(),
+        p2_their_encrypted_secret_shares
+            .get(&3)
+            .unwrap()
+            .clone()
+            .clone(),
+        p3_their_encrypted_secret_shares
+            .get(&3)
+            .unwrap()
+            .clone()
+            .clone(),
+        p4_their_encrypted_secret_shares
+            .get(&3)
+            .unwrap()
+            .clone()
+            .clone(),
+        p5_their_encrypted_secret_shares
+            .get(&3)
+            .unwrap()
+            .clone()
+            .clone(),
     ];
 
     let p4_my_encrypted_secret_shares = vec![
-        p1_their_encrypted_secret_shares[3].clone(),
-        p2_their_encrypted_secret_shares[3].clone(),
-        p3_their_encrypted_secret_shares[3].clone(),
-        p4_their_encrypted_secret_shares[3].clone(),
-        p5_their_encrypted_secret_shares[3].clone(),
+        p1_their_encrypted_secret_shares
+            .get(&4)
+            .unwrap()
+            .clone()
+            .clone(),
+        p2_their_encrypted_secret_shares
+            .get(&4)
+            .unwrap()
+            .clone()
+            .clone(),
+        p3_their_encrypted_secret_shares
+            .get(&4)
+            .unwrap()
+            .clone()
+            .clone(),
+        p4_their_encrypted_secret_shares
+            .get(&4)
+            .unwrap()
+            .clone()
+            .clone(),
+        p5_their_encrypted_secret_shares
+            .get(&4)
+            .unwrap()
+            .clone()
+            .clone(),
     ];
 
     let p5_my_encrypted_secret_shares = vec![
-        p1_their_encrypted_secret_shares[4].clone(),
-        p2_their_encrypted_secret_shares[4].clone(),
-        p3_their_encrypted_secret_shares[4].clone(),
-        p4_their_encrypted_secret_shares[4].clone(),
-        p5_their_encrypted_secret_shares[4].clone(),
+        p1_their_encrypted_secret_shares
+            .get(&5)
+            .unwrap()
+            .clone()
+            .clone(),
+        p2_their_encrypted_secret_shares
+            .get(&5)
+            .unwrap()
+            .clone()
+            .clone(),
+        p3_their_encrypted_secret_shares
+            .get(&5)
+            .unwrap()
+            .clone()
+            .clone(),
+        p4_their_encrypted_secret_shares
+            .get(&5)
+            .unwrap()
+            .clone()
+            .clone(),
+        p5_their_encrypted_secret_shares
+            .get(&5)
+            .unwrap()
+            .clone()
+            .clone(),
     ];
 
     let (p1_state, complaints) = p1_state
