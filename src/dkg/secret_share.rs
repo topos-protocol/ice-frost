@@ -94,15 +94,8 @@ impl<C: CipherSuite> SecretShare<C> {
     ) -> FrostResult<C, ()> {
         let lhs = C::G::generator() * self.polynomial_evaluation;
         let term: Scalar<C> = self.receiver_index.into();
-        let mut rhs: C::G = <C as CipherSuite>::G::zero();
 
-        for (index, com) in commitment.points.iter().rev().enumerate() {
-            rhs += com;
-
-            if index != (commitment.points.len() - 1) {
-                rhs *= term;
-            }
-        }
+        let rhs = commitment.evaluate_hiding(&term);
 
         match lhs.into_affine() == rhs.into_affine() {
             true => Ok(()),
