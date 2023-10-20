@@ -1035,13 +1035,42 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// Every participant can verify a complaint and determine who is the malicious
     /// party. The relevant encrypted share is assumed to exist and publicly retrievable
     /// by any participant.
+    ///
+    /// The state of the participant calling blame will be updated by removing the invalid
+    /// participant's commitments and secret share received from them, so that the key
+    /// generation/resharing process can finish, in addition to returning the index of the
+    /// blamed participant.
     pub fn blame(
-        &self,
+        &mut self,
         encrypted_share: &EncryptedSecretShare<C>,
         complaint: &Complaint<C>,
     ) -> u32 {
+        fn remove_malicious<C: CipherSuite>(
+            dkg_state: &mut DistributedKeyGeneration<RoundTwo, C>,
+            idx: u32,
+        ) -> u32 {
+            dkg_state
+                .state
+                .their_commitments
+                .as_mut()
+                .unwrap()
+                .remove(&idx);
+            dkg_state
+                .state
+                .my_secret_shares
+                .as_mut()
+                .unwrap()
+                .remove(&idx);
+
+            idx
+        }
+
         let mut pk_maker = <C as CipherSuite>::G::zero();
         let mut pk_accused = <C as CipherSuite>::G::zero();
+
+        if complaint.accused_index == 0 || complaint.accused_index > self.state.parameters.n {
+            return remove_malicious(self, complaint.maker_index);
+        }
 
         let commitment_accused = if let Some(idx) = self
             .state
@@ -1052,7 +1081,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         {
             idx
         } else {
-            return complaint.maker_index;
+            // We should have been able to retrieve commitments for the targeted index,
+            // which means we already have removed this participant for misbehaviour.
+            return remove_malicious(self, complaint.accused_index);
         };
 
         for (index, pk) in self.state.their_dh_public_keys.iter() {
@@ -1065,12 +1096,12 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
 
         if pk_maker == <C as CipherSuite>::G::zero() || pk_accused == <C as CipherSuite>::G::zero()
         {
-            return complaint.maker_index;
-        }
+            return remove_malicious(self, complaint.maker_index);
+        };
 
         if complaint.verify(&pk_maker, &pk_accused).is_err() {
-            return complaint.maker_index;
-        }
+            return remove_malicious(self, complaint.maker_index);
+        };
 
         let mut dh_key_bytes = Vec::with_capacity(complaint.dh_shared_key.compressed_size());
         if complaint
@@ -1078,16 +1109,16 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             .serialize_compressed(&mut dh_key_bytes)
             .is_err()
         {
-            return complaint.maker_index;
+            return remove_malicious(self, complaint.maker_index);
         };
 
         let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
         if share.is_err() {
-            return complaint.accused_index;
-        }
+            return remove_malicious(self, complaint.accused_index);
+        };
         match share.unwrap().verify(&commitment_accused) {
-            Ok(()) => complaint.maker_index,
-            Err(_) => complaint.accused_index,
+            Ok(()) => remove_malicious(self, complaint.maker_index),
+            Err(_) => remove_malicious(self, complaint.accused_index),
         }
     }
 }
@@ -2146,16 +2177,16 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let (p1_state, complaints) = p1_state
+                let (mut p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(p1_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
-                let (p3_state, complaints) = p3_state
+                let (mut p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
 
-                let (p2_state, complaints) = p2_state
+                let (mut p2_state, complaints) = p2_state
                     .clone()
                     .to_round_two(p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
@@ -2202,16 +2233,16 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let (p1_state, complaints) = p1_state
+                let (mut p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(p1_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
-                let (p3_state, complaints) = p3_state
+                let (mut p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
 
-                let (p2_state, complaints) = p2_state
+                let (mut p2_state, complaints) = p2_state
                     .clone()
                     .to_round_two(p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
@@ -2264,16 +2295,16 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let (p1_state, complaints) = p1_state
+                let (mut p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(p1_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
-                let (p3_state, complaints) = p3_state
+                let (mut p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
 
-                let (p2_state, complaints) = p2_state
+                let (mut p2_state, complaints) = p2_state
                     .clone()
                     .to_round_two(p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
@@ -2312,7 +2343,7 @@ mod test {
                     p3_their_encrypted_secret_shares[2].clone(),
                 ];
 
-                let (p3_state, _) = p3_state
+                let (mut p3_state, _) = p3_state
                     .clone()
                     .to_round_two(p3_my_encrypted_secret_shares, rng)?;
 
@@ -2491,23 +2522,24 @@ mod test {
                 let (p1_state, complaints) =
                     p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
-                let (p3_state, complaints) =
+                let (mut p3_state, complaints) =
                     p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.is_empty());
 
-                let (p2_state, complaints) =
+                let (mut p2_state, complaints) =
                     p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
 
+                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                assert!(bad_index == 1);
                 let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-
                 assert!(bad_index == 1);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
                 let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                assert!(p1_group_key == p2_group_key);
+                assert!(p1_group_key != p2_group_key);
                 assert!(p2_group_key == p3_group_key);
 
                 // Check serialization
@@ -2588,13 +2620,18 @@ mod test {
                 )?;
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
 
+            let mut wrong_encrypted_secret_share = p1_their_encrypted_secret_shares[1].clone();
+            wrong_encrypted_secret_share.nonce = [42; 16];
+
             let p1_my_encrypted_secret_shares = vec![
                 p1_their_encrypted_secret_shares[0].clone(),
                 p2_their_encrypted_secret_shares[0].clone(),
                 p3_their_encrypted_secret_shares[0].clone(),
             ];
+
+            // Wrong share inserted here!
             let p2_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[1].clone(),
+                wrong_encrypted_secret_share.clone(),
                 p2_their_encrypted_secret_shares[1].clone(),
                 p3_their_encrypted_secret_shares[1].clone(),
             ];
@@ -2607,18 +2644,24 @@ mod test {
             let (p1_state, complaints) =
                 p1_state.to_round_two(p1_my_encrypted_secret_shares, rng)?;
             assert!(complaints.is_empty());
-            let (p2_state, complaints) =
-                p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
-            assert!(complaints.is_empty());
-            let (p3_state, complaints) =
+            let (mut p3_state, complaints) =
                 p3_state.to_round_two(p3_my_encrypted_secret_shares, rng)?;
             assert!(complaints.is_empty());
+            let (mut p2_state, complaints) =
+                p2_state.to_round_two(p2_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.len() == 1);
+
+            // Honest participants need to process all existing complaints before finishing the DKG.
+            let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+            assert!(bad_index == 1);
+            let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+            assert!(bad_index == 1);
 
             let (p1_group_key, p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, p2_secret_key) = p2_state.finish()?;
             let (p3_group_key, p3_secret_key) = p3_state.finish()?;
 
-            assert!(p1_group_key == p2_group_key);
+            assert!(p1_group_key != p2_group_key);
             assert!(p2_group_key == p3_group_key);
 
             // Check the validity of each IndividualVerifyingKey
@@ -2627,28 +2670,24 @@ mod test {
             let p2_public_key = p2_secret_key.to_public();
             let p3_public_key = p3_secret_key.to_public();
 
-            // The order does not matter
-            let commitments = [
-                p2.commitments.unwrap(),
-                p3.commitments.unwrap(),
-                p1.commitments.unwrap(),
-            ];
+            // The order does not matter, as long as we only include commitments from valid participants.
+            let commitments = [p3.commitments.unwrap(), p2.commitments.unwrap()];
 
-            assert!(p1_public_key.verify(&commitments).is_ok());
+            // p1's state hasn't been updated to remove themselves, hence their individual public key cannot be
+            // verifiable.
+            assert!(p1_public_key.verify(&commitments).is_err());
             assert!(p2_public_key.verify(&commitments).is_ok());
             assert!(p3_public_key.verify(&commitments).is_ok());
 
-            assert!(p1_public_key.verify(&commitments[1..]).is_err());
+            // We need all valid commitments to verify individual public keys.
+            assert!(p2_public_key.verify(&commitments[1..]).is_err());
 
-            // Check that the generated IndividualVerifyingKey from other participants match
-            let p1_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(1, &commitments);
+            // Check that the generated `IndividualVerifyingKey` from other participants match
             let p2_recovered_public_key =
                 IndividualVerifyingKey::generate_from_commitments(2, &commitments);
             let p3_recovered_public_key =
                 IndividualVerifyingKey::generate_from_commitments(3, &commitments);
 
-            assert_eq!(p1_public_key, p1_recovered_public_key);
             assert_eq!(p2_public_key, p2_recovered_public_key);
             assert_eq!(p3_public_key, p3_recovered_public_key);
 

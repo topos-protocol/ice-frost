@@ -1544,10 +1544,11 @@ mod test {
         ];
 
         // Wrong share inserted here!
-        let mut wrong_encrypted_secret_share_from_p1 = p1_their_encrypted_secret_shares[1].clone();
-        wrong_encrypted_secret_share_from_p1.nonce = [42; 16];
+        let mut wrong_encrypted_secret_share_from_p1_to_p2 =
+            p1_their_encrypted_secret_shares[1].clone();
+        wrong_encrypted_secret_share_from_p1_to_p2.nonce = [42; 16];
         let p2_my_encrypted_secret_shares = vec![
-            wrong_encrypted_secret_share_from_p1.clone(),
+            wrong_encrypted_secret_share_from_p1_to_p2.clone(),
             p2_their_encrypted_secret_shares[1].clone(),
             p3_their_encrypted_secret_shares[1].clone(),
             p4_their_encrypted_secret_shares[1].clone(),
@@ -1570,12 +1571,13 @@ mod test {
         ];
 
         // Wrong shares inserted here!
-        let mut wrong_encrypted_secret_share_from_p1 = p1_their_encrypted_secret_shares[4].clone();
-        wrong_encrypted_secret_share_from_p1.nonce = [42; 16];
+        let mut wrong_encrypted_secret_share_from_p1_to_p5 =
+            p1_their_encrypted_secret_shares[4].clone();
+        wrong_encrypted_secret_share_from_p1_to_p5.nonce = [42; 16];
         let mut wrong_encrypted_secret_share_from_p4 = p4_their_encrypted_secret_shares[4].clone();
         wrong_encrypted_secret_share_from_p4.nonce = [42; 16];
         let p5_my_encrypted_secret_shares = vec![
-            wrong_encrypted_secret_share_from_p1.clone(),
+            wrong_encrypted_secret_share_from_p1_to_p5.clone(),
             p2_their_encrypted_secret_shares[4].clone(),
             p3_their_encrypted_secret_shares[4].clone(),
             wrong_encrypted_secret_share_from_p4.clone(),
@@ -1588,13 +1590,13 @@ mod test {
             .unwrap();
         assert!(complaints.is_empty());
 
-        let (p2_state, complaints) = p2_state
+        let (mut p2_state, p2_complaints) = p2_state
             .clone()
             .to_round_two(p2_my_encrypted_secret_shares, rng)
             .unwrap();
-        assert!(complaints.len() == 1);
+        assert!(p2_complaints.len() == 1);
 
-        let (p3_state, complaints) = p3_state
+        let (mut p3_state, complaints) = p3_state
             .clone()
             .to_round_two(p3_my_encrypted_secret_shares, rng)
             .unwrap();
@@ -1606,39 +1608,66 @@ mod test {
             .unwrap();
         assert!(complaints.is_empty());
 
-        let (p5_state, complaints) = p5_state
+        let (mut p5_state, p5_complaints) = p5_state
             .clone()
             .to_round_two(p5_my_encrypted_secret_shares, rng)
             .unwrap();
-        assert!(complaints.len() == 2);
+        assert!(p5_complaints.len() == 2);
 
         // Anyone can blame the malicious participants.
-        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
+        let bad_index = p2_state.blame(
+            &wrong_encrypted_secret_share_from_p1_to_p2,
+            &p2_complaints[0],
+        );
         assert!(bad_index == 1);
-        let bad_index = p5_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
+        let bad_index = p3_state.blame(
+            &wrong_encrypted_secret_share_from_p1_to_p2,
+            &p2_complaints[0],
+        );
+        assert!(bad_index == 1);
+        let bad_index = p5_state.blame(
+            &wrong_encrypted_secret_share_from_p1_to_p2,
+            &p2_complaints[0],
+        );
         assert!(bad_index == 1);
 
-        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
+        // Checking the first complaint won't update the states, as we already got rid of p1 who tried to cheat p2 before.
+        let bad_index = p2_state.blame(
+            &wrong_encrypted_secret_share_from_p1_to_p5,
+            &p5_complaints[0],
+        );
+        assert!(bad_index == 1, "Got {bad_index}");
+        let bad_index = p3_state.blame(
+            &wrong_encrypted_secret_share_from_p1_to_p5,
+            &p5_complaints[0],
+        );
         assert!(bad_index == 1);
-        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p4, &complaints[1]);
+        let bad_index = p5_state.blame(
+            &wrong_encrypted_secret_share_from_p1_to_p5,
+            &p5_complaints[0],
+        );
+        assert!(bad_index == 1);
+
+        let bad_index = p2_state.blame(&wrong_encrypted_secret_share_from_p4, &p5_complaints[1]);
         assert!(bad_index == 4);
-        let bad_index = p3_state.blame(&wrong_encrypted_secret_share_from_p1, &complaints[0]);
-        assert!(bad_index == 1);
-        let bad_index = p3_state.blame(&wrong_encrypted_secret_share_from_p4, &complaints[1]);
+        let bad_index = p3_state.blame(&wrong_encrypted_secret_share_from_p4, &p5_complaints[1]);
+        assert!(bad_index == 4);
+        let bad_index = p5_state.blame(&wrong_encrypted_secret_share_from_p4, &p5_complaints[1]);
         assert!(bad_index == 4);
 
-        // Everyone can finish the DKG. However it is the responsability of p2, p3 and p5 to decide
-        // whether to discard p1 and p4 for the signing sessions or not.
+        // Everyone can finish the DKG. However, only honest participants will be able to generate publicly verifiable
+        // individual private/public keys.
         let (p1_group_key, _p1_secret_key) = p1_state.finish().unwrap();
         let (p2_group_key, p2_secret_key) = p2_state.finish().unwrap();
         let (p3_group_key, p3_secret_key) = p3_state.finish().unwrap();
         let (p4_group_key, _p4_secret_key) = p4_state.finish().unwrap();
         let (p5_group_key, p5_secret_key) = p5_state.finish().unwrap();
 
-        assert!(p1_group_key == p2_group_key);
         assert!(p2_group_key == p3_group_key);
-        assert!(p3_group_key == p4_group_key);
-        assert!(p4_group_key == p5_group_key);
+        assert!(p3_group_key == p5_group_key);
+
+        assert!(p1_group_key != p2_group_key);
+        assert!(p4_group_key != p2_group_key);
 
         let group_key = p5_group_key;
 
@@ -1648,7 +1677,7 @@ mod test {
         let p3_public_key = p3_secret_key.to_public();
         let p5_public_key = p5_secret_key.to_public();
 
-        // The order does not matter, but we must *only* commitments from remaining (honest) participants.
+        // The order does not matter, but we must *only* use commitments from remaining (honest) participants.
         let commitments = [
             p2.commitments.unwrap(),
             p5.commitments.unwrap(),
