@@ -880,12 +880,12 @@ mod test {
                 signers_states_1.push(signer_state);
             }
 
-            for i in 0..n2 as usize {
+            for (i, shares) in signers_encrypted_secret_shares.iter_mut().enumerate() {
                 let shares_for_signer = dealers_encrypted_secret_shares_for_signers
                     .iter()
                     .map(|v| v.get(&(i as u32 + 1)).unwrap().clone())
                     .collect::<Vec<EncryptedSecretShare<Secp256k1Sha256>>>();
-                signers_encrypted_secret_shares[i] = shares_for_signer;
+                *shares = shares_for_signer;
             }
 
             for i in 0..n2 as usize {

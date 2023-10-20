@@ -1119,7 +1119,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         if share.is_err() {
             return remove_malicious(self, complaint.accused_index);
         };
-        match share.unwrap().verify(&commitment_accused) {
+        match share.unwrap().verify(commitment_accused) {
             Ok(()) => remove_malicious(self, complaint.maker_index),
             Err(_) => remove_malicious(self, complaint.accused_index),
         }
