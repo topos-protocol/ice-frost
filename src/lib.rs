@@ -18,12 +18,14 @@
 //! This CipherSuite is used to parameterize ICE-FROST over an arbitrary curve backend, with
 //! an arbitrary underlying hasher instantiating all random oracles.
 //! The following example creates an ICE-FROST CipherSuite over the Secp256k1 curve,
-//! with SHA-256 as internal hash function.
+//! with SHA-256 as internal hash function, and AES-GCM with a 128-bit key and 96-bit nonce
+//! as internal block cipher.
 //!
 //! ```rust
 //! use ice_frost::CipherSuite;
 //! use sha2::Sha256;
 //! use zeroize::Zeroize;
+//! use aes_gcm::Aes128Gcm;
 //! use ark_secp256k1::Projective as G;
 //!
 //! #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Zeroize)]
@@ -35,6 +37,8 @@
 //!     type HashOutput = [u8; 32];
 //!
 //!     type InnerHasher = Sha256;
+//!
+//!     type Cipher = Aes128Gcm;
 //!
 //!     fn context_string() -> String {
 //!         "ICE-FROST_SECP256K1_SHA256".to_owned()
@@ -1260,6 +1264,7 @@ pub mod sign;
 pub mod testing {
     use super::*;
 
+    use aes_gcm::Aes128Gcm;
     use ark_secp256k1::Projective as G;
 
     use sha2::Sha256;
@@ -1277,6 +1282,8 @@ pub mod testing {
         type HashOutput = [u8; 32];
 
         type InnerHasher = Sha256;
+
+        type Cipher = Aes128Gcm;
 
         fn context_string() -> String {
             "ICE-FROST_SECP256K1_SHA256".to_owned()
