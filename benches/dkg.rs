@@ -96,7 +96,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     participants_states_2.push(
         participants_states_1[0]
             .clone()
-            .to_round_two(&p1_my_encrypted_secret_shares.clone(), rng)
+            .to_round_two(&p1_my_encrypted_secret_shares, rng)
             .unwrap(),
     );
 
