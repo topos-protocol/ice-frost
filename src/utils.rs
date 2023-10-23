@@ -44,7 +44,7 @@ pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
     all_indices: &[u32],
 ) -> FrostResult<C, Scalar<C>> {
     let mut sorted_indices = all_indices.to_vec();
-    sorted_indices.sort();
+    sorted_indices.sort_unstable();
     sorted_indices.dedup();
     if sorted_indices.len() != all_indices.len() {
         return Err(Error::Custom("Duplicate indices provided".to_string()));
@@ -60,7 +60,7 @@ pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
 
     let my_index_field = Scalar::<C>::from(my_index);
 
-    for j in sorted_indices.into_iter() {
+    for j in sorted_indices {
         if j == my_index {
             continue;
         }
@@ -76,21 +76,18 @@ pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
             .ok_or_else(|| Error::Custom("Duplicate indices provided".to_string()))?)
 }
 
-pub fn hash_to_field<C: CipherSuite>(
-    context_string: &[u8],
-    message_to_hash: &[u8],
-) -> FrostResult<C, Scalar<C>> {
+pub fn hash_to_field<C: CipherSuite>(context_string: &[u8], message_to_hash: &[u8]) -> Scalar<C> {
     let h = <DefaultFieldHasher<C::InnerHasher, { HASH_SEC_PARAM }> as HashToField<Scalar<C>>>::new(
         context_string,
     );
 
-    Ok(h.hash_to_field(message_to_hash, 1)[0])
+    h.hash_to_field(message_to_hash, 1)[0]
 }
 
 pub fn hash_to_array<C: CipherSuite>(
     context_string: &[u8],
     message_to_hash: &[u8],
-) -> FrostResult<C, C::HashOutput> {
+) -> C::HashOutput {
     let mut h = C::InnerHasher::new();
     h.update(context_string);
     h.update(message_to_hash);
@@ -98,7 +95,7 @@ pub fn hash_to_array<C: CipherSuite>(
     let mut output = C::HashOutput::default();
     output.as_mut().copy_from_slice(h.finalize().as_slice());
 
-    Ok(output)
+    output
 }
 
 #[cfg(test)]
