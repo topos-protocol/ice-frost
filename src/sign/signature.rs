@@ -881,7 +881,7 @@ mod test {
                 signers_states_2.push(
                     signers_states_1[i]
                         .clone()
-                        .to_round_two(&signers_encrypted_secret_shares[i].clone(), rng)
+                        .to_round_two(&signers_encrypted_secret_shares[i], rng)
                         .unwrap(),
                 );
             }
