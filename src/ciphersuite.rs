@@ -3,6 +3,7 @@
 use core::fmt::Debug;
 use core::marker::{Send, Sync};
 
+use aead::{Aead, KeyInit};
 use zeroize::Zeroize;
 
 use ark_ec::CurveGroup;
@@ -23,8 +24,12 @@ pub trait CipherSuite: Copy + Clone + PartialEq + Eq + Debug + Send + Sync + Zer
     /// A byte array of a given length for this [`CipherSuite`]'s binary hashers.
     type HashOutput: AsRef<[u8]> + AsMut<[u8]> + Default;
 
-    /// The underlying hasher used to construct all random oracles of this [`CipherSuite`] .
+    /// The underlying hasher used to construct all random oracles of this [`CipherSuite`].
     type InnerHasher: Default + Clone + Digest + DynDigest;
+
+    /// The underlying cipher used to encrypt and decrypt all `SecretShare`
+    /// generated during a DKG phase of this [`CipherSuite`].
+    type Cipher: Aead + KeyInit + Clone;
 
     //////////////////////////////////////////////////////////////////////////////////////////////
 

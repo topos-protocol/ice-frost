@@ -18,12 +18,14 @@
 //! This [`CipherSuite`] is used to parameterize ICE-FROST over an arbitrary curve backend, with
 //! an arbitrary underlying hasher instantiating all random oracles.
 //! The following example creates an ICE-FROST [`CipherSuite`] over the Secp256k1 curve,
-//! with SHA-256 as internal hash function.
+//! with SHA-256 as internal hash function, and AES-GCM with a 128-bit key and 96-bit nonce
+//! as internal block cipher.
 //!
 //! ```rust
 //! use ice_frost::CipherSuite;
 //! use sha2::Sha256;
 //! use zeroize::Zeroize;
+//! use aes_gcm::Aes128Gcm;
 //! use ark_secp256k1::Projective as G;
 //!
 //! #[derive(Debug, Copy, Clone, PartialEq, Eq, Default, Zeroize)]
@@ -35,6 +37,8 @@
 //!     type HashOutput = [u8; 32];
 //!
 //!     type InnerHasher = Sha256;
+//!
+//!     type Cipher = Aes128Gcm;
 //!
 //!     fn context_string() -> String {
 //!         "ICE-FROST_SECP256K1_SHA256".to_owned()
@@ -312,6 +316,11 @@
 //!
 //! The participants then use these secret shares from the other participants to advance to
 //! the second round of the distributed key generation protocol.
+//!
+//! Note that this library doesn't enforce that the indices in the encrypted secret shares
+//! are valid (i.e. within the bounds defined by the parameters of this key generation session).
+//! It is the responsibility of implementors to pre-check those before proceeding to `round_two`,
+//! otherwise they will abort without succeeding in generating a group key.
 //!
 //! ```rust
 //! # use ice_frost::dkg::DistributedKeyGeneration;
@@ -1255,6 +1264,7 @@ pub mod sign;
 pub mod testing {
     use super::{utils, CipherSuite};
 
+    use aes_gcm::Aes128Gcm;
     use ark_secp256k1::Projective as G;
 
     use sha2::Sha256;
@@ -1272,6 +1282,8 @@ pub mod testing {
         type HashOutput = [u8; 32];
 
         type InnerHasher = Sha256;
+
+        type Cipher = Aes128Gcm;
 
         fn context_string() -> String {
             "ICE-FROST_SECP256K1_SHA256".to_owned()
