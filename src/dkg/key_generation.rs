@@ -1008,7 +1008,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
 
             group_key += commitment
                 .public_key()
-                .expect("We should always be able to retrieve a public key from ")
+                .expect("We should always be able to retrieve a public key from a commitment.")
                 .mul(coeff);
         }
 
