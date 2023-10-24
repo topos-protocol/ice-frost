@@ -17,7 +17,7 @@ pub use std::{
     boxed::Box,
     collections::btree_map::BTreeMap,
     string::{String, ToString},
-    vec::{self, Vec},
+    vec::Vec,
 };
 
 use crate::{ciphersuite::CipherSuite, HASH_SEC_PARAM};

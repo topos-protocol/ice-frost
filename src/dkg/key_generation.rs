@@ -719,15 +719,16 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             misbehaving_participants.push(p.index);
                             continue;
                         };
+
                         match p
                             .proof_of_secret_key
                             .as_ref()
-                            .unwrap()
+                            .expect("Dealers always have a proof of secret key.")
                             .verify(p.index, public_key)
                         {
                             Ok(()) => {
                                 valid_participants.push(p.clone());
-                                their_commitments.push(p.commitments.as_ref().unwrap().clone());
+                                their_commitments.push(p.commitments.as_ref().expect("Dealers always have commitments to their secret polynomial evaluations.").clone());
                                 their_dh_public_keys.insert(p.index, p.dh_public_key.clone());
                             }
                             Err(_) => misbehaving_participants.push(p.index),
@@ -785,8 +786,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             Vec::with_capacity(parameters.n as usize - 1);
 
         for p in participants {
-            let share =
-                SecretShare::<C>::evaluate_polynomial(my_index, p.index, my_coefficients.unwrap());
+            let share = SecretShare::<C>::evaluate_polynomial(
+                my_index,
+                p.index,
+                my_coefficients.expect(
+                    "Dealers always have coefficients to generate/redistribute secret shares.",
+                ),
+            );
 
             let dh_key = p.dh_public_key.key * dh_private_key.0;
             let mut dh_key_bytes = Vec::with_capacity(dh_key.compressed_size());
@@ -880,17 +886,17 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                 //           g^{f_l(i)} ?= \Prod_{k=0}^{t-1} \phi_{lk}^{i^{k} mod q},
                 //           creating a complaint if the check fails.
                 let decrypted_share = decrypt_share(encrypted_share, &dh_key_bytes);
-                let decrypted_share_ref = &decrypted_share;
 
-                for commitment in self.state.their_commitments.as_ref().unwrap() {
+                for commitment in self.state.their_commitments.as_ref().expect(
+                    "Dealers always have commitments to their secret polynomial evaluations.",
+                ) {
                     if commitment.index == encrypted_share.sender_index {
-                        // If the decrypted share is incorrect, P_i builds
-                        // a complaint
+                        // If the decrypted share is incorrect, P_i builds a complaint.
 
                         if decrypted_share.is_err()
-                            || decrypted_share_ref
+                            || decrypted_share
                                 .as_ref()
-                                .unwrap()
+                                .expect("This cannot fail.")
                                 .verify(commitment)
                                 .is_err()
                         {
@@ -983,24 +989,27 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     ///
     /// A [`GroupVerifyingKey`] for the set of participants.
     pub(crate) fn calculate_group_key(&self) -> FrostResult<C, GroupVerifyingKey<C>> {
-        let mut index_vector =
-            Vec::with_capacity(self.state.their_commitments.as_ref().unwrap().len());
+        let commitments = self
+            .state
+            .their_commitments
+            .as_ref()
+            .ok_or(Error::InvalidGroupKey)?;
+        let mut index_vector = Vec::with_capacity(commitments.len());
 
-        for commitment in self.state.their_commitments.as_ref().unwrap() {
+        for commitment in commitments {
             index_vector.push(commitment.index);
         }
 
         let mut group_key = <C as CipherSuite>::G::zero();
 
         // The group key is the interpolation at 0 of all index 0 of the dealers' commitments.
-        for commitment in self.state.their_commitments.as_ref().unwrap() {
-            let coeff = match calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)
-            {
-                Ok(s) => s,
-                Err(error) => return Err(Error::Custom(error.to_string())),
-            };
+        for commitment in commitments {
+            let coeff = calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)?;
 
-            group_key += commitment.public_key().unwrap().mul(coeff);
+            group_key += commitment
+                .public_key()
+                .expect("We should always be able to retrieve a public key from a commitment.")
+                .mul(coeff);
         }
 
         Ok(GroupVerifyingKey::new(group_key))
@@ -1021,7 +1030,12 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             points: Vec::new(),
         };
 
-        for commitment in self.state.their_commitments.as_ref().unwrap() {
+        for commitment in self
+            .state
+            .their_commitments
+            .as_ref()
+            .expect("Dealers always have commitments to their secret polynomial evaluations.")
+        {
             if commitment.index == complaint.accused_index {
                 commitment_accused = commitment.clone();
             }
@@ -1057,13 +1071,14 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             return complaint.maker_index;
         };
 
-        let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
-        if share.is_err() {
-            return complaint.accused_index;
-        }
-        match share.unwrap().verify(&commitment_accused) {
-            Ok(()) => complaint.maker_index,
+        let share_res = decrypt_share(encrypted_share, &dh_key_bytes[..]);
+
+        match share_res {
             Err(_) => complaint.accused_index,
+            Ok(share) => match share.verify(&commitment_accused) {
+                Ok(()) => complaint.maker_index,
+                Err(_) => complaint.accused_index,
+            },
         }
     }
 }
@@ -2561,11 +2576,11 @@ mod test {
 
             // Check that the generated IndividualVerifyingKey from other participants match
             let p1_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(1, &commitments);
+                IndividualVerifyingKey::generate_from_commitments(1, &commitments)?;
             let p2_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(2, &commitments);
+                IndividualVerifyingKey::generate_from_commitments(2, &commitments)?;
             let p3_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(3, &commitments);
+                IndividualVerifyingKey::generate_from_commitments(3, &commitments)?;
 
             assert_eq!(p1_public_key, p1_recovered_public_key);
             assert_eq!(p2_public_key, p2_recovered_public_key);

@@ -85,7 +85,11 @@ impl<C: CipherSuite> Participant<C> {
     ) -> FrostResult<C, (Self, Coefficients<C>, DiffieHellmanPrivateKey<C>)> {
         let (dealer, coeff_option, dh_private_key) =
             Self::new_internal(parameters, false, index, None, &mut rng)?;
-        Ok((dealer, coeff_option.unwrap(), dh_private_key))
+        Ok((
+            dealer,
+            coeff_option.expect("We always have at least an empty vector"),
+            dh_private_key,
+        ))
     }
 
     /// Construct a new signer for the distributed key generation protocol.
@@ -195,7 +199,9 @@ impl<C: CipherSuite> Participant<C> {
             let proof_of_secret_key: NizkPokOfSecretKey<C> = NizkPokOfSecretKey::prove(
                 index,
                 &coefficients.0[0],
-                commitments.public_key().unwrap(),
+                commitments
+                    .public_key()
+                    .expect("We should always be able to retrieve a public key."),
                 rng,
             )?;
 
@@ -249,8 +255,7 @@ impl<C: CipherSuite> Participant<C> {
             &mut rng,
         )?;
 
-        // Unwrapping cannot panic here
-        let coefficients = coeff_option.unwrap();
+        let coefficients = coeff_option.expect("We always have at least an empty vector");
 
         let (participant_state, participant_lists) = DistributedKeyGeneration::new_state_internal(
             parameters,
@@ -263,11 +268,7 @@ impl<C: CipherSuite> Participant<C> {
             &mut rng,
         )?;
 
-        // Unwrapping cannot panic here
-        let encrypted_shares = participant_state
-            .their_encrypted_secret_shares()
-            .unwrap()
-            .clone();
+        let encrypted_shares = participant_state.their_encrypted_secret_shares()?.clone();
 
         Ok((dealer, encrypted_shares, participant_lists))
     }
@@ -276,11 +277,7 @@ impl<C: CipherSuite> Participant<C> {
     ///
     /// This is used to pass into the final call to [`DistributedKeyGeneration::<RoundTwo, C>::finish()`] .
     pub fn public_key(&self) -> Option<&C::G> {
-        if self.commitments.is_some() {
-            return self.commitments.as_ref().unwrap().public_key();
-        }
-
-        None
+        self.commitments.as_ref().map(|c| c.public_key())?
     }
 }
 
