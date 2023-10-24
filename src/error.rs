@@ -19,6 +19,8 @@ pub enum Error<C: CipherSuite> {
     DecompressionError,
     /// Encrypted secret share decryption failure
     DecryptionError,
+    /// Secret share encryption failure
+    EncryptionError,
     /// Secret share verification failure
     ShareVerificationError,
     /// Complaint verification failure
@@ -72,6 +74,9 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
             }
             Error::DecryptionError => {
                 write!(f, "Could not decrypt encrypted share.")
+            }
+            Error::EncryptionError => {
+                write!(f, "Could not encrypt secret share.")
             }
             Error::ShareVerificationError => {
                 write!(f, "The secret share is not correct.")
