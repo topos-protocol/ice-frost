@@ -99,9 +99,9 @@
 //!
 //! // Alice then collects the secret shares which they send to the other participants:
 //! let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
-//! // keep_to_self(alice_their_encrypted_secret_shares[0]);
-//! // send_to_bob(alice_their_encrypted_secret_shares[1]);
-//! // send_to_carol(alice_their_encrypted_secret_shares[2]);
+//! // keep_to_self(alice_their_encrypted_secret_shares.get(&alice.index).unwrap());
+//! // send_to_bob(alice_their_encrypted_secret_shares.get(&bob.index).unwrap());
+//! // send_to_carol(alice_their_encrypted_secret_shares.get(&carol.index).unwrap());
 //!
 //! // Bob enters round one of the distributed key generation protocol.
 //! let (bob_state, participant_lists) =
@@ -117,9 +117,9 @@
 //!
 //! // Bob then collects the secret shares which they send to the other participants:
 //! let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;
-//! // send_to_alice(bob_their_encrypted_secret_shares[0]);
-//! // keep_to_self(bob_their_encrypted_secret_shares[1]);
-//! // send_to_carol(bob_their_encrypted_secret_shares[2]);
+//! // send_to_alice(bob_their_encrypted_secret_shares.get(&alice.index).unwrap());
+//! // keep_to_self(bob_their_encrypted_secret_shares.get(&bob.index).unwrap());
+//! // send_to_carol(bob_their_encrypted_secret_shares.get(&carol.index).unwrap());
 //!
 //! // Carol enters round one of the distributed key generation protocol.
 //! let (carol_state, participant_lists) =
@@ -135,32 +135,37 @@
 //!
 //! // Carol then collects the secret shares which they send to the other participants:
 //! let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
-//! // send_to_alice(carol_their_encrypted_secret_shares[0]);
-//! // send_to_bob(carol_their_encrypted_secret_shares[1]);
-//! // keep_to_self(carol_their_encrypted_secret_shares[2]);
+//! // send_to_alice(carol_their_encrypted_secret_shares.get(&alice.index).unwrap());
+//! // send_to_bob(carol_their_encrypted_secret_shares.get(&bob.index).unwrap());
+//! // keep_to_self(carol_their_encrypted_secret_shares.get(&carol.index).unwrap());
 //!
 //! // Each participant now has a vector of secret shares given to them by the other participants:
 //! let alice_my_encrypted_secret_shares = vec![
-//!     alice_their_encrypted_secret_shares[0].clone(),
-//!     bob_their_encrypted_secret_shares[0].clone(),
-//!     carol_their_encrypted_secret_shares[0].clone(),
+//!     alice_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//!     bob_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
 //! ];
 //! let bob_my_encrypted_secret_shares = vec![
-//!     alice_their_encrypted_secret_shares[1].clone(),
-//!     bob_their_encrypted_secret_shares[1].clone(),
-//!     carol_their_encrypted_secret_shares[1].clone(),
+//!     alice_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
+//!     bob_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
 //! ];
 //! let carol_my_encrypted_secret_shares = vec![
-//!     alice_their_encrypted_secret_shares[2].clone(),
-//!     bob_their_encrypted_secret_shares[2].clone(),
-//!     carol_their_encrypted_secret_shares[2].clone(),
+//!     alice_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//!     bob_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
 //! ];
 //!
 //! // The participants then use these secret shares from the other participants to advance to
 //! // round two of the distributed key generation protocol.
-//! let alice_state = alice_state.to_round_two(&alice_my_encrypted_secret_shares, &mut rng)?;
-//! let bob_state = bob_state.to_round_two(&bob_my_encrypted_secret_shares, &mut rng)?;
-//! let carol_state = carol_state.to_round_two(&carol_my_encrypted_secret_shares, &mut rng)?;
+//! let (alice_state, alice_complaints) = alice_state.to_round_two(&alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (bob_state, bob_complaints) = bob_state.to_round_two(&bob_my_encrypted_secret_shares, &mut rng)?;
+//! let (carol_state, carol_complaints) = carol_state.to_round_two(&carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alice_complaints.is_empty());
+//! assert!(bob_complaints.is_empty());
+//! assert!(carol_complaints.is_empty());
 //!
 //! // Each participant can now derive their long-lived secret keys and the group's
 //! // public key.
@@ -236,9 +241,9 @@
 //!
 //! // Alice then collects the secret shares which they send to the other participants:
 //! let alice_their_encrypted_secret_shares = alice_state.their_encrypted_secret_shares()?;
-//! // keep_to_self(alice_their_encrypted_secret_shares[0]);
-//! // send_to_bob(alice_their_encrypted_secret_shares[1]);
-//! // send_to_carol(alice_their_encrypted_secret_shares[2]);
+//! // keep_to_self(alice_their_encrypted_secret_shares.get(&alice.index).unwrap());
+//! // send_to_bob(alice_their_encrypted_secret_shares.get(&bob.index).unwrap());
+//! // send_to_carol(alice_their_encrypted_secret_shares.get(&carol.index).unwrap());
 //!
 //! // Bob enters round one of the distributed key generation protocol.
 //! let (bob_state, participant_lists) =
@@ -254,9 +259,9 @@
 //!
 //! // Bob then collects the secret shares which they send to the other participants:
 //! let bob_their_encrypted_secret_shares = bob_state.their_encrypted_secret_shares()?;
-//! // send_to_alice(bob_their_encrypted_secret_shares[0]);
-//! // keep_to_self(bob_their_encrypted_secret_shares[1]);
-//! // send_to_carol(bob_their_encrypted_secret_shares[2]);
+//! // send_to_alice(bob_their_encrypted_secret_shares.get(&alice.index).unwrap());
+//! // keep_to_self(bob_their_encrypted_secret_shares.get(&bob.index).unwrap());
+//! // send_to_carol(bob_their_encrypted_secret_shares.get(&carol.index).unwrap());
 //!
 //! // Carol enters round one of the distributed key generation protocol.
 //! let (carol_state, participant_lists) =
@@ -272,32 +277,37 @@
 //!
 //! // Carol then collects the secret shares which they send to the other participants:
 //! let carol_their_encrypted_secret_shares = carol_state.their_encrypted_secret_shares()?;
-//! // send_to_alice(carol_their_encrypted_secret_shares[0]);
-//! // send_to_bob(carol_their_encrypted_secret_shares[1]);
-//! // keep_to_self(carol_their_encrypted_secret_shares[2]);
+//! // send_to_alice(carol_their_encrypted_secret_shares.get(&alice.index).unwrap());
+//! // send_to_bob(carol_their_encrypted_secret_shares.get(&bob.index).unwrap());
+//! // keep_to_self(carol_their_encrypted_secret_shares.get(&carol.index).unwrap());
 //!
 //! // Each participant now has a vector of secret shares given to them by the other participants:
 //! let alice_my_encrypted_secret_shares = vec![
-//!     alice_their_encrypted_secret_shares[0].clone(),
-//!     bob_their_encrypted_secret_shares[0].clone(),
-//!     carol_their_encrypted_secret_shares[0].clone(),
+//!     alice_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//!     bob_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&alice.index).unwrap().clone(),
 //! ];
 //! let bob_my_encrypted_secret_shares = vec![
-//!     alice_their_encrypted_secret_shares[1].clone(),
-//!     bob_their_encrypted_secret_shares[1].clone(),
-//!     carol_their_encrypted_secret_shares[1].clone(),
+//!     alice_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
+//!     bob_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&bob.index).unwrap().clone(),
 //! ];
 //! let carol_my_encrypted_secret_shares = vec![
-//!     alice_their_encrypted_secret_shares[2].clone(),
-//!     bob_their_encrypted_secret_shares[2].clone(),
-//!     carol_their_encrypted_secret_shares[2].clone(),
+//!     alice_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//!     bob_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
+//!     carol_their_encrypted_secret_shares.get(&carol.index).unwrap().clone(),
 //! ];
 //!
 //! // The participants then use these secret shares from the other participants to advance to
 //! // round two of the distributed key generation protocol.
-//! let alice_state = alice_state.to_round_two(&alice_my_encrypted_secret_shares, &mut rng)?;
-//! let bob_state = bob_state.to_round_two(&bob_my_encrypted_secret_shares, &mut rng)?;
-//! let carol_state = carol_state.to_round_two(&carol_my_encrypted_secret_shares, &mut rng)?;
+//! let (alice_state, alice_complaints) = alice_state.to_round_two(&alice_my_encrypted_secret_shares, &mut rng)?;
+//! let (bob_state, bob_complaints) = bob_state.to_round_two(&bob_my_encrypted_secret_shares, &mut rng)?;
+//! let (carol_state, carol_complaints) = carol_state.to_round_two(&carol_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alice_complaints.is_empty());
+//! assert!(bob_complaints.is_empty());
+//! assert!(carol_complaints.is_empty());
 //!
 //! // Each participant can now derive their long-lived secret keys and the group's
 //! // public key.
@@ -422,24 +432,24 @@
 //! //       set `params` to a 201-out-of-263 setting.
 //!
 //! let alexis_my_encrypted_secret_shares = vec![
-//!     alice_encrypted_shares[0].clone(),
-//!     bob_encrypted_shares[0].clone(),
-//!     carol_encrypted_shares[0].clone(),
+//!     alice_encrypted_shares.get(&alexis.index).unwrap().clone(),
+//!     bob_encrypted_shares.get(&alexis.index).unwrap().clone(),
+//!     carol_encrypted_shares.get(&alexis.index).unwrap().clone(),
 //! ];
 //! let barbara_my_encrypted_secret_shares = vec![
-//!     alice_encrypted_shares[1].clone(),
-//!     bob_encrypted_shares[1].clone(),
-//!     carol_encrypted_shares[1].clone()
+//!     alice_encrypted_shares.get(&barbara.index).unwrap().clone(),
+//!     bob_encrypted_shares.get(&barbara.index).unwrap().clone(),
+//!     carol_encrypted_shares.get(&barbara.index).unwrap().clone()
 //! ];
 //! let claire_my_encrypted_secret_shares = vec![
-//!     alice_encrypted_shares[2].clone(),
-//!     bob_encrypted_shares[2].clone(),
-//!     carol_encrypted_shares[2].clone()
+//!     alice_encrypted_shares.get(&claire.index).unwrap().clone(),
+//!     bob_encrypted_shares.get(&claire.index).unwrap().clone(),
+//!     carol_encrypted_shares.get(&claire.index).unwrap().clone()
 //! ];
 //! let david_my_encrypted_secret_shares = vec![
-//!     alice_encrypted_shares[3].clone(),
-//!     bob_encrypted_shares[3].clone(),
-//!     carol_encrypted_shares[3].clone()
+//!     alice_encrypted_shares.get(&david.index).unwrap().clone(),
+//!     bob_encrypted_shares.get(&david.index).unwrap().clone(),
+//!     carol_encrypted_shares.get(&david.index).unwrap().clone()
 //! ];
 //!
 //! // Alexis, Barbara, Claire and David can now finish the resharing DKG with the received
@@ -447,10 +457,16 @@
 //! // DKG ran by Alice, Bob and Carol. The final group key of the 3-out-of-4 threshold scheme
 //! // configuration will be identical to the one of the 2-out-of-3 original one.
 //!
-//! let alexis_state = alexis_state.to_round_two(&alexis_my_encrypted_secret_shares, &mut rng)?;
-//! let barbara_state = barbara_state.to_round_two(&barbara_my_encrypted_secret_shares, &mut rng)?;
-//! let claire_state = claire_state.to_round_two(&claire_my_encrypted_secret_shares, &mut rng)?;
-//! let david_state = david_state.to_round_two(&david_my_encrypted_secret_shares, &mut rng)?;
+//! let (alexis_state, alexis_complaints) = alexis_state.to_round_two(&alexis_my_encrypted_secret_shares, &mut rng)?;
+//! let (barbara_state, barbara_complaints) = barbara_state.to_round_two(&barbara_my_encrypted_secret_shares, &mut rng)?;
+//! let (claire_state, claire_complaints) = claire_state.to_round_two(&claire_my_encrypted_secret_shares, &mut rng)?;
+//! let (david_state, david_complaints) = david_state.to_round_two(&david_my_encrypted_secret_shares, &mut rng)?;
+//!
+//! // Everything should have run smoothly.
+//! assert!(alexis_complaints.is_empty());
+//! assert!(barbara_complaints.is_empty());
+//! assert!(claire_complaints.is_empty());
+//! assert!(david_complaints.is_empty());
 //!
 //! let (alexis_group_key, alexis_secret_key) = alexis_state.finish()?;
 //! let (barbara_group_key, barbara_secret_key) = barbara_state.finish()?;
@@ -525,14 +541,14 @@ struct ActualState<C: CipherSuite> {
     /// A vector of tuples containing the index of each participant and that
     /// respective participant's commitments to their private polynomial
     /// coefficients.
-    their_commitments: Option<Vec<VerifiableSecretSharingCommitment<C>>>,
+    their_commitments: Option<BTreeMap<u32, VerifiableSecretSharingCommitment<C>>>,
     /// A vector of ECPoints containing the index of each participant and that
     /// respective participant's DH public key.
     their_dh_public_keys: BTreeMap<u32, DiffieHellmanPublicKey<C>>,
     /// The encrypted secret shares this participant has calculated for all the other participants.
-    their_encrypted_secret_shares: Option<Vec<EncryptedSecretShare<C>>>,
+    their_encrypted_secret_shares: Option<BTreeMap<u32, EncryptedSecretShare<C>>>,
     /// The secret shares this participant has received from all the other participants.
-    my_secret_shares: Option<Vec<SecretShare<C>>>,
+    my_secret_shares: Option<BTreeMap<u32, SecretShare<C>>>,
 }
 
 #[derive(Clone, Debug)]
@@ -692,8 +708,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         from_signer: bool,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, DKGParticipantList<C>)> {
-        let mut their_commitments: Vec<VerifiableSecretSharingCommitment<C>> =
-            Vec::with_capacity(parameters.t as usize);
+        let mut their_commitments: BTreeMap<u32, VerifiableSecretSharingCommitment<C>> =
+            BTreeMap::new();
         let mut their_dh_public_keys: BTreeMap<u32, DiffieHellmanPublicKey<C>> = BTreeMap::new();
         let mut valid_participants: Vec<Participant<C>> = Vec::with_capacity(parameters.n as usize);
         let mut misbehaving_participants: Vec<u32> = Vec::new();
@@ -728,7 +744,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                         {
                             Ok(()) => {
                                 valid_participants.push(p.clone());
-                                their_commitments.push(p.commitments.as_ref().expect("Dealers always have commitments to their secret polynomial evaluations.").clone());
+                                their_commitments.insert(p.index, p.commitments.as_ref().expect("Dealers always have commitments to their secret polynomial evaluations.").clone());
                                 their_dh_public_keys.insert(p.index, p.dh_public_key.clone());
                             }
                             Err(_) => misbehaving_participants.push(p.index),
@@ -748,6 +764,12 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         }
 
         if !from_dealer && from_signer {
+            // Update the parameters with the total number of (valid) participants.
+            let parameters = ThresholdParameters::new(
+                parameters.n - misbehaving_participants.len() as u32,
+                parameters.t,
+            );
+
             let state = ActualState {
                 parameters,
                 index: my_index,
@@ -782,8 +804,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         // Round 2
         // Step 1: Each P_i securely sends to each other participant P_l a secret share
         //         (l, f_i(l)) and keeps (i, f_i(i)) for themselves.
-        let mut their_encrypted_secret_shares: Vec<EncryptedSecretShare<C>> =
-            Vec::with_capacity(parameters.n as usize - 1);
+        let mut their_encrypted_secret_shares: BTreeMap<u32, EncryptedSecretShare<C>> =
+            BTreeMap::new();
 
         for p in participants {
             let share = SecretShare::<C>::evaluate_polynomial(
@@ -800,8 +822,15 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                 .serialize_compressed(&mut dh_key_bytes)
                 .map_err(|_| Error::CompressionError)?;
 
-            their_encrypted_secret_shares.push(encrypt_share(&share, &dh_key_bytes[..], &mut rng)?);
+            their_encrypted_secret_shares
+                .insert(p.index, encrypt_share(&share, &dh_key_bytes[..], &mut rng)?);
         }
+
+        // Update the parameters with the total number of (valid) participants.
+        let parameters = ThresholdParameters::new(
+            parameters.n - misbehaving_participants.len() as u32,
+            parameters.t,
+        );
 
         let state = ActualState {
             parameters,
@@ -836,7 +865,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
     /// Retrieve an encrypted secret share for each other participant, to be given to them
     /// at the end of [`DistributedKeyGeneration::<RoundOne, C>`] .
-    pub fn their_encrypted_secret_shares(&self) -> FrostResult<C, &Vec<EncryptedSecretShare<C>>> {
+    pub fn their_encrypted_secret_shares(
+        &self,
+    ) -> FrostResult<C, &BTreeMap<u32, EncryptedSecretShare<C>>> {
         self.state
             .their_encrypted_secret_shares
             .as_ref()
@@ -851,7 +882,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         mut self,
         my_encrypted_secret_shares: &[EncryptedSecretShare<C>],
         mut rng: impl RngCore + CryptoRng,
-    ) -> FrostResult<C, DistributedKeyGeneration<RoundTwo, C>> {
+    ) -> FrostResult<C, (DistributedKeyGeneration<RoundTwo, C>, Vec<Complaint<C>>)> {
         // Sanity check
         assert_eq!(self.data, RoundOne {});
 
@@ -862,11 +893,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
         let mut complaints: Vec<Complaint<C>> = Vec::new();
 
-        if my_encrypted_secret_shares.len() != self.state.parameters.n as usize {
+        // This should in theory never happen, as users should make sure they don't call this
+        // method before having received all the encrypted secret shares they expect.
+        if my_encrypted_secret_shares.len() < self.state.parameters.t as usize {
             return Err(Error::MissingShares);
         }
 
-        let mut my_secret_shares: Vec<SecretShare<C>> = Vec::new();
+        let mut my_secret_shares: BTreeMap<u32, SecretShare<C>> = BTreeMap::new();
 
         // Step 2.1: Each P_i decrypts their shares with
         //           key k_il = pk_l^sk_i
@@ -887,10 +920,10 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                 //           creating a complaint if the check fails.
                 let decrypted_share = decrypt_share(encrypted_share, &dh_key_bytes);
 
-                for commitment in self.state.their_commitments.as_ref().expect(
+                for (&index, commitment) in self.state.their_commitments.as_ref().expect(
                     "Dealers always have commitments to their secret polynomial evaluations.",
                 ) {
-                    if commitment.index == encrypted_share.sender_index {
+                    if index == encrypted_share.sender_index {
                         // If the decrypted share is incorrect, P_i builds a complaint.
 
                         if decrypted_share.is_err()
@@ -914,23 +947,27 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                     }
                 }
                 if let Ok(share) = decrypted_share {
-                    my_secret_shares.push(share);
+                    my_secret_shares.insert(share.sender_index, share);
                 }
             } else {
                 return Err(Error::Custom("to_round_two() was called with encrypted secret shares containing invalid indices".to_string()));
             }
         }
 
-        if !complaints.is_empty() {
+        // If there are less than `t` participants remaining (i.e. honest) we can only abort.
+        if self.state.parameters.n - (complaints.len() as u32) < self.state.parameters.t {
             return Err(Error::Complaint(complaints));
         }
 
         self.state.my_secret_shares = Some(my_secret_shares);
 
-        Ok(DistributedKeyGeneration::<RoundTwo, C> {
-            state: self.state,
-            data: RoundTwo {},
-        })
+        Ok((
+            DistributedKeyGeneration::<RoundTwo, C> {
+                state: self.state,
+                data: RoundTwo {},
+            },
+            complaints,
+        ))
     }
 }
 
@@ -947,34 +984,32 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         let secret_key = self.calculate_signing_key()?;
         let group_key = self.calculate_group_key()?;
 
-        self.state.my_secret_shares.zeroize();
-
         Ok((group_key, secret_key))
     }
 
     /// Calculate this threshold signing participant's long-lived secret signing
     /// key by interpolating all of the polynomial evaluations from the other
     /// participants.
-    pub(crate) fn calculate_signing_key(&self) -> FrostResult<C, IndividualSigningKey<C>> {
-        let my_secret_shares = self.state.my_secret_shares.as_ref().ok_or_else(|| {
-            Error::Custom("Could not retrieve participant's secret shares".to_string())
-        })?;
+    pub(crate) fn calculate_signing_key(&mut self) -> FrostResult<C, IndividualSigningKey<C>> {
+        let my_secret_shares = self
+            .state
+            .my_secret_shares
+            .as_mut()
+            .expect("We should always be able to retrieve participants' secret shares.");
 
-        let mut index_vector = Vec::with_capacity(my_secret_shares.len());
-
-        for share in my_secret_shares {
-            index_vector.push(share.sender_index);
-        }
+        let index_vector: Vec<u32> = my_secret_shares.keys().copied().collect();
 
         let mut key = Scalar::<C>::ZERO;
 
-        for share in my_secret_shares {
-            let coeff =
-                match calculate_lagrange_coefficients::<C>(share.sender_index, &index_vector) {
-                    Ok(s) => s,
-                    Err(error) => return Err(Error::Custom(error.to_string())),
-                };
+        for (&index, share) in my_secret_shares.iter_mut() {
+            let coeff = match calculate_lagrange_coefficients::<C>(index, &index_vector) {
+                Ok(s) => s,
+                Err(error) => return Err(Error::Custom(error.to_string())),
+            };
             key += share.polynomial_evaluation * coeff;
+
+            // Erase the share after use.
+            share.zeroize();
         }
 
         Ok(IndividualSigningKey {
@@ -989,22 +1024,25 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     ///
     /// A [`GroupVerifyingKey`] for the set of participants.
     pub(crate) fn calculate_group_key(&self) -> FrostResult<C, GroupVerifyingKey<C>> {
-        let commitments = self
+        let index_vector: Vec<u32> = self
             .state
             .their_commitments
             .as_ref()
-            .ok_or(Error::InvalidGroupKey)?;
-        let mut index_vector = Vec::with_capacity(commitments.len());
-
-        for commitment in commitments {
-            index_vector.push(commitment.index);
-        }
+            .ok_or(Error::InvalidGroupKey)?
+            .keys()
+            .copied()
+            .collect();
 
         let mut group_key = <C as CipherSuite>::G::zero();
 
         // The group key is the interpolation at 0 of all index 0 of the dealers' commitments.
-        for commitment in commitments {
-            let coeff = calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)?;
+        for (&index, commitment) in self
+            .state
+            .their_commitments
+            .as_ref()
+            .ok_or(Error::InvalidGroupKey)?
+        {
+            let coeff = calculate_lagrange_coefficients::<C>(index, &index_vector)?;
 
             group_key += commitment
                 .public_key()
@@ -1016,70 +1054,112 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     }
 
     /// Every participant can verify a complaint and determine who is the malicious
-    /// party. The relevant encrypted share is assumed to exist and publicly retrievable
-    /// by any participant.
+    /// party. For each complaint, the relevant encrypted share is assumed to exist
+    /// and be publicly retrievable by any participant.
+    ///
+    /// The state of the participant calling blame will be updated by removing the invalid
+    /// participants commitments and secret shares received from them, so that the key
+    /// generation/resharing process can finish, in addition to returning the indices of the
+    /// blamed participants.
+    ///
+    /// ***NOTE***: Participants *MUST* call this method before finishing the DKG/resharing phase,
+    /// and their list of complaints *MUST* include all complaints, otherwise they may have
+    /// inconsistent final states between them.
     pub fn blame(
-        &self,
+        &mut self,
         encrypted_share: &EncryptedSecretShare<C>,
-        complaint: &Complaint<C>,
-    ) -> u32 {
-        let mut pk_maker = <C as CipherSuite>::G::zero();
-        let mut pk_accused = <C as CipherSuite>::G::zero();
-        let mut commitment_accused = VerifiableSecretSharingCommitment {
-            index: 0,
-            points: Vec::new(),
-        };
+        complaints: &[Complaint<C>],
+    ) -> Vec<u32> {
+        fn remove_malicious<C: CipherSuite>(
+            dkg_state: &mut DistributedKeyGeneration<RoundTwo, C>,
+            idx: u32,
+        ) {
+            dkg_state
+                .state
+                .their_commitments
+                .as_mut()
+                .unwrap()
+                .remove(&idx);
+            dkg_state
+                .state
+                .my_secret_shares
+                .as_mut()
+                .unwrap()
+                .remove(&idx);
+        }
 
-        for commitment in self
-            .state
-            .their_commitments
-            .as_ref()
-            .expect("Dealers always have commitments to their secret polynomial evaluations.")
-        {
-            if commitment.index == complaint.accused_index {
-                commitment_accused = commitment.clone();
+        let mut pending_removals = Vec::with_capacity(complaints.len());
+
+        for complaint in complaints {
+            if complaint.accused_index == 0 || complaint.accused_index > self.state.parameters.n {
+                pending_removals.push(complaint.maker_index);
+                continue;
             }
+
+            let Some(commitment_accused) = self
+                .state
+                .their_commitments
+                .as_ref()
+                .expect("Dealers always have commitments to their secret polynomial evaluations.")
+                .get(&complaint.accused_index)
+            else {
+                // If we cannot retrieve the index here, we should blame the complaint maker.
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            let pk_maker = self
+                .state
+                .their_dh_public_keys
+                .get(&complaint.maker_index)
+                .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
+            let pk_accused = self
+                .state
+                .their_dh_public_keys
+                .get(&complaint.accused_index)
+                .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
+
+            if pk_maker == <C as CipherSuite>::G::zero()
+                || pk_accused == <C as CipherSuite>::G::zero()
+            {
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            if complaint.verify(&pk_maker, &pk_accused).is_err() {
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            let mut dh_key_bytes = Vec::with_capacity(complaint.dh_shared_key.compressed_size());
+            if complaint
+                .dh_shared_key
+                .serialize_compressed(&mut dh_key_bytes)
+                .is_err()
+            {
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
+            if share.is_err() {
+                pending_removals.push(complaint.accused_index);
+                continue;
+            };
+            match share.unwrap().verify(commitment_accused) {
+                Ok(()) => pending_removals.push(complaint.maker_index),
+                Err(_) => pending_removals.push(complaint.accused_index),
+            };
         }
 
-        if commitment_accused.points.is_empty() {
-            return complaint.maker_index;
+        pending_removals.sort_unstable();
+        pending_removals.dedup();
+
+        for index in &pending_removals {
+            remove_malicious(self, *index);
         }
 
-        for (index, pk) in &self.state.their_dh_public_keys {
-            if index == &complaint.maker_index {
-                pk_maker = **pk;
-            } else if index == &complaint.accused_index {
-                pk_accused = **pk;
-            }
-        }
-
-        if pk_maker == <C as CipherSuite>::G::zero() || pk_accused == <C as CipherSuite>::G::zero()
-        {
-            return complaint.maker_index;
-        }
-
-        if complaint.verify(&pk_maker, &pk_accused).is_err() {
-            return complaint.maker_index;
-        }
-
-        let mut dh_key_bytes = Vec::with_capacity(complaint.dh_shared_key.compressed_size());
-        if complaint
-            .dh_shared_key
-            .serialize_compressed(&mut dh_key_bytes)
-            .is_err()
-        {
-            return complaint.maker_index;
-        };
-
-        let share_res = decrypt_share(encrypted_share, &dh_key_bytes[..]);
-
-        match share_res {
-            Err(_) => complaint.accused_index,
-            Ok(share) => match share.verify(&commitment_accused) {
-                Ok(()) => complaint.maker_index,
-                Err(_) => complaint.accused_index,
-            },
-        }
+        pending_removals
     }
 }
 
@@ -1194,11 +1274,16 @@ mod test {
                 rng,
             )
             .unwrap();
-        let p1_my_encrypted_secret_shares =
-            p1_state.their_encrypted_secret_shares().unwrap().clone();
-        let p1_state = p1_state
-            .to_round_two(&p1_my_encrypted_secret_shares, rng)
+        let p1_my_encrypted_secret_shares = p1_state
+            .their_encrypted_secret_shares()
+            .unwrap()
+            .get(&1)
+            .unwrap()
+            .clone();
+        let (p1_state, complaints) = p1_state
+            .to_round_two(&[p1_my_encrypted_secret_shares], rng)
             .unwrap();
+        assert!(complaints.is_empty());
         let result = p1_state.finish();
 
         assert!(result.is_ok());
@@ -1313,60 +1398,65 @@ mod test {
         let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
 
         let p1_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[0].clone(),
-            p2_their_encrypted_secret_shares[0].clone(),
-            p3_their_encrypted_secret_shares[0].clone(),
-            p4_their_encrypted_secret_shares[0].clone(),
-            p5_their_encrypted_secret_shares[0].clone(),
+            p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&1).unwrap().clone(),
         ];
 
         let p2_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[1].clone(),
-            p2_their_encrypted_secret_shares[1].clone(),
-            p3_their_encrypted_secret_shares[1].clone(),
-            p4_their_encrypted_secret_shares[1].clone(),
-            p5_their_encrypted_secret_shares[1].clone(),
+            p1_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&2).unwrap().clone(),
         ];
 
         let p3_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[2].clone(),
-            p2_their_encrypted_secret_shares[2].clone(),
-            p3_their_encrypted_secret_shares[2].clone(),
-            p4_their_encrypted_secret_shares[2].clone(),
-            p5_their_encrypted_secret_shares[2].clone(),
+            p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&3).unwrap().clone(),
         ];
 
         let p4_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[3].clone(),
-            p2_their_encrypted_secret_shares[3].clone(),
-            p3_their_encrypted_secret_shares[3].clone(),
-            p4_their_encrypted_secret_shares[3].clone(),
-            p5_their_encrypted_secret_shares[3].clone(),
+            p1_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&4).unwrap().clone(),
         ];
 
         let p5_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares[4].clone(),
-            p2_their_encrypted_secret_shares[4].clone(),
-            p3_their_encrypted_secret_shares[4].clone(),
-            p4_their_encrypted_secret_shares[4].clone(),
-            p5_their_encrypted_secret_shares[4].clone(),
+            p1_their_encrypted_secret_shares.get(&5).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&5).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&5).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&5).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&5).unwrap().clone(),
         ];
 
-        let p1_state = p1_state
+        let (p1_state, complaints) = p1_state
             .to_round_two(&p1_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p2_state = p2_state
+        assert!(complaints.is_empty());
+        let (p2_state, complaints) = p2_state
             .to_round_two(&p2_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p3_state = p3_state
+        assert!(complaints.is_empty());
+        let (p3_state, complaints) = p3_state
             .to_round_two(&p3_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p4_state = p4_state
+        assert!(complaints.is_empty());
+        let (p4_state, complaints) = p4_state
             .to_round_two(&p4_my_encrypted_secret_shares, rng)
             .unwrap();
-        let p5_state = p5_state
+        assert!(complaints.is_empty());
+        let (p5_state, complaints) = p5_state
             .to_round_two(&p5_my_encrypted_secret_shares, rng)
             .unwrap();
+        assert!(complaints.is_empty());
 
         let (p1_group_key, p1_secret_key) = p1_state.finish().unwrap();
         let (p2_group_key, p2_secret_key) = p2_state.finish().unwrap();
@@ -1465,24 +1555,30 @@ mod test {
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
 
             let p1_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[0].clone(),
-                p2_their_encrypted_secret_shares[0].clone(),
-                p3_their_encrypted_secret_shares[0].clone(),
+                p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
             ];
             let p2_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[1].clone(),
-                p2_their_encrypted_secret_shares[1].clone(),
-                p3_their_encrypted_secret_shares[1].clone(),
+                p1_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
             ];
             let p3_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[2].clone(),
-                p2_their_encrypted_secret_shares[2].clone(),
-                p3_their_encrypted_secret_shares[2].clone(),
+                p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
             ];
 
-            let p1_state = p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+            let (p1_state, complaints) =
+                p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p2_state, complaints) =
+                p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p3_state, complaints) =
+                p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -1564,27 +1660,57 @@ mod test {
                 dealer3_state.their_encrypted_secret_shares()?;
 
             let dealer1_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[0].clone(),
-                dealer2_their_encrypted_secret_shares[0].clone(),
-                dealer3_their_encrypted_secret_shares[0].clone(),
+                dealer1_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
             ];
             let dealer2_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[1].clone(),
-                dealer2_their_encrypted_secret_shares[1].clone(),
-                dealer3_their_encrypted_secret_shares[1].clone(),
+                dealer1_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
             ];
             let dealer3_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[2].clone(),
-                dealer2_their_encrypted_secret_shares[2].clone(),
-                dealer3_their_encrypted_secret_shares[2].clone(),
+                dealer1_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
             ];
 
-            let dealer1_state =
+            let (dealer1_state, complaints) =
                 dealer1_state.to_round_two(&dealer1_my_encrypted_secret_shares, rng)?;
-            let dealer2_state =
+            assert!(complaints.is_empty());
+            let (dealer2_state, complaints) =
                 dealer2_state.to_round_two(&dealer2_my_encrypted_secret_shares, rng)?;
-            let dealer3_state =
+            assert!(complaints.is_empty());
+            let (dealer3_state, complaints) =
                 dealer3_state.to_round_two(&dealer3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (dealer1_group_key, dealer1_secret_key) = dealer1_state.finish()?;
             let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
@@ -1641,27 +1767,57 @@ mod test {
                 )?;
 
             let signer1_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[0].clone(),
-                dealer2_encrypted_shares_for_signers[0].clone(),
-                dealer3_encrypted_shares_for_signers[0].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
             ];
             let signer2_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[1].clone(),
-                dealer2_encrypted_shares_for_signers[1].clone(),
-                dealer3_encrypted_shares_for_signers[1].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
             ];
             let signer3_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[2].clone(),
-                dealer2_encrypted_shares_for_signers[2].clone(),
-                dealer3_encrypted_shares_for_signers[2].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
             ];
 
-            let signer1_state =
+            let (signer1_state, complaints) =
                 signer1_state.to_round_two(&signer1_my_encrypted_secret_shares, rng)?;
-            let signer2_state =
+            assert!(complaints.is_empty());
+            let (signer2_state, complaints) =
                 signer2_state.to_round_two(&signer2_my_encrypted_secret_shares, rng)?;
-            let signer3_state =
+            assert!(complaints.is_empty());
+            let (signer3_state, complaints) =
                 signer3_state.to_round_two(&signer3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (signer1_group_key, _signer1_secret_key) = signer1_state.finish()?;
             let (signer2_group_key, _signer2_secret_key) = signer2_state.finish()?;
@@ -1745,27 +1901,57 @@ mod test {
                 dealer3_state.their_encrypted_secret_shares()?;
 
             let dealer1_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[0].clone(),
-                dealer2_their_encrypted_secret_shares[0].clone(),
-                dealer3_their_encrypted_secret_shares[0].clone(),
+                dealer1_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
             ];
             let dealer2_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[1].clone(),
-                dealer2_their_encrypted_secret_shares[1].clone(),
-                dealer3_their_encrypted_secret_shares[1].clone(),
+                dealer1_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
             ];
             let dealer3_my_encrypted_secret_shares = vec![
-                dealer1_their_encrypted_secret_shares[2].clone(),
-                dealer2_their_encrypted_secret_shares[2].clone(),
-                dealer3_their_encrypted_secret_shares[2].clone(),
+                dealer1_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
             ];
 
-            let dealer1_state =
+            let (dealer1_state, complaints) =
                 dealer1_state.to_round_two(&dealer1_my_encrypted_secret_shares, rng)?;
-            let dealer2_state =
+            assert!(complaints.is_empty());
+            let (dealer2_state, complaints) =
                 dealer2_state.to_round_two(&dealer2_my_encrypted_secret_shares, rng)?;
-            let dealer3_state =
+            assert!(complaints.is_empty());
+            let (dealer3_state, complaints) =
                 dealer3_state.to_round_two(&dealer3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (dealer1_group_key, dealer1_secret_key) = dealer1_state.finish()?;
             let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
@@ -1847,41 +2033,91 @@ mod test {
                 )?;
 
             let signer1_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[0].clone(),
-                dealer2_encrypted_shares_for_signers[0].clone(),
-                dealer3_encrypted_shares_for_signers[0].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
             ];
             let signer2_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[1].clone(),
-                dealer2_encrypted_shares_for_signers[1].clone(),
-                dealer3_encrypted_shares_for_signers[1].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
             ];
             let signer3_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[2].clone(),
-                dealer2_encrypted_shares_for_signers[2].clone(),
-                dealer3_encrypted_shares_for_signers[2].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
             ];
             let signer4_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[3].clone(),
-                dealer2_encrypted_shares_for_signers[3].clone(),
-                dealer3_encrypted_shares_for_signers[3].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&4)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&4)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&4)
+                    .unwrap()
+                    .clone(),
             ];
             let signer5_my_encrypted_secret_shares = vec![
-                dealer1_encrypted_shares_for_signers[4].clone(),
-                dealer2_encrypted_shares_for_signers[4].clone(),
-                dealer3_encrypted_shares_for_signers[4].clone(),
+                dealer1_encrypted_shares_for_signers
+                    .get(&5)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&5)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&5)
+                    .unwrap()
+                    .clone(),
             ];
 
-            let signer1_state =
+            let (signer1_state, complaints) =
                 signer1_state.to_round_two(&signer1_my_encrypted_secret_shares, rng)?;
-            let signer2_state =
+            assert!(complaints.is_empty());
+            let (signer2_state, complaints) =
                 signer2_state.to_round_two(&signer2_my_encrypted_secret_shares, rng)?;
-            let signer3_state =
+            assert!(complaints.is_empty());
+            let (signer3_state, complaints) =
                 signer3_state.to_round_two(&signer3_my_encrypted_secret_shares, rng)?;
-            let signer4_state =
+            assert!(complaints.is_empty());
+            let (signer4_state, complaints) =
                 signer4_state.to_round_two(&signer4_my_encrypted_secret_shares, rng)?;
-            let signer5_state =
+            assert!(complaints.is_empty());
+            let (signer5_state, complaints) =
                 signer5_state.to_round_two(&signer5_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (signer1_group_key, _signer1_secret_key) = signer1_state.finish()?;
             let (signer2_group_key, _signer2_secret_key) = signer2_state.finish()?;
@@ -1985,24 +2221,30 @@ mod test {
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
 
             let p1_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[0].clone(),
-                p2_their_encrypted_secret_shares[0].clone(),
-                p3_their_encrypted_secret_shares[0].clone(),
+                p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
             ];
             let p2_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[1].clone(),
-                p2_their_encrypted_secret_shares[1].clone(),
-                p3_their_encrypted_secret_shares[1].clone(),
+                p1_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
             ];
             let p3_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[2].clone(),
-                p2_their_encrypted_secret_shares[2].clone(),
-                p3_their_encrypted_secret_shares[2].clone(),
+                p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
             ];
 
-            let p1_state = p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+            let (p1_state, complaints) =
+                p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p2_state, complaints) =
+                p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (p3_state, complaints) =
+                p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
 
             let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2081,102 +2323,111 @@ mod test {
 
             // Wrong decryption from nonce
             {
-                let mut wrong_encrypted_secret_share = p1_their_encrypted_secret_shares[1].clone();
+                let mut wrong_encrypted_secret_share =
+                    p1_their_encrypted_secret_shares.get(&2).unwrap().clone();
                 wrong_encrypted_secret_share.nonce = [42; 12].into();
                 let p1_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[0].clone(),
-                    p2_their_encrypted_secret_shares[0].clone(),
-                    p3_their_encrypted_secret_shares[0].clone(),
+                    p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                 ];
                 // Wrong share inserted here!
                 let p2_my_encrypted_secret_shares = vec![
                     wrong_encrypted_secret_share.clone(),
-                    p2_their_encrypted_secret_shares[1].clone(),
-                    p3_their_encrypted_secret_shares[1].clone(),
+                    p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                 ];
                 let p3_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[2].clone(),
-                    p2_their_encrypted_secret_shares[2].clone(),
-                    p3_their_encrypted_secret_shares[2].clone(),
+                    p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                 ];
 
-                let p1_state = p1_state
+                let (mut p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (mut p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state
+                let (mut p2_state, complaints) = p2_state
                     .clone()
-                    .to_round_two(&p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                    .to_round_two(&p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                    assert!(bad_index == 1);
+                // Anyone can blame the malicious participant.
+                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                // p2 can still finish the DKG
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key == p3_group_key);
+                assert!(p1_group_key == p2_group_key);
+                assert!(p2_group_key == p3_group_key);
 
-                    // Copy for next test and change dh_key
-                    complaint = complaints[0].clone();
-                    complaint.dh_shared_key.double_in_place();
-                } else {
-                    return Err(Error::Custom("Unexpected error".to_string()));
-                }
+                // Copy for next test and change dh_key
+                complaint = complaints[0].clone();
+                complaint.dh_shared_key.double_in_place();
             }
 
             // Wrong decryption of polynomial evaluation
             {
-                let mut wrong_encrypted_secret_share = p1_their_encrypted_secret_shares[1].clone();
+                let mut wrong_encrypted_secret_share =
+                    p1_their_encrypted_secret_shares.get(&2).unwrap().clone();
                 wrong_encrypted_secret_share.encrypted_polynomial_evaluation = vec![42; 32];
                 let p1_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[0].clone(),
-                    p2_their_encrypted_secret_shares[0].clone(),
-                    p3_their_encrypted_secret_shares[0].clone(),
+                    p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                 ];
                 // Wrong share inserted here!
                 let p2_my_encrypted_secret_shares = vec![
                     wrong_encrypted_secret_share.clone(),
-                    p2_their_encrypted_secret_shares[1].clone(),
-                    p3_their_encrypted_secret_shares[1].clone(),
+                    p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                 ];
                 let p3_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[2].clone(),
-                    p2_their_encrypted_secret_shares[2].clone(),
-                    p3_their_encrypted_secret_shares[2].clone(),
+                    p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                 ];
 
-                let p1_state = p1_state
+                let (mut p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (mut p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state
+                let (mut p2_state, complaints) = p2_state
                     .clone()
-                    .to_round_two(&p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                    .to_round_two(&p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                    assert!(bad_index == 1);
+                // Anyone can blame the malicious participant.
+                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key == p3_group_key);
-                } else {
-                    return Err(Error::Custom("Unexpected error".to_string()));
-                }
+                assert!(p1_group_key == p2_group_key);
+                assert!(p2_group_key == p3_group_key);
             }
 
             // Wrong encrypted share
@@ -2195,73 +2446,79 @@ mod test {
                 )
                 .unwrap();
                 let p1_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[0].clone(),
-                    p2_their_encrypted_secret_shares[0].clone(),
-                    p3_their_encrypted_secret_shares[0].clone(),
+                    p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                 ];
                 // Wrong share inserted here!
                 let p2_my_encrypted_secret_shares = vec![
                     wrong_encrypted_secret_share.clone(),
-                    p2_their_encrypted_secret_shares[1].clone(),
-                    p3_their_encrypted_secret_shares[1].clone(),
+                    p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                 ];
                 let p3_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[2].clone(),
-                    p2_their_encrypted_secret_shares[2].clone(),
-                    p3_their_encrypted_secret_shares[2].clone(),
+                    p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                 ];
 
-                let p1_state = p1_state
+                let (mut p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (mut p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state
+                let (mut p2_state, complaints) = p2_state
                     .clone()
-                    .to_round_two(&p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                    .to_round_two(&p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                    assert!(bad_index == 1);
+                // Anyone can blame the malicious participant.
+                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    assert!(p1_group_key == p3_group_key);
-                } else {
-                    return Err(Error::Custom("Unexpected error".to_string()));
-                }
+                assert!(p1_group_key == p2_group_key);
+                assert!(p2_group_key == p3_group_key);
             }
 
             // Wrong complaint leads to blaming the complaint maker
             {
                 let _p1_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[0].clone(),
-                    p2_their_encrypted_secret_shares[0].clone(),
-                    p3_their_encrypted_secret_shares[0].clone(),
+                    p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                 ];
                 let _p2_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[0].clone(),
-                    p2_their_encrypted_secret_shares[1].clone(),
-                    p3_their_encrypted_secret_shares[1].clone(),
+                    p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                 ];
                 let p3_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[2].clone(),
-                    p2_their_encrypted_secret_shares[2].clone(),
-                    p3_their_encrypted_secret_shares[2].clone(),
+                    p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                 ];
 
-                let p3_state = p3_state
+                let (mut p3_state, _) = p3_state
                     .clone()
                     .to_round_two(&p3_my_encrypted_secret_shares, rng)?;
 
-                let bad_index = p3_state.blame(&p1_their_encrypted_secret_shares[0], &complaint);
-                assert!(bad_index == 2);
+                let bad_indices = p3_state.blame(
+                    &p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    &[complaint],
+                );
+                assert!(bad_indices[0] == 2);
             }
 
             Ok(())
@@ -2329,19 +2586,19 @@ mod test {
 
             {
                 let p1_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[0].clone(),
-                    p2_their_encrypted_secret_shares[0].clone(),
-                    p3_their_encrypted_secret_shares[0].clone(),
+                    p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                 ];
                 let p2_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[1].clone(),
-                    p2_their_encrypted_secret_shares[1].clone(),
-                    p3_their_encrypted_secret_shares[1].clone(),
+                    p1_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                 ];
                 let p3_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[2].clone(),
-                    p2_their_encrypted_secret_shares[2].clone(),
-                    p3_their_encrypted_secret_shares[2].clone(),
+                    p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                 ];
 
                 // Check serialization
@@ -2365,9 +2622,17 @@ mod test {
                     NizkPokOfSecretKey::from_bytes(&bytes)?
                 );
 
-                let bytes = p1_state.their_encrypted_secret_shares()?[0].to_bytes()?;
+                let bytes = p1_state
+                    .their_encrypted_secret_shares()?
+                    .get(&1)
+                    .unwrap()
+                    .to_bytes()?;
                 assert_eq!(
-                    p1_state.their_encrypted_secret_shares()?[0],
+                    p1_state
+                        .their_encrypted_secret_shares()?
+                        .get(&1)
+                        .unwrap()
+                        .clone(),
                     EncryptedSecretShare::from_bytes(&bytes)?
                 );
 
@@ -2380,15 +2645,18 @@ mod test {
 
                 // Continue KeyGen
 
-                let p1_state = p1_state
+                let (p1_state, complaints) = p1_state
                     .clone()
                     .to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-                let p2_state = p2_state
+                assert!(complaints.is_empty());
+                let (p2_state, complaints) = p2_state
                     .clone()
                     .to_round_two(&p2_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state
+                assert!(complaints.is_empty());
+                let (p3_state, complaints) = p3_state
                     .clone()
                     .to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
                 let (p1_group_key, _p1_secret_key) = p1_state.clone().finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2414,51 +2682,53 @@ mod test {
                     EncryptedSecretShare::new(1, 2, [0; 12].into(), vec![0]);
 
                 let p1_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[0].clone(),
-                    p2_their_encrypted_secret_shares[0].clone(),
-                    p3_their_encrypted_secret_shares[0].clone(),
+                    p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                 ];
                 let p2_my_encrypted_secret_shares = vec![
                     wrong_encrypted_secret_share.clone(),
-                    p2_their_encrypted_secret_shares[1].clone(),
-                    p3_their_encrypted_secret_shares[1].clone(),
+                    p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                 ];
                 let p3_my_encrypted_secret_shares = vec![
-                    p1_their_encrypted_secret_shares[2].clone(),
-                    p2_their_encrypted_secret_shares[2].clone(),
-                    p3_their_encrypted_secret_shares[2].clone(),
+                    p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                    p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                 ];
 
-                let p1_state = p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-                let p3_state = p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+                let (p1_state, complaints) =
+                    p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
+                let (mut p3_state, complaints) =
+                    p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.is_empty());
 
-                let complaints = p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng);
-                assert!(complaints.is_err());
-                let complaints = complaints.unwrap_err();
-                if let Error::Complaint(complaints) = complaints {
-                    assert!(complaints.len() == 1);
+                let (mut p2_state, complaints) =
+                    p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
+                assert!(complaints.len() == 1);
 
-                    let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
-                    assert!(bad_index == 1);
+                let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
+                let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
+                let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
 
-                    let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
-                    let (p3_group_key, _p3_secret_key) = p3_state.finish()?;
+                assert!(p1_group_key != p2_group_key);
+                assert!(p2_group_key == p3_group_key);
 
-                    assert!(p1_group_key == p3_group_key);
+                // Check serialization
 
-                    // Check serialization
+                let bytes = complaints[0].proof.to_bytes()?;
+                assert_eq!(complaints[0].proof, ComplaintProof::from_bytes(&bytes)?);
 
-                    let bytes = complaints[0].proof.to_bytes()?;
-                    assert_eq!(complaints[0].proof, ComplaintProof::from_bytes(&bytes)?);
+                let bytes = complaints[0].to_bytes()?;
+                assert_eq!(complaints[0], Complaint::from_bytes(&bytes)?);
 
-                    let bytes = complaints[0].to_bytes()?;
-                    assert_eq!(complaints[0], Complaint::from_bytes(&bytes)?);
-
-                    Ok(())
-                } else {
-                    Err(Error::Custom("Unexpected error".to_string()))
-                }
+                Ok(())
             }
         }
 
@@ -2528,31 +2798,49 @@ mod test {
                 )?;
             let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares()?;
 
+            let mut wrong_encrypted_secret_share =
+                p1_their_encrypted_secret_shares.get(&2).unwrap().clone();
+            wrong_encrypted_secret_share.nonce = [42; 12].into();
+
             let p1_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[0].clone(),
-                p2_their_encrypted_secret_shares[0].clone(),
-                p3_their_encrypted_secret_shares[0].clone(),
-            ];
-            let p2_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[1].clone(),
-                p2_their_encrypted_secret_shares[1].clone(),
-                p3_their_encrypted_secret_shares[1].clone(),
-            ];
-            let p3_my_encrypted_secret_shares = vec![
-                p1_their_encrypted_secret_shares[2].clone(),
-                p2_their_encrypted_secret_shares[2].clone(),
-                p3_their_encrypted_secret_shares[2].clone(),
+                p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
             ];
 
-            let p1_state = p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
-            let p2_state = p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
-            let p3_state = p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+            // Wrong share inserted here!
+            let p2_my_encrypted_secret_shares = vec![
+                wrong_encrypted_secret_share.clone(),
+                p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+            ];
+            let p3_my_encrypted_secret_shares = vec![
+                p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+                p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
+            ];
+
+            let (p1_state, complaints) =
+                p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (mut p3_state, complaints) =
+                p3_state.to_round_two(&p3_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.is_empty());
+            let (mut p2_state, complaints) =
+                p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.len() == 1);
+
+            // Honest participants need to process all existing complaints before finishing the DKG.
+            let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+            assert!(bad_indices[0] == 1);
+            let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+            assert!(bad_indices[0] == 1);
 
             let (p1_group_key, p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, p2_secret_key) = p2_state.finish()?;
             let (p3_group_key, p3_secret_key) = p3_state.finish()?;
 
-            assert!(p1_group_key == p2_group_key);
+            assert!(p1_group_key != p2_group_key);
             assert!(p2_group_key == p3_group_key);
 
             // Check the validity of each IndividualVerifyingKey
@@ -2561,28 +2849,24 @@ mod test {
             let p2_public_key = p2_secret_key.to_public();
             let p3_public_key = p3_secret_key.to_public();
 
-            // The order does not matter
-            let commitments = [
-                p2.commitments.unwrap(),
-                p3.commitments.unwrap(),
-                p1.commitments.unwrap(),
-            ];
+            // The order does not matter, as long as we only include commitments from valid participants.
+            let commitments = [p3.commitments.unwrap(), p2.commitments.unwrap()];
 
-            assert!(p1_public_key.verify(&commitments).is_ok());
+            // p1's state hasn't been updated to remove themselves, hence their individual public key cannot be
+            // verifiable.
+            assert!(p1_public_key.verify(&commitments).is_err());
             assert!(p2_public_key.verify(&commitments).is_ok());
             assert!(p3_public_key.verify(&commitments).is_ok());
 
-            assert!(p1_public_key.verify(&commitments[1..]).is_err());
+            // We need all valid commitments to verify individual public keys.
+            assert!(p2_public_key.verify(&commitments[1..]).is_err());
 
-            // Check that the generated IndividualVerifyingKey from other participants match
-            let p1_recovered_public_key =
-                IndividualVerifyingKey::generate_from_commitments(1, &commitments)?;
+            // Check that the generated `IndividualVerifyingKey` from other participants match
             let p2_recovered_public_key =
                 IndividualVerifyingKey::generate_from_commitments(2, &commitments)?;
             let p3_recovered_public_key =
                 IndividualVerifyingKey::generate_from_commitments(3, &commitments)?;
 
-            assert_eq!(p1_public_key, p1_recovered_public_key);
             assert_eq!(p2_public_key, p2_recovered_public_key);
             assert_eq!(p3_public_key, p3_recovered_public_key);
 

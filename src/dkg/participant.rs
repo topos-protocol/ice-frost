@@ -21,7 +21,7 @@ use crate::parameters::ThresholdParameters;
 use crate::serialization::impl_serialization_traits;
 use crate::{Error, FrostResult};
 
-use crate::utils::{Scalar, Vec};
+use crate::utils::{BTreeMap, Scalar, Vec};
 
 use super::DKGParticipantList;
 use super::DistributedKeyGeneration;
@@ -246,7 +246,14 @@ impl<C: CipherSuite> Participant<C> {
         secret_key: &IndividualSigningKey<C>,
         signers: &[Participant<C>],
         mut rng: impl RngCore + CryptoRng,
-    ) -> FrostResult<C, (Self, Vec<EncryptedSecretShare<C>>, DKGParticipantList<C>)> {
+    ) -> FrostResult<
+        C,
+        (
+            Self,
+            BTreeMap<u32, EncryptedSecretShare<C>>,
+            DKGParticipantList<C>,
+        ),
+    > {
         let (dealer, coeff_option, dh_private_key) = Self::new_internal(
             parameters,
             false,

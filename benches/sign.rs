@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate criterion;
 
+use std::collections::BTreeMap;
+
 use criterion::Criterion;
 
 use rand::rngs::OsRng;
@@ -44,10 +46,11 @@ fn criterion_benchmark(c: &mut Criterion) {
         dh_secret_keys.push(dh_sk);
     }
 
-    let mut participants_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<Secp256k1Sha256>>> =
-        (0..NUMBER_OF_PARTICIPANTS)
-            .map(|_| Vec::with_capacity((NUMBER_OF_PARTICIPANTS - 1) as usize))
-            .collect();
+    let mut participants_encrypted_secret_shares: Vec<
+        BTreeMap<u32, EncryptedSecretShare<Secp256k1Sha256>>,
+    > = (0..NUMBER_OF_PARTICIPANTS)
+        .map(|_| BTreeMap::new())
+        .collect();
 
     let mut participants_states_1 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let mut participants_states_2 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
@@ -72,14 +75,19 @@ fn criterion_benchmark(c: &mut Criterion) {
             NUMBER_OF_PARTICIPANTS as usize,
         );
     for j in 0..NUMBER_OF_PARTICIPANTS {
-        p1_my_encrypted_secret_shares
-            .push(participants_encrypted_secret_shares[j as usize][0].clone());
+        p1_my_encrypted_secret_shares.push(
+            participants_encrypted_secret_shares[j as usize]
+                .get(&1)
+                .unwrap()
+                .clone(),
+        );
     }
     participants_states_2.push(
         participants_states_1[0]
             .clone()
             .to_round_two(&p1_my_encrypted_secret_shares, rng)
-            .unwrap(),
+            .unwrap()
+            .0,
     );
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
@@ -88,15 +96,20 @@ fn criterion_benchmark(c: &mut Criterion) {
                 NUMBER_OF_PARTICIPANTS as usize,
             );
         for j in 0..NUMBER_OF_PARTICIPANTS {
-            pi_my_encrypted_secret_shares
-                .push(participants_encrypted_secret_shares[j as usize][(i - 1) as usize].clone());
+            pi_my_encrypted_secret_shares.push(
+                participants_encrypted_secret_shares[j as usize]
+                    .get(&i)
+                    .unwrap()
+                    .clone(),
+            );
         }
 
         participants_states_2.push(
             participants_states_1[(i - 1) as usize]
                 .clone()
                 .to_round_two(&pi_my_encrypted_secret_shares, rng)
-                .unwrap(),
+                .unwrap()
+                .0,
         );
     }
 
