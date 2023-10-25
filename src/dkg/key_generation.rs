@@ -1155,8 +1155,8 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
 
         pending_removals
             .iter()
-            .map(|i| self.state.their_dh_public_keys.get(&i))
-            .filter(|k| k.is_some())
+            .map(|i| self.state.their_dh_public_keys.get(i))
+            .filter(core::option::Option::is_some)
             .map(|k| *k.unwrap())
             .collect()
     }
@@ -2476,7 +2476,7 @@ mod test {
                 assert!(complaints.len() == 1);
 
                 // Anyone can blame the malicious participant.
-                let bad_keys = p1_state.blame(&&complaints);
+                let bad_keys = p1_state.blame(&complaints);
                 assert!(bad_keys[0] == p1.dh_public_key);
                 let bad_keys = p2_state.blame(&complaints);
                 assert!(bad_keys[0] == p1.dh_public_key);
