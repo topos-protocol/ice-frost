@@ -1077,14 +1077,14 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
             return remove_malicious(self, complaint.maker_index);
         }
 
-        let commitment_accused = if let Some(idx) = self
+        let commitment_accused = if let Some(commitment) = self
             .state
             .their_commitments
             .as_ref()
             .unwrap()
             .get(&complaint.accused_index)
         {
-            idx
+            commitment
         } else {
             // We should have been able to retrieve commitments for the targeted index,
             // which means we already have removed this participant for misbehaviour.
