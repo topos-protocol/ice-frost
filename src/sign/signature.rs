@@ -1597,15 +1597,15 @@ mod test {
         let all_complaints = &[p2_complaints, p5_complaints].concat();
 
         let bad_indices =
-            p2_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, &all_complaints);
+            p2_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, all_complaints);
         assert!(bad_indices.len() == 1); // both complaints led to the same conclusion
         assert!(bad_indices[0] == 4);
         let bad_indices =
-            p3_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, &all_complaints);
+            p3_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, all_complaints);
         assert!(bad_indices.len() == 1); // both complaints led to the same conclusion
         assert!(bad_indices[0] == 4);
         let bad_indices =
-            p5_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, &all_complaints);
+            p5_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, all_complaints);
         assert!(bad_indices.len() == 1); // both complaints led to the same conclusion
         assert!(bad_indices[0] == 4);
 
