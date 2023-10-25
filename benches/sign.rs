@@ -3,6 +3,8 @@
 #[macro_use]
 extern crate criterion;
 
+use std::collections::BTreeMap;
+
 use criterion::Criterion;
 
 use rand::rngs::OsRng;
@@ -38,25 +40,26 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut dh_secret_keys = Vec::<DHSkey>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 1..NUMBER_OF_PARTICIPANTS + 1 {
-        let (p, c, dh_sk) = ParticipantDKG::new_dealer(&params, i, rng).unwrap();
+        let (p, c, dh_sk) = ParticipantDKG::new_dealer(params, i, rng).unwrap();
         participants.push(p);
         coefficients.push(c);
         dh_secret_keys.push(dh_sk);
     }
 
-    let mut participants_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<Secp256k1Sha256>>> =
-        (0..NUMBER_OF_PARTICIPANTS)
-            .map(|_| Vec::with_capacity((NUMBER_OF_PARTICIPANTS - 1) as usize))
-            .collect();
+    let mut participants_encrypted_secret_shares: Vec<
+        BTreeMap<u32, EncryptedSecretShare<Secp256k1Sha256>>,
+    > = (0..NUMBER_OF_PARTICIPANTS)
+        .map(|_| BTreeMap::new())
+        .collect();
 
     let mut participants_states_1 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let mut participants_states_2 = Vec::<Dkg<_>>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
     for i in 0..NUMBER_OF_PARTICIPANTS {
         let (pi_state, _participant_lists) = Dkg::<_>::bootstrap(
-            &params,
+            params,
             &dh_secret_keys[i as usize],
-            &participants[i as usize].index.clone(),
+            participants[i as usize].index,
             &coefficients[i as usize],
             &participants,
             rng,
@@ -72,14 +75,19 @@ fn criterion_benchmark(c: &mut Criterion) {
             NUMBER_OF_PARTICIPANTS as usize,
         );
     for j in 0..NUMBER_OF_PARTICIPANTS {
-        p1_my_encrypted_secret_shares
-            .push(participants_encrypted_secret_shares[j as usize][0].clone());
+        p1_my_encrypted_secret_shares.push(
+            participants_encrypted_secret_shares[j as usize]
+                .get(&1)
+                .unwrap()
+                .clone(),
+        );
     }
     participants_states_2.push(
         participants_states_1[0]
             .clone()
-            .to_round_two(p1_my_encrypted_secret_shares, rng)
-            .unwrap(),
+            .to_round_two(&p1_my_encrypted_secret_shares, rng)
+            .unwrap()
+            .0,
     );
 
     for i in 2..NUMBER_OF_PARTICIPANTS + 1 {
@@ -88,15 +96,20 @@ fn criterion_benchmark(c: &mut Criterion) {
                 NUMBER_OF_PARTICIPANTS as usize,
             );
         for j in 0..NUMBER_OF_PARTICIPANTS {
-            pi_my_encrypted_secret_shares
-                .push(participants_encrypted_secret_shares[j as usize][(i - 1) as usize].clone());
+            pi_my_encrypted_secret_shares.push(
+                participants_encrypted_secret_shares[j as usize]
+                    .get(&i)
+                    .unwrap()
+                    .clone(),
+            );
         }
 
         participants_states_2.push(
             participants_states_1[(i - 1) as usize]
                 .clone()
-                .to_round_two(pi_my_encrypted_secret_shares, rng)
-                .unwrap(),
+                .to_round_two(&pi_my_encrypted_secret_shares, rng)
+                .unwrap()
+                .0,
         );
     }
 
@@ -126,16 +139,17 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut participants_secret_comshares =
         Vec::<SecretCommShareList>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
     let (p1_public_comshares, p1_secret_comshares) =
-        generate_commitment_share_lists(&mut OsRng, &participants_secret_keys[0].clone(), 1);
+        generate_commitment_share_lists(&mut OsRng, &participants_secret_keys[0], 1).unwrap();
     participants_public_comshares.push(p1_public_comshares);
     participants_secret_comshares.push(p1_secret_comshares.clone());
 
     for i in 1..THRESHOLD_OF_PARTICIPANTS + 1 {
         let (pi_public_comshares, pi_secret_comshares) = generate_commitment_share_lists(
             &mut OsRng,
-            &participants_secret_keys[(i - 1) as usize].clone(),
+            &participants_secret_keys[(i - 1) as usize],
             1,
-        );
+        )
+        .unwrap();
         participants_public_comshares.push(pi_public_comshares);
         participants_secret_comshares.push(pi_secret_comshares);
     }
@@ -146,12 +160,12 @@ fn criterion_benchmark(c: &mut Criterion) {
         aggregator.include_signer(
             i,
             participants_public_comshares[(i - 1) as usize].commitments[0],
-            (&participants_secret_keys[(i - 1) as usize]).into(),
+            &participants_secret_keys[(i - 1) as usize].to_public(),
         );
     }
 
     let signers = aggregator.get_signers().clone();
-    let message_hash = Secp256k1Sha256::h4(&message[..]).unwrap();
+    let message_hash = Secp256k1Sha256::h4(&message[..]);
     let message_hash_copy = message_hash;
 
     let p1_sk = participants_secret_keys[0].clone();
@@ -166,7 +180,7 @@ fn criterion_benchmark(c: &mut Criterion) {
                 &signers,
             )
             .unwrap();
-        aggregator.include_partial_signature(pi_partial_signature);
+        aggregator.include_partial_signature(&pi_partial_signature);
     }
 
     c.bench_function("Partial signature creation", move |b| {

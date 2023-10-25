@@ -66,11 +66,11 @@ impl<C: CipherSuite> Drop for SecretShare<C> {
 impl<C: CipherSuite> SecretShare<C> {
     /// Evaluate the polynomial, `f(x)` for the secret coefficients at the value of `x` .
     pub(crate) fn evaluate_polynomial(
-        sender_index: &u32,
-        receiver_index: &u32,
+        sender_index: u32,
+        receiver_index: u32,
         coefficients: &Coefficients<C>,
     ) -> SecretShare<C> {
-        let term: Scalar<C> = (*receiver_index).into();
+        let term: Scalar<C> = (receiver_index).into();
         let mut sum = Scalar::<C>::ZERO;
 
         // Evaluate using Horner's method.
@@ -83,8 +83,8 @@ impl<C: CipherSuite> SecretShare<C> {
             }
         }
         SecretShare {
-            sender_index: *sender_index,
-            receiver_index: *receiver_index,
+            sender_index,
+            receiver_index,
             polynomial_evaluation: sum,
         }
     }
@@ -100,9 +100,10 @@ impl<C: CipherSuite> SecretShare<C> {
 
         let rhs = commitment.evaluate_hiding(&term);
 
-        match lhs.into_affine() == rhs.into_affine() {
-            true => Ok(()),
-            false => Err(Error::ShareVerificationError),
+        if lhs.into_affine() == rhs.into_affine() {
+            Ok(())
+        } else {
+            Err(Error::ShareVerificationError)
         }
     }
 }
@@ -219,6 +220,7 @@ impl<C: CipherSuite> Drop for EncryptedSecretShare<C> {
 
 impl<C: CipherSuite> EncryptedSecretShare<C> {
     /// Constructs a new [`EncryptedSecretShare`] from the provided inputs.
+    #[must_use]
     pub fn new(
         sender_index: u32,
         receiver_index: u32,

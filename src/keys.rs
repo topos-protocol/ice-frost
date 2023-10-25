@@ -18,7 +18,7 @@ use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
 use zeroize::Zeroize;
 
-/// A Diffie-Hellman private key wrapper type around a PrimeField.
+/// A Diffie-Hellman private key wrapper type around a `PrimeField`.
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize, Zeroize)]
 pub struct DiffieHellmanPrivateKey<C: CipherSuite>(pub(crate) <C::G as Group>::ScalarField);
 
@@ -32,6 +32,7 @@ impl<C: CipherSuite> Drop for DiffieHellmanPrivateKey<C> {
 
 /// A Diffie-Hellman public key wrapper type around a CurveGroup.
 #[derive(Clone, Copy, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
+
 pub struct DiffieHellmanPublicKey<C: CipherSuite> {
     pub(crate) key: C::G,
     _phantom: PhantomData<C>,
@@ -99,11 +100,11 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
         let term: <C::G as Group>::ScalarField = self.index.into();
 
         let mut index_vector = Vec::with_capacity(commitments.len());
-        for commitment in commitments.iter() {
+        for commitment in commitments {
             index_vector.push(commitment.index);
         }
 
-        for commitment in commitments.iter() {
+        for commitment in commitments {
             let mut tmp: C::G = <C as CipherSuite>::G::zero();
             for (index, com) in commitment.points.iter().rev().enumerate() {
                 tmp += com;
@@ -122,9 +123,10 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
             rhs += tmp.mul(coeff);
         }
 
-        match self.share.into_affine() == rhs.into_affine() {
-            true => Ok(()),
-            false => Err(Error::ShareVerificationError),
+        if self.share.into_affine() == rhs.into_affine() {
+            Ok(())
+        } else {
+            Err(Error::ShareVerificationError)
         }
     }
 
@@ -150,16 +152,16 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
     pub fn generate_from_commitments(
         participant_index: u32,
         commitments: &[VerifiableSecretSharingCommitment<C>],
-    ) -> Self {
+    ) -> FrostResult<C, Self> {
         let mut share: C::G = <C as CipherSuite>::G::zero();
         let term: <C::G as Group>::ScalarField = participant_index.into();
 
         let mut index_vector = Vec::with_capacity(commitments.len());
-        for commitment in commitments.iter() {
+        for commitment in commitments {
             index_vector.push(commitment.index);
         }
 
-        for commitment in commitments.iter() {
+        for commitment in commitments {
             let mut tmp: C::G = <C as CipherSuite>::G::zero();
             for (index, com) in commitment.points.iter().rev().enumerate() {
                 tmp += com;
@@ -169,15 +171,14 @@ impl<C: CipherSuite> IndividualVerifyingKey<C> {
                 }
             }
 
-            let coeff =
-                calculate_lagrange_coefficients::<C>(commitment.index, &index_vector).unwrap();
+            let coeff = calculate_lagrange_coefficients::<C>(commitment.index, &index_vector)?;
             share += tmp * coeff;
         }
 
-        IndividualVerifyingKey {
+        Ok(IndividualVerifyingKey {
             index: participant_index,
             share,
-        }
+        })
     }
 }
 
@@ -240,8 +241,7 @@ impl<C: CipherSuite> GroupVerifyingKey<C> {
         signature: &ThresholdSignature<C>,
         message_hash: &[u8],
     ) -> FrostResult<C, ()> {
-        let challenge =
-            compute_challenge::<C>(&signature.group_commitment, self, message_hash).unwrap();
+        let challenge = compute_challenge::<C>(&signature.group_commitment, self, message_hash)?;
 
         let retrieved_commitment: C::G = <C as CipherSuite>::G::msm(
             &[C::G::generator().into(), (-self.key).into()],
@@ -249,9 +249,10 @@ impl<C: CipherSuite> GroupVerifyingKey<C> {
         )
         .map_err(|_| Error::InvalidSignature)?;
 
-        match signature.group_commitment == retrieved_commitment {
-            true => Ok(()),
-            false => Err(Error::InvalidSignature),
+        if signature.group_commitment == retrieved_commitment {
+            Ok(())
+        } else {
+            Err(Error::InvalidSignature)
         }
     }
 }
