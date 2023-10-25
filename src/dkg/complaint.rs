@@ -11,6 +11,7 @@ use rand::{CryptoRng, RngCore};
 use sha2::Sha256;
 
 use crate::ciphersuite::CipherSuite;
+use crate::HASH_SEC_PARAM;
 
 use ark_ec::Group;
 use ark_ff::field_hashers::{DefaultFieldHasher, HashToField};
@@ -47,7 +48,7 @@ impl<C: CipherSuite> Complaint<C> {
         let a1 = C::G::generator().mul(r);
         let a2 = accused_pk.mul(r);
 
-        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<Scalar<C>>>::new(
+        let hasher = <DefaultFieldHasher<Sha256, HASH_SEC_PARAM> as HashToField<Scalar<C>>>::new(
             "Complaint Context".as_bytes(),
         );
 
@@ -84,7 +85,7 @@ impl<C: CipherSuite> Complaint<C> {
     /// --  a1 + h.pk_i = z.g
     /// --  a2 + h.k_il = z.pk_l
     pub fn verify(&self, pk_i: &C::G, pk_l: &C::G) -> FrostResult<C, ()> {
-        let hasher = <DefaultFieldHasher<Sha256, 128> as HashToField<Scalar<C>>>::new(
+        let hasher = <DefaultFieldHasher<Sha256, HASH_SEC_PARAM> as HashToField<Scalar<C>>>::new(
             "Complaint Context".as_bytes(),
         );
 

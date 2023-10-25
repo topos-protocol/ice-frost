@@ -55,7 +55,7 @@ impl<C: CipherSuite> NizkPokOfSecretKey<C> {
         m.serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
 
-        let s = C::h0(&message)?;
+        let s = C::h0(&message);
         let r = k + (*secret_key * s);
 
         Ok(NizkPokOfSecretKey { s, r })
@@ -80,7 +80,7 @@ impl<C: CipherSuite> NizkPokOfSecretKey<C> {
             .serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
 
-        let s_prime = C::h0(&message)?;
+        let s_prime = C::h0(&message);
 
         if self.s == s_prime {
             return Ok(());

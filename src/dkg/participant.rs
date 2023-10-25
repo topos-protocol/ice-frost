@@ -79,13 +79,17 @@ impl<C: CipherSuite> Participant<C> {
     /// Diffie-Hellman private key for secret shares encryption which
     /// must be kept private.
     pub fn new_dealer(
-        parameters: &ThresholdParameters<C>,
+        parameters: ThresholdParameters<C>,
         index: u32,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, Coefficients<C>, DiffieHellmanPrivateKey<C>)> {
         let (dealer, coeff_option, dh_private_key) =
             Self::new_internal(parameters, false, index, None, &mut rng)?;
-        Ok((dealer, coeff_option.unwrap(), dh_private_key))
+        Ok((
+            dealer,
+            coeff_option.expect("We always have at least an empty vector"),
+            dh_private_key,
+        ))
     }
 
     /// Construct a new signer for the distributed key generation protocol.
@@ -112,7 +116,7 @@ impl<C: CipherSuite> Participant<C> {
     /// signers's Diffie-Hellman private key for secret shares encryption
     /// which must be kept private.
     pub fn new_signer(
-        parameters: &ThresholdParameters<C>,
+        parameters: ThresholdParameters<C>,
         index: u32,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, (Self, DiffieHellmanPrivateKey<C>)> {
@@ -122,7 +126,7 @@ impl<C: CipherSuite> Participant<C> {
     }
 
     fn new_internal(
-        parameters: &ThresholdParameters<C>,
+        parameters: ThresholdParameters<C>,
         is_signer: bool,
         index: u32,
         secret_key: Option<Scalar<C>>,
@@ -195,7 +199,9 @@ impl<C: CipherSuite> Participant<C> {
             let proof_of_secret_key: NizkPokOfSecretKey<C> = NizkPokOfSecretKey::prove(
                 index,
                 &coefficients.0[0],
-                commitments.public_key().unwrap(),
+                commitments
+                    .public_key()
+                    .expect("We should always be able to retrieve a public key."),
                 rng,
             )?;
 
@@ -236,8 +242,8 @@ impl<C: CipherSuite> Participant<C> {
     /// It also returns a list of the valid / misbehaving participants
     /// of the new set for handling outside of this crate.
     pub fn reshare(
-        parameters: &ThresholdParameters<C>,
-        secret_key: IndividualSigningKey<C>,
+        parameters: ThresholdParameters<C>,
+        secret_key: &IndividualSigningKey<C>,
         signers: &[Participant<C>],
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<
@@ -256,13 +262,12 @@ impl<C: CipherSuite> Participant<C> {
             &mut rng,
         )?;
 
-        // Unwrapping cannot panic here
-        let coefficients = coeff_option.unwrap();
+        let coefficients = coeff_option.expect("We always have at least an empty vector");
 
         let (participant_state, participant_lists) = DistributedKeyGeneration::new_state_internal(
             parameters,
             &dh_private_key,
-            &secret_key.index,
+            secret_key.index,
             Some(&coefficients),
             signers,
             true,
@@ -270,11 +275,7 @@ impl<C: CipherSuite> Participant<C> {
             &mut rng,
         )?;
 
-        // Unwrapping cannot panic here
-        let encrypted_shares = participant_state
-            .their_encrypted_secret_shares()
-            .unwrap()
-            .clone();
+        let encrypted_shares = participant_state.their_encrypted_secret_shares()?.clone();
 
         Ok((dealer, encrypted_shares, participant_lists))
     }
@@ -283,11 +284,7 @@ impl<C: CipherSuite> Participant<C> {
     ///
     /// This is used to pass into the final call to [`DistributedKeyGeneration::<RoundTwo, C>::finish()`] .
     pub fn public_key(&self) -> Option<&C::G> {
-        if self.commitments.is_some() {
-            return self.commitments.as_ref().unwrap().public_key();
-        }
-
-        None
+        self.commitments.as_ref().map(|c| c.public_key())?
     }
 }
 
@@ -318,7 +315,7 @@ mod test {
         let params = ThresholdParameters::new(3, 2);
         let rng = OsRng;
 
-        let result = Participant::<Secp256k1Sha256>::new_dealer(&params, 0, rng);
+        let result = Participant::<Secp256k1Sha256>::new_dealer(params, 0, rng);
         assert!(result.is_err());
         assert_eq!(result.unwrap_err(), Error::IndexIsZero);
     }
