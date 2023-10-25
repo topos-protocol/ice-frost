@@ -764,6 +764,12 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         }
 
         if !from_dealer && from_signer {
+            // Update the parameters with the total number of (valid) participants.
+            let parameters = ThresholdParameters::new(
+                parameters.n - misbehaving_participants.len() as u32,
+                parameters.t,
+            );
+
             let state = ActualState {
                 parameters,
                 index: my_index,
@@ -819,6 +825,12 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             their_encrypted_secret_shares
                 .insert(p.index, encrypt_share(&share, &dh_key_bytes[..], &mut rng)?);
         }
+
+        // Update the parameters with the total number of (valid) participants.
+        let parameters = ThresholdParameters::new(
+            parameters.n - misbehaving_participants.len() as u32,
+            parameters.t,
+        );
 
         let state = ActualState {
             parameters,
