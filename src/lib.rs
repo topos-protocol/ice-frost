@@ -8,6 +8,9 @@
 //! group verifying key, to be used to attest correctness of the generated ICE-FROST signatures, is invariant
 //! when proceeding to individual signing keys resharing to a (possibly) different group of participants.
 //!
+//! **NOTE**: This library assumes that participants can exchange messages on a public communication channel,
+//! with each message being authentified (i.e. digitally signed) by its sender.
+//!
 //! # Usage
 //!
 //! Alice, Bob, and Carol would like to set up a threshold signing scheme where

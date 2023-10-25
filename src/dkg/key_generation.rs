@@ -1061,6 +1061,10 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// participants commitments and secret shares received from them, so that the key
     /// generation/resharing process can finish, in addition to returning the indices of the
     /// blamed participants.
+    ///
+    /// ***NOTE***: Participants *MUST* call this method before finishing the DKG/resharing phase,
+    /// and their list of complaints *MUST* include all complaints, otherwise they may have
+    /// inconsistent final states between them.
     pub fn blame(
         &mut self,
         encrypted_share: &EncryptedSecretShare<C>,
