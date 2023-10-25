@@ -745,13 +745,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             Ok(()) => {
                                 valid_participants.push(p.clone());
                                 their_commitments.insert(p.index, p.commitments.as_ref().expect("Dealers always have commitments to their secret polynomial evaluations.").clone());
-                                their_dh_public_keys.insert(p.index, p.dh_public_key.clone());
+                                their_dh_public_keys.insert(p.index, p.dh_public_key);
                             }
                             Err(_) => misbehaving_participants.push(p.index),
                         }
                     } else {
                         valid_participants.push(p.clone());
-                        their_dh_public_keys.insert(p.index, p.dh_public_key.clone());
+                        their_dh_public_keys.insert(p.index, p.dh_public_key);
                     }
                 }
                 Err(_) => misbehaving_participants.push(p.index),
@@ -904,6 +904,14 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         // Step 2.1: Each P_i decrypts their shares with
         //           key k_il = pk_l^sk_i
         for encrypted_share in my_encrypted_secret_shares {
+            // This sanity check to ensure we are indeed the intended receiver of this secret share
+            // is not technically necessary, as ensuring that we only include our dedicated shares
+            // is out of scope of this library.
+            // Because we assume communication channels to be authentified, and indices within an
+            // `EncryptedSecretShare` being public, external implementations should ensure that the
+            // receiver index of this encrypted share has not been tampered with.
+            debug_assert_eq!(encrypted_share.receiver_index, self.state.index);
+
             if let Some(pk) = self
                 .state
                 .their_dh_public_keys
@@ -934,14 +942,13 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                                 .is_err()
                         {
                             complaints.push(Complaint::<C>::new(
-                                encrypted_share.receiver_index,
-                                encrypted_share.sender_index,
                                 pk,
-                                &self.state.dh_private_key.0,
-                                &self.state.dh_public_key.key,
+                                &self.state.dh_private_key,
                                 &dh_shared_key,
+                                encrypted_share,
                                 &mut rng,
                             )?);
+
                             break;
                         }
                     }
@@ -1065,11 +1072,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     /// ***NOTE***: Participants *MUST* call this method before finishing the DKG/resharing phase,
     /// and their list of complaints *MUST* include all complaints, otherwise they may have
     /// inconsistent final states between them.
-    pub fn blame(
-        &mut self,
-        encrypted_share: &EncryptedSecretShare<C>,
-        complaints: &[Complaint<C>],
-    ) -> Vec<u32> {
+    pub fn blame(&mut self, complaints: &[Complaint<C>]) -> Vec<DiffieHellmanPublicKey<C>> {
         fn remove_malicious<C: CipherSuite>(
             dkg_state: &mut DistributedKeyGeneration<RoundTwo, C>,
             idx: u32,
@@ -1091,8 +1094,11 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         let mut pending_removals = Vec::with_capacity(complaints.len());
 
         for complaint in complaints {
-            if complaint.accused_index == 0 || complaint.accused_index > self.state.parameters.n {
-                pending_removals.push(complaint.maker_index);
+            let accused_index = complaint.encrypted_share.sender_index;
+            let maker_index = complaint.encrypted_share.receiver_index;
+
+            if accused_index == 0 || accused_index > self.state.parameters.n {
+                pending_removals.push(maker_index);
                 continue;
             }
 
@@ -1101,33 +1107,21 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
                 .their_commitments
                 .as_ref()
                 .expect("Dealers always have commitments to their secret polynomial evaluations.")
-                .get(&complaint.accused_index)
+                .get(&accused_index)
             else {
                 // If we cannot retrieve the index here, we should blame the complaint maker.
-                pending_removals.push(complaint.maker_index);
+                pending_removals.push(maker_index);
                 continue;
             };
 
-            let pk_maker = self
-                .state
-                .their_dh_public_keys
-                .get(&complaint.maker_index)
-                .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
             let pk_accused = self
                 .state
                 .their_dh_public_keys
-                .get(&complaint.accused_index)
+                .get(&accused_index)
                 .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
 
-            if pk_maker == <C as CipherSuite>::G::zero()
-                || pk_accused == <C as CipherSuite>::G::zero()
-            {
-                pending_removals.push(complaint.maker_index);
-                continue;
-            };
-
-            if complaint.verify(&pk_maker, &pk_accused).is_err() {
-                pending_removals.push(complaint.maker_index);
+            if complaint.verify(&pk_accused).is_err() {
+                pending_removals.push(maker_index);
                 continue;
             };
 
@@ -1137,18 +1131,18 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
                 .serialize_compressed(&mut dh_key_bytes)
                 .is_err()
             {
-                pending_removals.push(complaint.maker_index);
+                pending_removals.push(maker_index);
                 continue;
             };
 
-            let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
+            let share = decrypt_share(&complaint.encrypted_share, &dh_key_bytes[..]);
             if share.is_err() {
-                pending_removals.push(complaint.accused_index);
+                pending_removals.push(accused_index);
                 continue;
             };
             match share.unwrap().verify(commitment_accused) {
-                Ok(()) => pending_removals.push(complaint.maker_index),
-                Err(_) => pending_removals.push(complaint.accused_index),
+                Ok(()) => pending_removals.push(maker_index),
+                Err(_) => pending_removals.push(accused_index),
             };
         }
 
@@ -1160,6 +1154,11 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
         }
 
         pending_removals
+            .iter()
+            .map(|i| self.state.their_dh_public_keys.get(i))
+            .filter(core::option::Option::is_some)
+            .map(|k| *k.unwrap())
+            .collect()
     }
 }
 
@@ -2358,12 +2357,12 @@ mod test {
                 assert!(complaints.len() == 1);
 
                 // Anyone can blame the malicious participant.
-                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
-                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
-                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
+                let bad_keys = p1_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
+                let bad_keys = p2_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
+                let bad_keys = p3_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 // p2 can still finish the DKG
@@ -2415,12 +2414,12 @@ mod test {
                 assert!(complaints.len() == 1);
 
                 // Anyone can blame the malicious participant.
-                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
-                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
-                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
+                let bad_keys = p1_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
+                let bad_keys = p2_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
+                let bad_keys = p3_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2477,12 +2476,12 @@ mod test {
                 assert!(complaints.len() == 1);
 
                 // Anyone can blame the malicious participant.
-                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
-                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
-                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
+                let bad_keys = p1_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
+                let bad_keys = p2_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
+                let bad_keys = p3_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2514,12 +2513,325 @@ mod test {
                     .clone()
                     .to_round_two(&p3_my_encrypted_secret_shares, rng)?;
 
-                let bad_indices = p3_state.blame(
-                    &p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-                    &[complaint],
-                );
-                assert!(bad_indices[0] == 2);
+                let bad_keys = p3_state.blame(&[complaint]);
+                assert!(bad_keys[0] == p2.dh_public_key);
             }
+
+            Ok(())
+        }
+        assert!(do_test().is_ok());
+    }
+
+    #[test]
+    fn keygen_verify_complaint_during_resharing() {
+        fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+            let params_dealers = ThresholdParameters::new(3, 2);
+            let rng = OsRng;
+
+            let (dealer1, dealer1coeffs, dealer1_dh_sk) =
+                Participant::<Secp256k1Sha256>::new_dealer(params_dealers, 1, rng).unwrap();
+            let (dealer2, dealer2coeffs, dealer2_dh_sk) =
+                Participant::<Secp256k1Sha256>::new_dealer(params_dealers, 2, rng).unwrap();
+            let (dealer3, dealer3coeffs, dealer3_dh_sk) =
+                Participant::<Secp256k1Sha256>::new_dealer(params_dealers, 3, rng).unwrap();
+
+            dealer1
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer1.index, dealer1.public_key().unwrap())?;
+            dealer2
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer2.index, dealer2.public_key().unwrap())?;
+            dealer3
+                .proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(dealer3.index, dealer3.public_key().unwrap())?;
+
+            let dealers: Vec<Participant<Secp256k1Sha256>> =
+                vec![dealer1.clone(), dealer2.clone(), dealer3.clone()];
+            let (dealer1_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                    params_dealers,
+                    &dealer1_dh_sk,
+                    dealer1.index,
+                    &dealer1coeffs,
+                    &dealers,
+                    rng,
+                )?;
+            let dealer1_their_encrypted_secret_shares =
+                dealer1_state.their_encrypted_secret_shares()?;
+
+            let (dealer2_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                    params_dealers,
+                    &dealer2_dh_sk,
+                    dealer2.index,
+                    &dealer2coeffs,
+                    &dealers,
+                    rng,
+                )?;
+            let dealer2_their_encrypted_secret_shares =
+                dealer2_state.their_encrypted_secret_shares()?;
+
+            let (dealer3_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                    params_dealers,
+                    &dealer3_dh_sk,
+                    dealer3.index,
+                    &dealer3coeffs,
+                    &dealers,
+                    rng,
+                )?;
+            let dealer3_their_encrypted_secret_shares =
+                dealer3_state.their_encrypted_secret_shares()?;
+
+            let dealer1_my_encrypted_secret_shares = vec![
+                dealer1_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+            ];
+            let dealer2_my_encrypted_secret_shares = vec![
+                dealer1_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+            ];
+            let dealer3_my_encrypted_secret_shares = vec![
+                dealer1_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer2_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer3_their_encrypted_secret_shares
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+            ];
+
+            let (dealer1_state, _) =
+                dealer1_state.to_round_two(&dealer1_my_encrypted_secret_shares, rng)?;
+            let (dealer2_state, _) =
+                dealer2_state.to_round_two(&dealer2_my_encrypted_secret_shares, rng)?;
+            let (dealer3_state, _) =
+                dealer3_state.to_round_two(&dealer3_my_encrypted_secret_shares, rng)?;
+
+            let (dealer1_group_key, dealer1_secret_key) = dealer1_state.finish()?;
+            let (dealer2_group_key, dealer2_secret_key) = dealer2_state.finish()?;
+            let (dealer3_group_key, dealer3_secret_key) = dealer3_state.finish()?;
+
+            assert!(dealer1_group_key == dealer2_group_key);
+            assert!(dealer2_group_key == dealer3_group_key);
+
+            let params_signers = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
+            let (signer1, signer1_dh_sk) = Participant::new_signer(params_signers, 1, rng).unwrap();
+            let (signer2, signer2_dh_sk) = Participant::new_signer(params_signers, 2, rng).unwrap();
+            let (signer3, signer3_dh_sk) = Participant::new_signer(params_signers, 3, rng).unwrap();
+            let (signer4, signer4_dh_sk) = Participant::new_signer(params_signers, 4, rng).unwrap();
+            let (signer5, signer5_dh_sk) = Participant::new_signer(params_signers, 5, rng).unwrap();
+
+            let signers: Vec<Participant<Secp256k1Sha256>> = vec![
+                signer1.clone(),
+                signer2.clone(),
+                signer3.clone(),
+                signer4.clone(),
+                signer5.clone(),
+            ];
+
+            let (dealer1_for_signers, dealer1_encrypted_shares_for_signers, _participant_lists) =
+                Participant::reshare(params_signers, &dealer1_secret_key, &signers, rng)?;
+            let (dealer2_for_signers, dealer2_encrypted_shares_for_signers, _participant_lists) =
+                Participant::reshare(params_signers, &dealer2_secret_key, &signers, rng)?;
+            let (dealer3_for_signers, dealer3_encrypted_shares_for_signers, _participant_lists) =
+                Participant::reshare(params_signers, &dealer3_secret_key, &signers, rng)?;
+
+            let dealers: Vec<Participant<Secp256k1Sha256>> = vec![
+                dealer1_for_signers.clone(), // Used as malicious below
+                dealer2_for_signers,
+                dealer3_for_signers,
+            ];
+            let (signer1_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
+                    params_dealers,
+                    &signer1_dh_sk,
+                    signer1.index,
+                    &dealers,
+                    rng,
+                )?;
+
+            let (signer2_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
+                    params_dealers,
+                    &signer2_dh_sk,
+                    signer2.index,
+                    &dealers,
+                    rng,
+                )?;
+
+            let (signer3_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
+                    params_dealers,
+                    &signer3_dh_sk,
+                    signer3.index,
+                    &dealers,
+                    rng,
+                )?;
+
+            let (signer4_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
+                    params_dealers,
+                    &signer4_dh_sk,
+                    signer4.index,
+                    &dealers,
+                    rng,
+                )?;
+
+            let (signer5_state, _participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
+                    params_dealers,
+                    &signer5_dh_sk,
+                    signer5.index,
+                    &dealers,
+                    rng,
+                )?;
+
+            let signer1_my_encrypted_secret_shares = vec![
+                dealer1_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&1)
+                    .unwrap()
+                    .clone(),
+            ];
+            let signer2_my_encrypted_secret_shares = vec![
+                dealer1_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&2)
+                    .unwrap()
+                    .clone(),
+            ];
+            let signer3_my_encrypted_secret_shares = vec![
+                dealer1_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&3)
+                    .unwrap()
+                    .clone(),
+            ];
+            // Wrong share inserted here!
+            let dh_key = dealer1_for_signers.dh_public_key.key * signer4_dh_sk.0;
+            let mut dh_key_bytes = Vec::with_capacity(dh_key.compressed_size());
+            dh_key.serialize_compressed(&mut dh_key_bytes).unwrap();
+            let wrong_encrypted_secret_share = encrypt_share(
+                &SecretShare::<Secp256k1Sha256> {
+                    sender_index: 1,
+                    receiver_index: 4,
+                    polynomial_evaluation: Fr::from(42u32),
+                },
+                &dh_key_bytes[..],
+                rng,
+            )
+            .unwrap();
+            let signer4_my_encrypted_secret_shares = vec![
+                wrong_encrypted_secret_share.clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&4)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&4)
+                    .unwrap()
+                    .clone(),
+            ];
+            let signer5_my_encrypted_secret_shares = vec![
+                dealer1_encrypted_shares_for_signers
+                    .get(&5)
+                    .unwrap()
+                    .clone(),
+                dealer2_encrypted_shares_for_signers
+                    .get(&5)
+                    .unwrap()
+                    .clone(),
+                dealer3_encrypted_shares_for_signers
+                    .get(&5)
+                    .unwrap()
+                    .clone(),
+            ];
+
+            let (mut signer1_state, _) =
+                signer1_state.to_round_two(&signer1_my_encrypted_secret_shares, rng)?;
+            let (mut signer2_state, _) =
+                signer2_state.to_round_two(&signer2_my_encrypted_secret_shares, rng)?;
+            let (mut signer3_state, _) =
+                signer3_state.to_round_two(&signer3_my_encrypted_secret_shares, rng)?;
+            let (mut signer5_state, _) =
+                signer5_state.to_round_two(&signer5_my_encrypted_secret_shares, rng)?;
+
+            let (mut signer4_state, complaints) = signer4_state
+                .clone()
+                .to_round_two(&signer4_my_encrypted_secret_shares, rng)?;
+            assert!(complaints.len() == 1);
+
+            let bad_key = signer1_state.blame(&complaints);
+            assert!(bad_key[0] == dealer1_for_signers.dh_public_key);
+
+            signer2_state.blame(&complaints);
+            signer3_state.blame(&complaints);
+            signer4_state.blame(&complaints);
+            signer5_state.blame(&complaints);
+
+            let (signer1_group_key, _signer1_secret_key) = signer1_state.finish()?;
+            let (signer2_group_key, _signer2_secret_key) = signer2_state.finish()?;
+            let (signer3_group_key, _signer3_secret_key) = signer3_state.finish()?;
+            let (signer5_group_key, _signer5_secret_key) = signer5_state.finish()?;
+
+            assert!(signer1_group_key == signer2_group_key);
+            assert!(signer2_group_key == signer3_group_key);
+            assert!(signer3_group_key == signer5_group_key);
+
+            assert!(signer1_group_key == dealer1_group_key);
 
             Ok(())
         }
@@ -2708,10 +3020,10 @@ mod test {
                     p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
 
-                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
-                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
-                assert!(bad_indices[0] == 1);
+                let bad_keys = p2_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
+                let bad_keys = p3_state.blame(&complaints);
+                assert!(bad_keys[0] == p1.dh_public_key);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2731,8 +3043,6 @@ mod test {
                 Ok(())
             }
         }
-
-        println!("{:?}", do_test());
 
         assert!(do_test().is_ok());
     }
@@ -2831,10 +3141,10 @@ mod test {
             assert!(complaints.len() == 1);
 
             // Honest participants need to process all existing complaints before finishing the DKG.
-            let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
-            assert!(bad_indices[0] == 1);
-            let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
-            assert!(bad_indices[0] == 1);
+            let bad_keys = p2_state.blame(&complaints);
+            assert!(bad_keys[0] == p1.dh_public_key);
+            let bad_keys = p3_state.blame(&complaints);
+            assert!(bad_keys[0] == p1.dh_public_key);
 
             let (p1_group_key, p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, p2_secret_key) = p2_state.finish()?;

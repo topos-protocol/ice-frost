@@ -1209,8 +1209,12 @@
 //! # let (mut carol_state, carol_complaints) = carol_state.to_round_two(&carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
 //! let all_complaints = &[alice_complaints, carol_complaints].concat();
-//! alice_state.blame(&invalid_share, &all_complaints);
-//! carol_state.blame(&invalid_share, &all_complaints);
+//! let rejected_keys = alice_state.blame(&all_complaints);
+//! assert!(rejected_keys.len() == 1);
+//! assert!(rejected_keys[0] == bob.dh_public_key);
+//! carol_state.blame(&all_complaints);
+//! assert!(rejected_keys.len() == 1);
+//! assert!(rejected_keys[0] == bob.dh_public_key);
 //!
 //! // Alice and Carol can now finish correctly their DKG.
 //! let (alice_group_key, alice_secret_key) = alice_state.finish()?;

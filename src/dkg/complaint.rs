@@ -1,6 +1,7 @@
 //! The complaint module for handling disputes during an ICE-FROST
 //! Distributed Key Generation session.
 
+use crate::keys::{DiffieHellmanPrivateKey, DiffieHellmanPublicKey};
 use crate::serialization::impl_serialization_traits;
 use crate::utils::{Scalar, Vec};
 use crate::{Error, FrostResult};
@@ -18,15 +19,17 @@ use ark_ff::field_hashers::{DefaultFieldHasher, HashToField};
 use ark_ff::UniformRand;
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
+use super::EncryptedSecretShare;
+
 /// A complaint generated when a participant receives an invalid share.
 #[derive(Clone, Debug, PartialEq, Eq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct Complaint<C: CipherSuite> {
-    /// The index of the complaint maker.
-    pub maker_index: u32,
-    /// The index of the alleged misbehaving participant.
-    pub accused_index: u32,
-    /// The shared Diffie-Hellman secret key.
+    /// The resulting shared secret key from the DH key exchange.
     pub dh_shared_key: <C as CipherSuite>::G,
+    /// The DH public key of the participant making this complaint.
+    pub dh_public_key: DiffieHellmanPublicKey<C>,
+    /// The encrypted share against which this complaint is made.
+    pub encrypted_share: EncryptedSecretShare<C>,
     /// The complaint proof.
     pub proof: ComplaintProof<C>,
 }
@@ -35,12 +38,10 @@ impl_serialization_traits!(Complaint<CipherSuite>);
 
 impl<C: CipherSuite> Complaint<C> {
     pub(crate) fn new(
-        my_index: u32,
-        accused_index: u32,
-        accused_pk: &C::G,
-        dh_skey: &Scalar<C>,
-        dh_pkey: &C::G,
+        accused_pk: &DiffieHellmanPublicKey<C>,
+        dh_skey: &DiffieHellmanPrivateKey<C>,
         dh_shared_key: &C::G,
+        encrypted_share: &EncryptedSecretShare<C>,
         mut rng: impl RngCore + CryptoRng,
     ) -> FrostResult<C, Self> {
         let r = Scalar::<C>::rand(&mut rng);
@@ -52,8 +53,12 @@ impl<C: CipherSuite> Complaint<C> {
             "Complaint Context".as_bytes(),
         );
 
-        let mut message = my_index.to_le_bytes().to_vec();
-        message.extend(&accused_index.to_le_bytes());
+        let dh_pkey = C::G::generator() * dh_skey.0;
+
+        // We are hashing 5 group elements + the encrypted share.
+        let mut message = Vec::with_capacity(
+            dh_shared_key.compressed_size() * 5 + encrypted_share.compressed_size(),
+        );
         dh_pkey
             .serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
@@ -67,31 +72,41 @@ impl<C: CipherSuite> Complaint<C> {
             .map_err(|_| Error::CompressionError)?;
         a2.serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
+        encrypted_share
+            .serialize_compressed(&mut message)
+            .map_err(|_| Error::CompressionError)?;
 
         let h: Scalar<C> = hasher.hash_to_field(&message[..], 1)[0];
+
         Ok(Self {
-            maker_index: my_index,
-            accused_index,
             dh_shared_key: *dh_shared_key,
+            dh_public_key: DiffieHellmanPublicKey::new(dh_pkey),
+            encrypted_share: encrypted_share.clone(),
             proof: ComplaintProof {
                 a1,
                 a2,
-                z: r + h * dh_skey,
+                z: r + h * dh_skey.0,
             },
         })
     }
 
     /// A complaint is valid if:
-    /// --  a1 + h.pk_i = z.g
+    /// --  a1 + h.pk_maker = z.g
     /// --  a2 + h.k_il = z.pk_l
-    pub fn verify(&self, pk_i: &C::G, pk_l: &C::G) -> FrostResult<C, ()> {
+    ///
+    /// where `pk_maker` is the complaint maker's DH public key included in this `Complaint`,
+    /// and `pk_l` is the accused participant's DH public key passed as input of this method.
+    pub fn verify(&self, pk_l: &C::G) -> FrostResult<C, ()> {
         let hasher = <DefaultFieldHasher<Sha256, HASH_SEC_PARAM> as HashToField<Scalar<C>>>::new(
             "Complaint Context".as_bytes(),
         );
 
-        let mut message = self.maker_index.to_le_bytes().to_vec();
-        message.extend(&self.accused_index.to_le_bytes());
-        pk_i.serialize_compressed(&mut message)
+        // We are hashing 5 group elements + the encrypted share.
+        let mut message = Vec::with_capacity(
+            self.dh_shared_key.compressed_size() * 5 + self.encrypted_share.compressed_size(),
+        );
+        self.dh_public_key
+            .serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
         pk_l.serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
@@ -106,10 +121,13 @@ impl<C: CipherSuite> Complaint<C> {
             .a2
             .serialize_compressed(&mut message)
             .map_err(|_| Error::CompressionError)?;
+        self.encrypted_share
+            .serialize_compressed(&mut message)
+            .map_err(|_| Error::CompressionError)?;
 
         let h: Scalar<C> = hasher.hash_to_field(&message[..], 1)[0];
 
-        if self.proof.a1 + pk_i.mul(h) != C::G::generator() * self.proof.z {
+        if self.proof.a1 + self.dh_public_key.mul(h) != C::G::generator() * self.proof.z {
             return Err(Error::ComplaintVerificationError);
         }
 
