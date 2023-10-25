@@ -1293,6 +1293,305 @@ mod test {
     }
 
     #[test]
+    fn missing_participants_for_round_one() {
+        let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
+        let rng = OsRng;
+
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
+        // Ignore other participants
+
+        let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone()];
+        let result = DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+            params,
+            &p1_dh_sk,
+            p1.index,
+            &p1coeffs,
+            &participants,
+            rng,
+        );
+
+        assert_eq!(
+            result.unwrap_err(),
+            Error::InvalidNumberOfParticipants(1, 5)
+        );
+    }
+
+    #[test]
+    fn too_many_invalid_participants_during_round_one() {
+        let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
+        let rng = OsRng;
+
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
+        let (mut p2, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 2, rng).unwrap();
+        let (mut p3, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 3, rng).unwrap();
+        let (mut p4, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 4, rng).unwrap();
+        let (p5, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 5, rng).unwrap();
+
+        p2.proof_of_dh_private_key.r = p1.proof_of_dh_private_key.r;
+        p3.proof_of_dh_private_key.r = p1.proof_of_dh_private_key.r;
+        p4.proof_of_dh_private_key.r = p1.proof_of_dh_private_key.r;
+
+        let participants: Vec<Participant<Secp256k1Sha256>> =
+            vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
+
+        let result = DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+            params,
+            &p1_dh_sk,
+            p1.index,
+            &p1coeffs,
+            &participants,
+            rng,
+        );
+
+        assert_eq!(
+            result.unwrap_err(),
+            Error::TooManyInvalidParticipants(vec![2, 3, 4])
+        );
+    }
+
+    #[test]
+    fn encrypted_shares_indices_should_be_prechecked() {
+        let params = ThresholdParameters::new(1, 1);
+        let rng = OsRng;
+
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
+
+        p1.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p1.index, p1.public_key().unwrap())
+            .unwrap();
+
+        let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone()];
+        let (p1_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p1_dh_sk,
+                p1.index,
+                &p1coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let mut p1_my_encrypted_secret_shares = p1_state
+            .their_encrypted_secret_shares()
+            .unwrap()
+            .get(&1)
+            .unwrap()
+            .clone();
+        p1_my_encrypted_secret_shares.sender_index = 3;
+        let result = p1_state.to_round_two(&[p1_my_encrypted_secret_shares], rng);
+
+        assert_eq!(
+            result.unwrap_err(),
+            Error::Custom(
+                "to_round_two() was called with encrypted secret shares containing invalid indices"
+                    .to_string()
+            )
+        );
+    }
+
+    #[test]
+    fn not_enough_encrypted_shares() {
+        let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
+        let rng = OsRng;
+
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
+        let (p2, p2coeffs, p2_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 2, rng).unwrap();
+        let (p3, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 3, rng).unwrap();
+        let (p4, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 4, rng).unwrap();
+        let (p5, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 5, rng).unwrap();
+
+        p1.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p1.index, p1.public_key().unwrap())
+            .unwrap();
+        p2.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p2.index, p2.public_key().unwrap())
+            .unwrap();
+        p3.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p3.index, p3.public_key().unwrap())
+            .unwrap();
+        p4.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p4.index, p4.public_key().unwrap())
+            .unwrap();
+        p5.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p5.index, p5.public_key().unwrap())
+            .unwrap();
+
+        let participants: Vec<Participant<Secp256k1Sha256>> =
+            vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
+        let (p1_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p1_dh_sk,
+                p1.index,
+                &p1coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
+
+        let (p2_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p2_dh_sk,
+                p2.index,
+                &p2coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
+
+        let p1_my_encrypted_secret_shares = vec![
+            p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
+        ];
+
+        let result = p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng);
+
+        assert_eq!(result.unwrap_err(), Error::MissingShares);
+    }
+
+    #[test]
+    fn too_many_invalid_participants_during_round_two() {
+        let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
+        let rng = OsRng;
+
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
+        let (p2, p2coeffs, p2_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 2, rng).unwrap();
+        let (p3, p3coeffs, p3_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 3, rng).unwrap();
+        let (p4, p4coeffs, p4_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 4, rng).unwrap();
+        let (p5, p5coeffs, p5_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 5, rng).unwrap();
+
+        p1.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p1.index, p1.public_key().unwrap())
+            .unwrap();
+        p2.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p2.index, p2.public_key().unwrap())
+            .unwrap();
+        p3.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p3.index, p3.public_key().unwrap())
+            .unwrap();
+        p4.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p4.index, p4.public_key().unwrap())
+            .unwrap();
+        p5.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p5.index, p5.public_key().unwrap())
+            .unwrap();
+
+        let participants: Vec<Participant<Secp256k1Sha256>> =
+            vec![p1.clone(), p2.clone(), p3.clone(), p4.clone(), p5.clone()];
+        let (p1_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p1_dh_sk,
+                p1.index,
+                &p1coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p1_their_encrypted_secret_shares = p1_state.their_encrypted_secret_shares().unwrap();
+
+        let (p2_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p2_dh_sk,
+                p2.index,
+                &p2coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
+
+        let (p3_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p3_dh_sk,
+                p3.index,
+                &p3coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
+
+        let (p4_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p4_dh_sk,
+                p4.index,
+                &p4coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
+
+        let (p5_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p5_dh_sk,
+                p5.index,
+                &p5coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
+
+        let p1_my_encrypted_secret_shares = vec![
+            p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
+            p2_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p3_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p4_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p5_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+        ];
+
+        let result = p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng);
+
+        assert!(result.is_err());
+        if let Error::Complaint(complaints) = result.unwrap_err() {
+            assert_eq!(complaints.len(), 4);
+        } else {
+            panic!("Unexpected different error.")
+        }
+    }
+
+    #[test]
     fn keygen_3_out_of_5() {
         let params = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
         let rng = OsRng;
@@ -1746,6 +2045,8 @@ mod test {
                     &dealers,
                     rng,
                 )?;
+            // Signers don't have encrypted shares to distribute
+            assert!(signer1_state.their_encrypted_secret_shares().is_err());
 
             let (signer2_state, _participant_lists) =
                 DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
@@ -3183,5 +3484,49 @@ mod test {
             Ok(())
         }
         assert!(do_test().is_ok());
+    }
+
+    #[test]
+    fn test_zeroize() {
+        let params = ThresholdParameters::new(1, 1);
+        let rng = OsRng;
+
+        let (p1, p1coeffs, p1_dh_sk) =
+            Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
+
+        p1.proof_of_secret_key
+            .as_ref()
+            .unwrap()
+            .verify(p1.index, p1.public_key().unwrap())
+            .unwrap();
+
+        let participants: Vec<Participant<Secp256k1Sha256>> = vec![p1.clone()];
+        let (p1_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                params,
+                &p1_dh_sk,
+                p1.index,
+                &p1coeffs,
+                &participants,
+                rng,
+            )
+            .unwrap();
+        let p1_my_encrypted_secret_shares = p1_state
+            .their_encrypted_secret_shares()
+            .unwrap()
+            .get(&1)
+            .unwrap()
+            .clone();
+        let (p1_state, complaints) = p1_state
+            .to_round_two(&[p1_my_encrypted_secret_shares], rng)
+            .unwrap();
+        assert!(complaints.is_empty());
+        let result = p1_state.finish();
+
+        assert!(result.is_ok());
+
+        let (p1_group_key, p1_secret_key) = result.unwrap();
+
+        assert!(p1_group_key.key == Projective::generator().mul(p1_secret_key.key));
     }
 }

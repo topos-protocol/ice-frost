@@ -62,4 +62,22 @@ mod test {
             assert_eq!(params, ThresholdParameters::from_bytes(&bytes).unwrap());
         }
     }
+
+    #[test]
+    #[should_panic]
+    fn test_no_participant() {
+        let _ = ThresholdParameters::<Secp256k1Sha256>::new(0, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_threshold_is_zero() {
+        let _ = ThresholdParameters::<Secp256k1Sha256>::new(5, 0);
+    }
+
+    #[test]
+    #[should_panic]
+    fn test_threshold_is_larger_than_total_participants() {
+        let _ = ThresholdParameters::<Secp256k1Sha256>::new(2, 3);
+    }
 }
