@@ -1594,38 +1594,20 @@ mod test {
             .unwrap();
         assert!(p5_complaints.len() == 1);
 
-        let bad_index = p2_state.blame(
-            &wrong_encrypted_secret_share_from_p4_to_p2,
-            &p2_complaints[0],
-        );
-        assert!(bad_index == 4);
-        let bad_index = p3_state.blame(
-            &wrong_encrypted_secret_share_from_p4_to_p2,
-            &p2_complaints[0],
-        );
-        assert!(bad_index == 4);
-        let bad_index = p5_state.blame(
-            &wrong_encrypted_secret_share_from_p4_to_p2,
-            &p2_complaints[0],
-        );
-        assert!(bad_index == 4);
+        let all_complaints = &[p2_complaints, p5_complaints].concat();
 
-        // Checking the second complaint won't update the states, as we already got rid of p4 who tried to cheat p2 before.
-        let bad_index = p2_state.blame(
-            &wrong_encrypted_secret_share_from_p4_to_p5,
-            &p5_complaints[0],
-        );
-        assert!(bad_index == 4);
-        let bad_index = p3_state.blame(
-            &wrong_encrypted_secret_share_from_p4_to_p5,
-            &p5_complaints[0],
-        );
-        assert!(bad_index == 4);
-        let bad_index = p5_state.blame(
-            &wrong_encrypted_secret_share_from_p4_to_p5,
-            &p5_complaints[0],
-        );
-        assert!(bad_index == 4);
+        let bad_indices =
+            p2_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, &all_complaints);
+        assert!(bad_indices.len() == 1); // both complaints led to the same conclusion
+        assert!(bad_indices[0] == 4);
+        let bad_indices =
+            p3_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, &all_complaints);
+        assert!(bad_indices.len() == 1); // both complaints led to the same conclusion
+        assert!(bad_indices[0] == 4);
+        let bad_indices =
+            p5_state.blame(&wrong_encrypted_secret_share_from_p4_to_p2, &all_complaints);
+        assert!(bad_indices.len() == 1); // both complaints led to the same conclusion
+        assert!(bad_indices[0] == 4);
 
         // Everyone can finish the DKG.
         // However, only honest participants will be able to generate

@@ -1042,22 +1042,22 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
     }
 
     /// Every participant can verify a complaint and determine who is the malicious
-    /// party. The relevant encrypted share is assumed to exist and publicly retrievable
-    /// by any participant.
+    /// party. For each complaint, the relevant encrypted share is assumed to exist
+    /// and be publicly retrievable by any participant.
     ///
     /// The state of the participant calling blame will be updated by removing the invalid
-    /// participant's commitments and secret share received from them, so that the key
-    /// generation/resharing process can finish, in addition to returning the index of the
-    /// blamed participant.
+    /// participants commitments and secret shares received from them, so that the key
+    /// generation/resharing process can finish, in addition to returning the indices of the
+    /// blamed participants.
     pub fn blame(
         &mut self,
         encrypted_share: &EncryptedSecretShare<C>,
-        complaint: &Complaint<C>,
-    ) -> u32 {
+        complaints: &[Complaint<C>],
+    ) -> Vec<u32> {
         fn remove_malicious<C: CipherSuite>(
             dkg_state: &mut DistributedKeyGeneration<RoundTwo, C>,
             idx: u32,
-        ) -> u32 {
+        ) {
             dkg_state
                 .state
                 .their_commitments
@@ -1070,63 +1070,80 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
                 .as_mut()
                 .unwrap()
                 .remove(&idx);
-
-            idx
         }
 
-        if complaint.accused_index == 0 || complaint.accused_index > self.state.parameters.n {
-            return remove_malicious(self, complaint.maker_index);
+        let mut pending_removals = Vec::with_capacity(complaints.len());
+
+        for complaint in complaints {
+            if complaint.accused_index == 0 || complaint.accused_index > self.state.parameters.n {
+                pending_removals.push(complaint.maker_index);
+                continue;
+            }
+
+            let Some(commitment_accused) = self
+                .state
+                .their_commitments
+                .as_ref()
+                .expect("Dealers always have commitments to their secret polynomial evaluations.")
+                .get(&complaint.accused_index)
+            else {
+                // If we cannot retrieve the index here, we should blame the complaint maker.
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            let pk_maker = self
+                .state
+                .their_dh_public_keys
+                .get(&complaint.maker_index)
+                .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
+            let pk_accused = self
+                .state
+                .their_dh_public_keys
+                .get(&complaint.accused_index)
+                .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
+
+            if pk_maker == <C as CipherSuite>::G::zero()
+                || pk_accused == <C as CipherSuite>::G::zero()
+            {
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            if complaint.verify(&pk_maker, &pk_accused).is_err() {
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            let mut dh_key_bytes = Vec::with_capacity(complaint.dh_shared_key.compressed_size());
+            if complaint
+                .dh_shared_key
+                .serialize_compressed(&mut dh_key_bytes)
+                .is_err()
+            {
+                pending_removals.push(complaint.maker_index);
+                continue;
+            };
+
+            let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
+            if share.is_err() {
+                pending_removals.push(complaint.accused_index);
+                continue;
+            };
+            match share.unwrap().verify(commitment_accused) {
+                Ok(()) => pending_removals.push(complaint.maker_index),
+                Err(_) => pending_removals.push(complaint.accused_index),
+            };
         }
 
-        let Some(commitment_accused) = self
-            .state
-            .their_commitments
-            .as_ref()
-            .expect("Dealers always have commitments to their secret polynomial evaluations.")
-            .get(&complaint.accused_index)
-        else {
-            // We should have been able to retrieve commitments for the targeted index,
-            // which means we already have removed this participant for misbehaviour.
-            return remove_malicious(self, complaint.accused_index);
-        };
+        pending_removals.sort_unstable();
+        pending_removals.dedup();
 
-        let pk_maker = self
-            .state
-            .their_dh_public_keys
-            .get(&complaint.maker_index)
-            .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
-        let pk_accused = self
-            .state
-            .their_dh_public_keys
-            .get(&complaint.accused_index)
-            .map_or(<C as CipherSuite>::G::zero(), |pk| **pk);
-
-        if pk_maker == <C as CipherSuite>::G::zero() || pk_accused == <C as CipherSuite>::G::zero()
-        {
-            return remove_malicious(self, complaint.maker_index);
-        };
-
-        if complaint.verify(&pk_maker, &pk_accused).is_err() {
-            return remove_malicious(self, complaint.maker_index);
-        };
-
-        let mut dh_key_bytes = Vec::with_capacity(complaint.dh_shared_key.compressed_size());
-        if complaint
-            .dh_shared_key
-            .serialize_compressed(&mut dh_key_bytes)
-            .is_err()
-        {
-            return remove_malicious(self, complaint.maker_index);
-        };
-
-        let share = decrypt_share(encrypted_share, &dh_key_bytes[..]);
-        if share.is_err() {
-            return remove_malicious(self, complaint.accused_index);
-        };
-        match share.unwrap().verify(commitment_accused) {
-            Ok(()) => remove_malicious(self, complaint.maker_index),
-            Err(_) => remove_malicious(self, complaint.accused_index),
+        for index in &pending_removals {
+            remove_malicious(self, *index);
         }
+
+        pending_removals
     }
 }
 
@@ -2325,12 +2342,12 @@ mod test {
                 assert!(complaints.len() == 1);
 
                 // Anyone can blame the malicious participant.
-                let bad_index = p1_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
-                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
-                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
+                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 // p2 can still finish the DKG
@@ -2382,12 +2399,12 @@ mod test {
                 assert!(complaints.len() == 1);
 
                 // Anyone can blame the malicious participant.
-                let bad_index = p1_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
-                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
-                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
+                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2444,12 +2461,12 @@ mod test {
                 assert!(complaints.len() == 1);
 
                 // Anyone can blame the malicious participant.
-                let bad_index = p1_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
-                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
-                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
+                let bad_indices = p1_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2481,11 +2498,11 @@ mod test {
                     .clone()
                     .to_round_two(&p3_my_encrypted_secret_shares, rng)?;
 
-                let bad_index = p3_state.blame(
+                let bad_indices = p3_state.blame(
                     &p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-                    &complaint,
+                    &[complaint],
                 );
-                assert!(bad_index == 2);
+                assert!(bad_indices[0] == 2);
             }
 
             Ok(())
@@ -2675,10 +2692,10 @@ mod test {
                     p2_state.to_round_two(&p2_my_encrypted_secret_shares, rng)?;
                 assert!(complaints.len() == 1);
 
-                let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
-                let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-                assert!(bad_index == 1);
+                let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
+                let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+                assert!(bad_indices[0] == 1);
 
                 let (p1_group_key, _p1_secret_key) = p1_state.finish()?;
                 let (p2_group_key, _p2_secret_key) = p2_state.finish()?;
@@ -2798,10 +2815,10 @@ mod test {
             assert!(complaints.len() == 1);
 
             // Honest participants need to process all existing complaints before finishing the DKG.
-            let bad_index = p2_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-            assert!(bad_index == 1);
-            let bad_index = p3_state.blame(&wrong_encrypted_secret_share, &complaints[0]);
-            assert!(bad_index == 1);
+            let bad_indices = p2_state.blame(&wrong_encrypted_secret_share, &complaints);
+            assert!(bad_indices[0] == 1);
+            let bad_indices = p3_state.blame(&wrong_encrypted_secret_share, &complaints);
+            assert!(bad_indices[0] == 1);
 
             let (p1_group_key, p1_secret_key) = p1_state.finish()?;
             let (p2_group_key, p2_secret_key) = p2_state.finish()?;

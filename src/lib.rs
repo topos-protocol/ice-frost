@@ -1203,11 +1203,11 @@
 //! # ];
 //! #
 //! # let (mut alice_state, alice_complaints) = alice_state.to_round_two(&alice_my_encrypted_secret_shares, &mut rng)?;
-//! # let alice_complaint = alice_complaints[0].clone();
 //! # let (mut carol_state, carol_complaints) = carol_state.to_round_two(&carol_my_encrypted_secret_shares, &mut rng)?;
 //! #
-//! alice_state.blame(&invalid_share, &alice_complaint);
-//! carol_state.blame(&invalid_share, &alice_complaint);
+//! let all_complaints = &[alice_complaints, carol_complaints].concat();
+//! alice_state.blame(&invalid_share, &all_complaints);
+//! carol_state.blame(&invalid_share, &all_complaints);
 //!
 //! // Alice and Carol can now finish correctly their DKG.
 //! let (alice_group_key, alice_secret_key) = alice_state.finish()?;
