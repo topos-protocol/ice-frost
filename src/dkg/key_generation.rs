@@ -1535,7 +1535,6 @@ mod test {
                 rng,
             )
             .unwrap();
-        let p2_their_encrypted_secret_shares = p2_state.their_encrypted_secret_shares().unwrap();
 
         let (p3_state, _participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
@@ -1547,7 +1546,6 @@ mod test {
                 rng,
             )
             .unwrap();
-        let p3_their_encrypted_secret_shares = p3_state.their_encrypted_secret_shares().unwrap();
 
         let (p4_state, _participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
@@ -1559,7 +1557,6 @@ mod test {
                 rng,
             )
             .unwrap();
-        let p4_their_encrypted_secret_shares = p4_state.their_encrypted_secret_shares().unwrap();
 
         let (p5_state, _participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
@@ -1571,14 +1568,23 @@ mod test {
                 rng,
             )
             .unwrap();
-        let p5_their_encrypted_secret_shares = p5_state.their_encrypted_secret_shares().unwrap();
+
+        let p1_share = p1_their_encrypted_secret_shares.get(&1).unwrap().clone();
+        let mut p2_wrong_share = p1_share.clone();
+        p2_wrong_share.sender_index = 2;
+        let mut p3_wrong_share = p1_share.clone();
+        p3_wrong_share.sender_index = 3;
+        let mut p4_wrong_share = p1_share.clone();
+        p4_wrong_share.sender_index = 4;
+        let mut p5_wrong_share = p1_share.clone();
+        p5_wrong_share.sender_index = 5;
 
         let p1_my_encrypted_secret_shares = vec![
-            p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
-            p2_their_encrypted_secret_shares.get(&4).unwrap().clone(),
-            p3_their_encrypted_secret_shares.get(&4).unwrap().clone(),
-            p4_their_encrypted_secret_shares.get(&4).unwrap().clone(),
-            p5_their_encrypted_secret_shares.get(&4).unwrap().clone(),
+            p1_share,
+            p2_wrong_share,
+            p3_wrong_share,
+            p4_wrong_share,
+            p5_wrong_share,
         ];
 
         let result = p1_state.to_round_two(&p1_my_encrypted_secret_shares, rng);
