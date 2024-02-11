@@ -634,8 +634,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
     /// # Returns
     ///
     /// An updated state machine for the distributed key generation protocol if
-    /// all of the zero-knowledge proofs verified successfully, otherwise a
-    /// vector of participants whose proofs were incorrect.
+    /// all of the zero-knowledge proofs verified successfully, along with a
+    /// vector of malicious participants. No updated state machine is returned if
+    /// there are not enough valid participants to continue the key generation/resharing.
     pub fn bootstrap(
         parameters: ThresholdParameters<C>,
         dh_private_key: &DiffieHellmanPrivateKey<C>,
@@ -676,8 +677,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
     /// # Returns
     ///
     /// An updated state machine for the distributed key generation protocol if
-    /// all of the zero-knowledge proofs verified successfully, otherwise a
-    /// vector of participants whose zero-knowledge proofs were incorrect.
+    /// all of the zero-knowledge proofs verified successfully, along with a
+    /// vector of malicious participants. No updated state machine is returned if
+    /// there are not enough valid participants to continue the key generation/resharing.
     pub fn new(
         parameters: ThresholdParameters<C>,
         dh_private_key: &DiffieHellmanPrivateKey<C>,
@@ -729,7 +731,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             // Always check the DH keys of the participants
             match p.proof_of_dh_private_key.verify(p.index, &p.dh_public_key) {
                 Ok(()) => {
-                    // Signers additionally check the public keys of the signers
+                    // Signers additionally check the public keys of the participants.
                     if from_signer {
                         let Some(public_key) = p.public_key() else {
                             misbehaving_participants.push(p.index);
@@ -743,8 +745,22 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             .verify(p.index, public_key)
                         {
                             Ok(()) => {
+                                // Finally, we check the consistency of this participant's commitments
+                                // before adding them to the list of valid participants.
+                                let commitments = p.commitments
+                                    .as_ref()
+                                    .expect("Dealers always have commitments to their secret polynomial evaluations.")
+                                    .clone();
+
+                                if from_dealer {
+                                    if commitments.check_degree(parameters).is_err() {
+                                        misbehaving_participants.push(p.index);
+                                        continue;
+                                    }
+                                }
+
                                 valid_participants.push(p.clone());
-                                their_commitments.insert(p.index, p.commitments.as_ref().expect("Dealers always have commitments to their secret polynomial evaluations.").clone());
+                                their_commitments.insert(p.index, commitments);
                                 their_dh_public_keys.insert(p.index, p.dh_public_key);
                             }
                             Err(_) => misbehaving_participants.push(p.index),
@@ -1585,6 +1601,60 @@ mod test {
 
             assert!(p1_group_key == p2_group_key);
             assert!(p2_group_key == p3_group_key);
+
+            Ok(())
+        }
+        assert!(do_test().is_ok());
+    }
+
+    #[test]
+    fn keygen_2_out_of_3_with_malicious_party_high_degree_commitment_polynomial() {
+        fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
+            let params = ThresholdParameters::new(3, 2);
+            let rng = OsRng;
+
+            let (p1, p1coeffs, p1_dh_sk) =
+                Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
+            let (p2, _p2coeffs, _p2_dh_sk) =
+                Participant::<Secp256k1Sha256>::new_dealer(params, 2, rng).unwrap();
+
+            // Participant 3 will create a secret key from a polynomial of higher degree than t=2.
+            let fake_params = ThresholdParameters::new_unchecked(3, 5);
+            let (p3, _p3coeffs, _p3_dh_sk) =
+                Participant::<Secp256k1Sha256>::new_dealer(fake_params, 3, rng).unwrap();
+
+            p1.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p1.index, p1.public_key().unwrap())?;
+            p2.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p2.index, p2.public_key().unwrap())?;
+            p3.proof_of_secret_key
+                .as_ref()
+                .unwrap()
+                .verify(p3.index, p3.public_key().unwrap())?;
+
+            let participants: Vec<Participant<Secp256k1Sha256>> =
+                vec![p1.clone(), p2.clone(), p3.clone()];
+
+            // P3 should be caught cheating when initiating the DKG round.
+            let (_p1_state, participant_lists) =
+                DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::bootstrap(
+                    params,
+                    &p1_dh_sk,
+                    p1.index,
+                    &p1coeffs,
+                    &participants,
+                    rng,
+                )?;
+
+            assert!(participant_lists.misbehaving_participants.is_some());
+            assert!(participant_lists
+                .misbehaving_participants
+                .unwrap()
+                .contains(&p3.index));
 
             Ok(())
         }

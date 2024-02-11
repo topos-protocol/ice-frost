@@ -31,6 +31,8 @@ pub enum Error<C: CipherSuite> {
     InvalidGroupKey,
     /// Invalid NiZK proof of knowledge
     InvalidProofOfKnowledge,
+    /// Inconsistent commitment length with threshold parameter.
+    InvalidCommitmentLength,
     /// The participant is missing some others' secret shares
     MissingShares,
     /// Could not retrieve the participant's encrypted shares
@@ -97,6 +99,12 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
                 write!(
                     f,
                     "The NiZK proof of knowledge of the secret key is not correct."
+                )
+            }
+            Error::InvalidCommitmentLength => {
+                write!(
+                    f,
+                    "The length of this commitment does not correspond to the threshold parameter."
                 )
             }
             Error::MissingShares => {
