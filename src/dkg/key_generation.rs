@@ -658,7 +658,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
 
     /// Initiate a new DKG session between participants, where an ICE-FROST group
     /// key already exists. If no ICE-FROST group key exists yet, the `bootstrap`
-    /// should be called instead.
+    /// method should be called instead.
     ///
     /// This method will check the zero-knowledge proofs of
     /// knowledge of secret keys of all the other participants.
