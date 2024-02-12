@@ -2493,12 +2493,12 @@ mod test {
 
             // Wrong complaint leads to blaming the complaint maker
             {
-                let _p1_my_encrypted_secret_shares = vec![
+                let _p1_my_encrypted_secret_shares = [
                     p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                     p2_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                     p3_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                 ];
-                let _p2_my_encrypted_secret_shares = vec![
+                let _p2_my_encrypted_secret_shares = [
                     p1_their_encrypted_secret_shares.get(&1).unwrap().clone(),
                     p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                     p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
