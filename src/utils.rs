@@ -8,7 +8,7 @@ pub use alloc::{
     boxed::Box,
     collections::btree_map::BTreeMap,
     string::{String, ToString},
-    vec::{self, Vec},
+    vec::Vec,
 };
 
 #[cfg(feature = "std")]
