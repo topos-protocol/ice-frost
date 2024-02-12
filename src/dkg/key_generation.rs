@@ -731,8 +731,11 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             // Always check the DH keys of the participants
             match p.proof_of_dh_private_key.verify(p.index, &p.dh_public_key) {
                 Ok(()) => {
-                    // Signers additionally check the public keys of the participants.
                     if from_signer {
+                        // We are in either bootstrap mode, or resharing mode after having
+                        // received dealers shares.
+
+                        // Signers additionally check the public keys of the participants.
                         let Some(public_key) = p.public_key() else {
                             misbehaving_participants.push(p.index);
                             continue;
@@ -745,18 +748,16 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             .verify(p.index, public_key)
                         {
                             Ok(()) => {
-                                // Finally, we check the consistency of this participant's commitments
-                                // before adding them to the list of valid participants.
                                 let commitments = p.commitments
                                     .as_ref()
                                     .expect("Dealers always have commitments to their secret polynomial evaluations.")
                                     .clone();
 
-                                if from_dealer {
-                                    if commitments.check_degree(parameters).is_err() {
-                                        misbehaving_participants.push(p.index);
-                                        continue;
-                                    }
+                                // If we are not in a resharing mode instantiated by the new set of signers,
+                                // verify that the dealers commitments are consistent.
+                                if from_dealer && commitments.check_degree(parameters).is_err() {
+                                    misbehaving_participants.push(p.index);
+                                    continue;
                                 }
 
                                 valid_participants.push(p.clone());
@@ -766,6 +767,10 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
                             Err(_) => misbehaving_participants.push(p.index),
                         }
                     } else {
+                        // We are in the initial resharing mode phase, for dealers to create
+                        // their encrypted shares to the new set of signers.
+                        debug_assert!(from_dealer);
+
                         valid_participants.push(p.clone());
                         their_dh_public_keys.insert(p.index, p.dh_public_key);
                     }
