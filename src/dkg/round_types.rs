@@ -37,22 +37,3 @@ pub trait DkgState: private::Sealed + CanonicalDeserialize + CanonicalSerialize 
 
 impl DkgState for RoundOne {}
 impl DkgState for RoundTwo {}
-
-/// Marker trait to designate valid variants of [`RoundOne`] in the distributed
-/// key generation protocol's state machine.  It is implemented using the
-/// [sealed trait design pattern][sealed] pattern to prevent external types from
-/// implementing further valid states.
-///
-/// [sealed]: https://rust-lang.github.io/api-guidelines/future-proofing.html#sealed-traits-protect-against-downstream-implementations-c-sealed
-pub trait Round1: private::Sealed {}
-
-/// Marker trait to designate valid variants of [`RoundTwo`] in the distributed
-/// key generation protocol's state machine.  It is implemented using the
-/// [sealed trait design pattern][sealed] pattern to prevent external types from
-/// implementing further valid states.
-///
-/// [sealed]: https://rust-lang.github.io/api-guidelines/future-proofing.html#sealed-traits-protect-against-downstream-implementations-c-sealed
-pub trait Round2: private::Sealed {}
-
-impl Round1 for RoundOne {}
-impl Round2 for RoundTwo {}
