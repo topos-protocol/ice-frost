@@ -2503,7 +2503,7 @@ mod test {
                     p2_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                     p3_their_encrypted_secret_shares.get(&2).unwrap().clone(),
                 ];
-                let p3_my_encrypted_secret_shares = vec![
+                let p3_my_encrypted_secret_shares = [
                     p1_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                     p2_their_encrypted_secret_shares.get(&3).unwrap().clone(),
                     p3_their_encrypted_secret_shares.get(&3).unwrap().clone(),
