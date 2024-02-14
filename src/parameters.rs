@@ -40,6 +40,17 @@ impl<C: CipherSuite> ThresholdParameters<C> {
             _phantom: PhantomData,
         }
     }
+
+    /// Creates parameter without checking that they are sound.
+    /// This is only available for testing purposes.
+    #[cfg(test)]
+    pub(crate) fn new_unchecked(n: u32, t: u32) -> Self {
+        Self {
+            n,
+            t,
+            _phantom: PhantomData,
+        }
+    }
 }
 
 #[cfg(test)]

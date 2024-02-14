@@ -8,6 +8,7 @@
 use core::fmt::Debug;
 use core::marker::PhantomData;
 
+use crate::parameters::ThresholdParameters;
 use crate::serialization::impl_serialization_traits;
 use crate::utils::{Scalar, ToString, Vec};
 use crate::{Error, FrostResult};
@@ -274,6 +275,16 @@ impl<C: CipherSuite> VerifiableSecretSharingCommitment<C> {
         }
 
         sum
+    }
+
+    /// Enforces that the number of points of this commitment
+    /// matches the [`Ciphersuite`]'s threshold parameter `t`.
+    pub fn check_degree(&self, parameters: ThresholdParameters<C>) -> FrostResult<C, ()> {
+        if self.points.len() != parameters.t as usize {
+            return Err(Error::InvalidCommitmentLength);
+        }
+
+        Ok(())
     }
 }
 

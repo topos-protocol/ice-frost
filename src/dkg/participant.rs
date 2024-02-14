@@ -140,7 +140,7 @@ impl<C: CipherSuite> Participant<C> {
         //         uniformly in ZZ_q, and uses these values as coefficients to define a
         //         polynomial f_i(x) = \sum_{j=0}^{t-1} a_{ij} x^{j} of degree t-1 over
         //         ZZ_q.
-        let t: usize = parameters.t as usize;
+        let t = parameters.t as usize;
 
         // Every participant samples a random pair of keys (dh_private_key, dh_public_key)
         // and generates a proof of knowledge of dh_private_key.
