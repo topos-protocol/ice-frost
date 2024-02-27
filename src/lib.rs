@@ -1597,11 +1597,12 @@
 #![warn(future_incompatible)]
 #![allow(clippy::type_complexity)]
 
-#[cfg(any(test, feature = "std"))]
+#[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
 
 #[cfg(not(feature = "std"))]
+#[macro_use]
 extern crate alloc;
 
 pub(crate) const HASH_SEC_PARAM: usize = 128;
