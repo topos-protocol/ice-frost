@@ -1597,7 +1597,7 @@
 #![warn(future_incompatible)]
 #![allow(clippy::type_complexity)]
 
-#[cfg(feature = "std")]
+#[cfg(any(test, feature = "std"))]
 #[macro_use]
 extern crate std;
 
