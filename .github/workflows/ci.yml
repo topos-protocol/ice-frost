@@ -24,6 +24,27 @@ jobs:
           command: test
           args: --verbose --release --all
 
+  test_no_std:
+    name: Test on ${{ matrix.os }} (no-std)
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        toolchain: [stable]
+        os: [ubuntu-latest]
+
+    steps:
+      - uses: actions/checkout@main
+      - name: Install rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: ${{matrix.toolchain}}
+          override: true
+      - name: Run tests
+        uses: actions-rs/cargo@v1
+        with:
+          command: test
+          args: --verbose --release --all --no-default-features
+
   build:
     name: Build target ${{ matrix.target }}
     runs-on: ${{ matrix.os }}

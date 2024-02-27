@@ -1129,8 +1129,6 @@ mod test {
         let threshold_signature = signing_result.unwrap();
         let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-        println!("{:?}", verification_result);
-
         assert!(verification_result.is_ok());
     }
 
@@ -1189,7 +1187,7 @@ mod test {
             let threshold_signature = signing_result.unwrap();
             let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-            println!("Dealer's signing session: {:?}", verification_result);
+            assert!(verification_result.is_ok());
 
             let message = b"This is a test of the tsunami alert system. This is only a test.";
             let (s1_public_comshares, mut s1_secret_comshares) =
@@ -1234,8 +1232,6 @@ mod test {
 
             let threshold_signature = signing_result.unwrap();
             let verification_result = threshold_signature.verify(&group_key, &message_hash);
-
-            println!("Signers's signing session: {:?}", verification_result);
 
             assert!(verification_result.is_ok());
         } else {
@@ -1304,7 +1300,7 @@ mod test {
             let threshold_signature = signing_result.unwrap();
             let verification_result = threshold_signature.verify(&group_key, &message_hash);
 
-            println!("Dealer's signing session: {:?}", verification_result);
+            assert!(verification_result.is_ok());
 
             let message = b"This is a test of the tsunami alert system. This is only a test.";
             let (s1_public_comshares, mut s1_secret_comshares) =
@@ -1362,8 +1358,6 @@ mod test {
 
             let threshold_signature = signing_result.unwrap();
             let verification_result = threshold_signature.verify(&group_key, &message_hash);
-
-            println!("Signers's signing session: {:?}", verification_result);
 
             assert!(verification_result.is_ok());
         } else {
