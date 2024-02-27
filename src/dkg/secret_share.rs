@@ -370,7 +370,7 @@ mod test {
 
     use ark_ff::UniformRand;
     use ark_secp256k1::Fr;
-    use rand::{rngs::OsRng, RngCore};
+    use rand::rngs::OsRng;
 
     #[test]
     fn test_serialization() {

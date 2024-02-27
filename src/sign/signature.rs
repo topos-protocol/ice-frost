@@ -715,7 +715,7 @@ mod test {
 
     use ark_secp256k1::{Fr, Projective};
 
-    use ark_ff::{UniformRand, Zero};
+    use ark_ff::UniformRand;
     use rand::rngs::OsRng;
 
     fn do_keygen(

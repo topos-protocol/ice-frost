@@ -1185,15 +1185,11 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundTwo, C> {
 
 #[cfg(test)]
 mod test {
-    use core::ops::Mul;
-
     use super::*;
     use crate::dkg::{ComplaintProof, NizkPokOfSecretKey};
     use crate::keys::IndividualVerifyingKey;
     use crate::testing::Secp256k1Sha256;
-    use crate::{FromBytes, ToBytes};
 
-    use ark_ec::Group;
     use ark_ff::UniformRand;
     use ark_secp256k1::{Fr, Projective};
 

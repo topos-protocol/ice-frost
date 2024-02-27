@@ -95,7 +95,6 @@ mod test {
     use super::*;
     use crate::testing::Secp256k1Sha256;
 
-    use ark_ec::Group;
     use ark_secp256k1::{Fr, Projective};
     use core::ops::Mul;
     use rand::{rngs::OsRng, RngCore};

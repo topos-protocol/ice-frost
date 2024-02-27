@@ -1,6 +1,7 @@
 //! The ciphersuite module to parameterize ICE-FROST sessions.
 
 use core::fmt::Debug;
+#[cfg(not(feature = "std"))]
 use core::marker::{Send, Sync};
 
 use aead::{Aead, KeyInit};

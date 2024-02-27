@@ -1588,7 +1588,7 @@
 //! let verified = threshold_signature.verify(alice_group_key, &message_hash)?;
 //! ```
 
-#![cfg_attr(not(feature = "std"), no_std)]
+#![no_std]
 #![cfg_attr(docsrs, feature(doc_cfg))]
 #![deny(rustdoc::broken_intra_doc_links)]
 #![deny(missing_debug_implementations)]
@@ -1597,7 +1597,7 @@
 #![warn(future_incompatible)]
 #![allow(clippy::type_complexity)]
 
-#[cfg(any(test, feature = "std"))]
+#[cfg(feature = "std")]
 #[macro_use]
 extern crate std;
 

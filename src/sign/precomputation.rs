@@ -232,12 +232,9 @@ mod test {
     use super::*;
     use crate::testing::Secp256k1Sha256;
 
-    use ark_ec::{CurveGroup, Group};
     use ark_ff::UniformRand;
     use ark_secp256k1::{Fr, Projective};
     use rand::rngs::OsRng;
-
-    use core::ops::Mul;
 
     #[test]
     fn secret_pair() {
