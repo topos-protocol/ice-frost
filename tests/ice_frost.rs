@@ -9,7 +9,9 @@ use ice_frost::CipherSuite;
 
 use ice_frost::dkg::{DistributedKeyGeneration, EncryptedSecretShare, Participant, RoundOne};
 use ice_frost::parameters::ThresholdParameters;
-use ice_frost::sign::generate_commitment_share_lists;
+use ice_frost::sign::{
+    generate_commitment_share_lists, PublicCommitmentShareList, SecretCommitmentShareList,
+};
 
 use ice_frost::sign::SignatureAggregator;
 
@@ -17,6 +19,9 @@ use ice_frost::testing::Secp256k1Sha256;
 
 type ParticipantDKG = Participant<Secp256k1Sha256>;
 type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
+
+type PublicCommShareList = PublicCommitmentShareList<Secp256k1Sha256>;
+type SecretCommShareList = SecretCommitmentShareList<Secp256k1Sha256>;
 
 #[test]
 fn signing_and_verification_3_out_of_5() {
@@ -350,11 +355,59 @@ fn resharing_from_non_frost_key() {
         signers_states_2.push(si_state);
     }
 
+    let mut signers_secret_keys = Vec::<IndividualSigningKey<Secp256k1Sha256>>::new();
+
     for signers_state in &signers_states_2 {
-        let (si_group_key, _si_sk) = signers_state.clone().finish().unwrap();
+        let (si_group_key, si_sk) = signers_state.clone().finish().unwrap();
+        signers_secret_keys.push(si_sk);
 
         // Assert that each signer's individual group key matches the converted
         // single's party public key.
         assert!(si_group_key == frost_pk);
     }
+
+    let message = b"This is a test of the tsunami alert system. This is only a test.";
+
+    let mut signers_public_comshares = Vec::<PublicCommShareList>::with_capacity(N_PARAM as usize);
+    let mut signers_secret_comshares = Vec::<SecretCommShareList>::with_capacity(N_PARAM as usize);
+
+    for i in 0..T_PARAM {
+        let (pi_public_comshares, pi_secret_comshares) =
+            generate_commitment_share_lists(&mut OsRng, &signers_secret_keys[i as usize], 1)
+                .unwrap();
+        signers_public_comshares.push(pi_public_comshares);
+        signers_secret_comshares.push(pi_secret_comshares);
+    }
+
+    let mut aggregator = SignatureAggregator::new(threshold_parameters, frost_pk, &message[..]);
+
+    for i in 0..T_PARAM {
+        aggregator.include_signer(
+            signers[i as usize].index,
+            signers_public_comshares[i as usize].commitments[0],
+            &signers_secret_keys[i as usize].to_public(),
+        );
+    }
+
+    let participating_signers = aggregator.get_signers().clone();
+    let message_hash = Secp256k1Sha256::h4(&message[..]);
+
+    for i in 0..T_PARAM {
+        let pi_partial_signature = signers_secret_keys[i as usize]
+            .sign(
+                &message_hash,
+                &frost_pk,
+                &mut signers_secret_comshares[i as usize],
+                0,
+                &participating_signers,
+            )
+            .unwrap();
+        aggregator.include_partial_signature(&pi_partial_signature);
+    }
+
+    let aggregator = aggregator.finalize().unwrap();
+
+    let threshold_signature = aggregator.aggregate().unwrap();
+
+    assert!(threshold_signature.verify(&frost_pk, &message_hash).is_ok());
 }
