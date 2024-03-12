@@ -476,6 +476,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     }
 
     /// Get the list of partipating signers.
+    /// It will sort them by indices and remove any duplicate from the list.
     ///
     /// # Returns
     ///
@@ -556,7 +557,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
         }
 
         // Ensure that our new state is ordered and deduplicated.
-        self.state.signers = self.get_signers().clone();
+        let _ = self.get_signers();
 
         for signer in &self.state.signers {
             if self
