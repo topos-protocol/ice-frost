@@ -312,7 +312,7 @@ mod test {
 
     #[test]
     fn index_zero_is_invalid() {
-        let params = ThresholdParameters::new(3, 2);
+        let params = ThresholdParameters::new(3, 2).unwrap();
         let rng = OsRng;
 
         let result = Participant::<Secp256k1Sha256>::new_dealer(params, 0, rng);

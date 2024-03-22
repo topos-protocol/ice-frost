@@ -1186,7 +1186,7 @@ mod test {
 
     #[test]
     fn aggregator_get_signers() {
-        let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2);
+        let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2).unwrap();
         let message = b"This is a test of the tsunami alert system. This is only a test.";
 
         let p1_sk = IndividualSigningKey {
@@ -1233,7 +1233,7 @@ mod test {
 
     #[test]
     fn signature_from_incomplete_set() {
-        let params = ThresholdParameters::new(5, 3);
+        let params = ThresholdParameters::new(5, 3).unwrap();
         let rng = OsRng;
 
         // p1 will be malicious on the first round of the DKG

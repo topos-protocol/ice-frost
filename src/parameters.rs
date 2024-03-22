@@ -2,9 +2,9 @@
 
 use core::marker::PhantomData;
 
-use crate::ciphersuite::CipherSuite;
 use crate::serialization::impl_serialization_traits;
 use crate::utils::Vec;
+use crate::{ciphersuite::CipherSuite, Error};
 
 use ark_serialize::{CanonicalDeserialize, CanonicalSerialize};
 
@@ -24,21 +24,23 @@ impl_serialization_traits!(ThresholdParameters<CipherSuite>);
 impl<C: CipherSuite> ThresholdParameters<C> {
     /// Initialize a new set of threshold parameters.
     ///
-    /// Will panic if one of the following condition is met:
+    /// In debug mode, will panic if one of the following condition is met:
     ///  - n equals 0
     ///  - t equals 0
-    ///  - n < t
+    ///  - n <= t
     #[must_use]
-    pub fn new(n: u32, t: u32) -> Self {
-        assert!(n > 0);
-        assert!(t > 0);
-        assert!(n >= t);
-
-        Self {
+    pub const fn new(n: u32, t: u32) -> Result<Self, Error<C>> {
+        debug_assert!(n != 0);
+        debug_assert!(t != 0);
+        debug_assert!(n >= t);
+        if n == 0 || t == 0 || n < t {
+            return Err(Error::InvalidThresholdParams);
+        }
+        Ok(Self {
             n,
             t,
             _phantom: PhantomData,
-        }
+        })
     }
 
     /// Creates parameter without checking that they are sound.
@@ -67,7 +69,7 @@ mod test {
         for _ in 0..100 {
             let n = rng.next_u32();
             let t = core::cmp::min(n, rng.next_u32());
-            let params = ThresholdParameters::<Secp256k1Sha256>::new(n, t);
+            let params = ThresholdParameters::<Secp256k1Sha256>::new(n, t).unwrap();
             let bytes = params.to_bytes().unwrap();
             assert!(ThresholdParameters::<Secp256k1Sha256>::from_bytes(&bytes).is_ok());
             assert_eq!(params, ThresholdParameters::from_bytes(&bytes).unwrap());
