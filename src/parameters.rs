@@ -28,7 +28,6 @@ impl<C: CipherSuite> ThresholdParameters<C> {
     ///  - n equals 0
     ///  - t equals 0
     ///  - n <= t
-    #[must_use]
     pub const fn new(n: u32, t: u32) -> Result<Self, Error<C>> {
         debug_assert!(n != 0);
         debug_assert!(t != 0);
