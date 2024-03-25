@@ -229,9 +229,9 @@ fn signing_and_verification_3_out_of_5() {
     aggregator.include_signer(3, p3_public_comshares.commitments[0], &p3_sk.to_public());
     aggregator.include_signer(4, p4_public_comshares.commitments[0], &p4_sk.to_public());
 
-    let signers = aggregator.get_signers();
+    aggregator.dedup_signers().unwrap();
     let message_hash = Secp256k1Sha256::h4(&message[..]);
-
+    let signers = aggregator.signers();
     let p1_partial = p1_sk
         .sign(
             &message_hash,

@@ -165,7 +165,7 @@ fn criterion_benchmark(c: &mut Criterion) {
     }
 
     let signers = aggregator.get_signers().clone();
-    let message_hash = Secp256k1Sha256::h4(&message[..]);
+    let message_hash = Secp25dedup_signersh4(&message[..]);
     let message_hash_copy = message_hash;
 
     let p1_sk = participants_secret_keys[0].clone();

@@ -475,18 +475,33 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
             .insert(public_key.index, public_key.share);
     }
 
-    /// Get the list of partipating signers.
+    /// Sort and deduplicate partipating [`Signer`]s and check that there are
+    /// enough unique signers given the [`ThresholdParameters`].
     ///
     /// # Returns
     ///
-    /// A `&Vec<Signer>` of the participating signers in this round.
-    pub fn get_signers(&'_ mut self) -> &'_ Vec<Signer<C>> {
+    /// [`Ok`] if the set of signers is still valid for the [`ThresholdParameters`] of the instance, otherwise [`Err`] .
+    pub fn dedup_signers(&'_ mut self) -> FrostResult<C, ()> {
         self.state.signers.sort();
         self.state.signers.dedup();
 
         // Sanity check
-        assert!(self.state.signers.len() <= self.state.parameters.n as usize);
+        if self.state.signers.len() <= self.state.parameters.n as usize {
+            Ok(())
+        } else {
+            Err(Error::InvalidNumberOfParticipants(
+                self.state.signers.len(),
+                self.state.parameters.n,
+            ))
+        }
+    }
 
+    /// Get the list of participating [`Signer`]s.
+    ///
+    /// # Returns
+    ///
+    /// A slice of [`Signer`]s.
+    pub fn signers(&self) -> &[Signer<C>] {
         &self.state.signers
     }
 
@@ -503,7 +518,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// A sorted [`Vec`] of unique [`Signer`]s who have yet to contribute their
     /// partial signatures.
     #[must_use]
-    pub fn get_remaining_signers(&self) -> Vec<Signer<C>> {
+    pub fn remaining_signers(&self) -> Vec<Signer<C>> {
         let mut remaining_signers = Vec::with_capacity(self.state.signers.len());
 
         for signer in &self.state.signers {
@@ -541,7 +556,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// s.t. \(( t \le t' \le n \)).
     pub fn finalize(mut self) -> FrostResult<C, SignatureAggregator<C, Finalized<C>>> {
         let mut misbehaving_participants = Vec::new();
-        let remaining_signers = self.get_remaining_signers();
+        let remaining_signers = self.remaining_signers();
 
         // We're reporting missing partial signatures which
         // could possibly be the fault of the aggregator, but here we explicitly
@@ -556,7 +571,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
         }
 
         // Ensure that our new state is ordered and deduplicated.
-        self.state.signers = self.get_signers().clone();
+        self.dedup_signers()?;
 
         for signer in &self.state.signers {
             if self
@@ -731,7 +746,7 @@ mod test {
 
         aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -740,7 +755,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
 
@@ -772,7 +787,7 @@ mod test {
 
         aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -781,7 +796,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
 
@@ -809,7 +824,7 @@ mod test {
 
         aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -818,7 +833,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
 
@@ -854,7 +869,7 @@ mod test {
         aggregator.include_signer(3, p3_public_comshares.commitments[0], &p3_sk.to_public());
         aggregator.include_signer(4, p4_public_comshares.commitments[0], &p4_sk.to_public());
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -863,7 +878,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
         let p3_partial = p3_sk
@@ -872,7 +887,7 @@ mod test {
                 &group_key,
                 &mut p3_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
         let p4_partial = p4_sk
@@ -881,7 +896,7 @@ mod test {
                 &group_key,
                 &mut p4_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
 
@@ -915,7 +930,7 @@ mod test {
         aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
         aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -924,7 +939,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
         let p2_partial = p2_sk
@@ -933,7 +948,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
 
@@ -973,7 +988,7 @@ mod test {
             aggregator.include_signer(1, d1_public_comshares.commitments[0], &d1_sk.to_public());
             aggregator.include_signer(2, d2_public_comshares.commitments[0], &d2_sk.to_public());
 
-            let signers = aggregator.get_signers();
+            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let d1_partial = d1_sk
@@ -982,7 +997,7 @@ mod test {
                     &group_key,
                     &mut d1_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
             let d2_partial = d2_sk
@@ -991,7 +1006,7 @@ mod test {
                     &group_key,
                     &mut d2_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
 
@@ -1019,7 +1034,7 @@ mod test {
             aggregator.include_signer(1, s1_public_comshares.commitments[0], &s1_sk.to_public());
             aggregator.include_signer(2, s2_public_comshares.commitments[0], &s2_sk.to_public());
 
-            let signers = aggregator.get_signers();
+            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let s1_partial = s1_sk
@@ -1028,7 +1043,7 @@ mod test {
                     &group_key,
                     &mut s1_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
             let s2_partial = s2_sk
@@ -1037,7 +1052,7 @@ mod test {
                     &group_key,
                     &mut s2_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
 
@@ -1086,7 +1101,7 @@ mod test {
             aggregator.include_signer(1, d1_public_comshares.commitments[0], &d1_sk.to_public());
             aggregator.include_signer(2, d2_public_comshares.commitments[0], &d2_sk.to_public());
 
-            let signers = aggregator.get_signers();
+            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let d1_partial = d1_sk
@@ -1095,7 +1110,7 @@ mod test {
                     &group_key,
                     &mut d1_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
             let d2_partial = d2_sk
@@ -1104,7 +1119,7 @@ mod test {
                     &group_key,
                     &mut d2_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
 
@@ -1135,7 +1150,7 @@ mod test {
             aggregator.include_signer(2, s2_public_comshares.commitments[0], &s2_sk.to_public());
             aggregator.include_signer(3, s3_public_comshares.commitments[0], &s3_sk.to_public());
 
-            let signers = aggregator.get_signers();
+            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let s1_partial = s1_sk
@@ -1144,7 +1159,7 @@ mod test {
                     &group_key,
                     &mut s1_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
             let s2_partial = s2_sk
@@ -1153,7 +1168,7 @@ mod test {
                     &group_key,
                     &mut s2_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
             let s3_partial = s3_sk
@@ -1162,7 +1177,7 @@ mod test {
                     &group_key,
                     &mut s3_secret_comshares,
                     0,
-                    signers,
+                    &aggregator.state.signers,
                 )
                 .unwrap();
 
@@ -1213,7 +1228,8 @@ mod test {
         aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
         aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
+        let signers = aggregator.state.signers;
 
         // The signers should be deduplicated.
         assert!(signers.len() == 2);
@@ -1493,7 +1509,7 @@ mod test {
             &p5_secret_key.to_public(),
         );
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p2_partial = p2_secret_key
@@ -1502,7 +1518,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
         let p3_partial = p3_secret_key
@@ -1511,7 +1527,7 @@ mod test {
                 &group_key,
                 &mut p3_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
         let p5_partial = p5_secret_key
@@ -1520,7 +1536,7 @@ mod test {
                 &group_key,
                 &mut p5_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
 
@@ -1555,7 +1571,7 @@ mod test {
         aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
         aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
 
-        let signers = aggregator.get_signers();
+        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -1564,7 +1580,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
         let p2_partial = p2_sk
@@ -1573,7 +1589,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                signers,
+                &aggregator.state.signers,
             )
             .unwrap();
 
