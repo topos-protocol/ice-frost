@@ -27,6 +27,8 @@ pub enum Error<C: CipherSuite> {
     ComplaintVerificationError,
     /// The index of a participant is zero
     IndexIsZero,
+    /// The index of a signer does not match the index in the public key
+    IndexMismatch(u32, u32),
     /// GroupVerifyingKey generation failure
     InvalidGroupKey,
     /// Invalid NiZK proof of knowledge
@@ -87,7 +89,14 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
                 write!(f, "The complaint is not correct.")
             }
             Error::IndexIsZero => {
-                write!(f, "The indexs of a participant cannot be 0.")
+                write!(f, "The index of a participant cannot be 0.")
+            }
+            Error::IndexMismatch(participant_idx, pubkey_idx) => {
+                write!(
+                    f,
+                    "Index mismatch between participant index ({}) and the publick key index ({}).",
+                    participant_idx, pubkey_idx
+                )
             }
             Error::InvalidGroupKey => {
                 write!(

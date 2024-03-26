@@ -350,7 +350,7 @@ pub(crate) struct AggregatorState<C: CipherSuite> {
     /// The protocol instance parameters.
     pub(crate) parameters: ThresholdParameters<C>,
     /// The set of signing participants for this round.
-    pub(crate) signers: Vec<Signer<C>>,
+    signers: Vec<Signer<C>>,
     /// The signer's public keys for verifying their [`PartialThresholdSignature`].
     pub(crate) public_keys: IndividualPublicKeys<C>,
     /// The partial signatures from individual participants which have been
@@ -368,7 +368,7 @@ pub(crate) struct AggregatorState<C: CipherSuite> {
 #[derive(Debug)]
 pub struct SignatureAggregator<C: CipherSuite, A: Aggregator> {
     /// The aggregator's actual state, shared across types.
-    pub(crate) state: Box<AggregatorState<C>>,
+    state: Box<AggregatorState<C>>,
     /// The aggregator's additional state.
     pub(crate) aggregator: A,
 }
@@ -453,26 +453,27 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// [`SignatureAggregator.include_partial_signature`], otherwise the signing
     /// procedure will fail.
     ///
-    /// # Panics
-    ///
-    /// If the [`signer.participant_index`] doesn't match the [`public_key.index`] .
+    /// # Returns error if the [`signer.participant_index`] does not match the
+    /// [`public_key.index`] .
     pub fn include_signer(
         &mut self,
         participant_index: u32,
         published_commitment_share: (C::G, C::G),
         public_key: &IndividualVerifyingKey<C>,
-    ) {
-        assert_eq!(participant_index, public_key.index,
-                   "Tried to add signer with participant index {}, but public key is for participant with index {}",
-                   participant_index, public_key.index);
+    ) -> FrostResult<C, ()> {
+        if participant_index != public_key.index {
+            return Err(Error::IndexMismatch(participant_index, public_key.index));
+        }
 
         self.state.signers.push(Signer {
             participant_index,
             published_commitment_share,
         });
+        self.dedup_signers()?;
         self.state
             .public_keys
             .insert(public_key.index, public_key.share);
+        Ok(())
     }
 
     /// Sort and deduplicate partipating [`Signer`]s and check that there are
@@ -480,8 +481,9 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     ///
     /// # Returns
     ///
-    /// [`Ok`] if the set of signers is still valid for the [`ThresholdParameters`] of the instance, otherwise [`Err`] .
-    pub fn dedup_signers(&'_ mut self) -> FrostResult<C, ()> {
+    /// [`Ok`] if the set of signers is still valid for the [`ThresholdParameters`]
+    /// of the instance, otherwise [`Err`] .
+    fn dedup_signers(&mut self) -> FrostResult<C, ()> {
         self.state.signers.sort();
         self.state.signers.dedup();
 
@@ -554,7 +556,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// If the [`BTreeMap`] contains a key for [`0`, this indicates that
     /// the aggregator did not have \(( t' \)) partial signers
     /// s.t. \(( t \le t' \le n \)).
-    pub fn finalize(mut self) -> FrostResult<C, SignatureAggregator<C, Finalized<C>>> {
+    pub fn finalize(self) -> FrostResult<C, SignatureAggregator<C, Finalized<C>>> {
         let mut misbehaving_participants = Vec::new();
         let remaining_signers = self.remaining_signers();
 
@@ -569,9 +571,6 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
                 misbehaving_participants.push(signer.participant_index);
             }
         }
-
-        // Ensure that our new state is ordered and deduplicated.
-        self.dedup_signers()?;
 
         for signer in &self.state.signers {
             if self
@@ -744,9 +743,10 @@ mod test {
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
+        aggregator
+            .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -785,9 +785,10 @@ mod test {
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
+        aggregator
+            .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -822,9 +823,10 @@ mod test {
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
+        aggregator
+            .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -865,11 +867,16 @@ mod test {
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
-        aggregator.include_signer(3, p3_public_comshares.commitments[0], &p3_sk.to_public());
-        aggregator.include_signer(4, p4_public_comshares.commitments[0], &p4_sk.to_public());
+        aggregator
+            .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+            .unwrap();
+        aggregator
+            .include_signer(3, p3_public_comshares.commitments[0], &p3_sk.to_public())
+            .unwrap();
+        aggregator
+            .include_signer(4, p4_public_comshares.commitments[0], &p4_sk.to_public())
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -927,10 +934,13 @@ mod test {
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
-        aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
+        aggregator
+            .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+            .unwrap();
+        aggregator
+            .include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public())
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk
@@ -985,10 +995,13 @@ mod test {
 
             let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-            aggregator.include_signer(1, d1_public_comshares.commitments[0], &d1_sk.to_public());
-            aggregator.include_signer(2, d2_public_comshares.commitments[0], &d2_sk.to_public());
+            aggregator
+                .include_signer(1, d1_public_comshares.commitments[0], &d1_sk.to_public())
+                .unwrap();
+            aggregator
+                .include_signer(2, d2_public_comshares.commitments[0], &d2_sk.to_public())
+                .unwrap();
 
-            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let d1_partial = d1_sk
@@ -1031,10 +1044,13 @@ mod test {
 
             let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-            aggregator.include_signer(1, s1_public_comshares.commitments[0], &s1_sk.to_public());
-            aggregator.include_signer(2, s2_public_comshares.commitments[0], &s2_sk.to_public());
+            aggregator
+                .include_signer(1, s1_public_comshares.commitments[0], &s1_sk.to_public())
+                .unwrap();
+            aggregator
+                .include_signer(2, s2_public_comshares.commitments[0], &s2_sk.to_public())
+                .unwrap();
 
-            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let s1_partial = s1_sk
@@ -1098,10 +1114,13 @@ mod test {
 
             let mut aggregator = SignatureAggregator::new(d_params, group_key, &message[..]);
 
-            aggregator.include_signer(1, d1_public_comshares.commitments[0], &d1_sk.to_public());
-            aggregator.include_signer(2, d2_public_comshares.commitments[0], &d2_sk.to_public());
+            aggregator
+                .include_signer(1, d1_public_comshares.commitments[0], &d1_sk.to_public())
+                .unwrap();
+            aggregator
+                .include_signer(2, d2_public_comshares.commitments[0], &d2_sk.to_public())
+                .unwrap();
 
-            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let d1_partial = d1_sk
@@ -1146,11 +1165,16 @@ mod test {
 
             let mut aggregator = SignatureAggregator::new(s_params, group_key, &message[..]);
 
-            aggregator.include_signer(1, s1_public_comshares.commitments[0], &s1_sk.to_public());
-            aggregator.include_signer(2, s2_public_comshares.commitments[0], &s2_sk.to_public());
-            aggregator.include_signer(3, s3_public_comshares.commitments[0], &s3_sk.to_public());
+            aggregator
+                .include_signer(1, s1_public_comshares.commitments[0], &s1_sk.to_public())
+                .unwrap();
+            aggregator
+                .include_signer(2, s2_public_comshares.commitments[0], &s2_sk.to_public())
+                .unwrap();
+            aggregator
+                .include_signer(3, s3_public_comshares.commitments[0], &s3_sk.to_public())
+                .unwrap();
 
-            aggregator.dedup_signers().unwrap();
             let message_hash = Secp256k1Sha256::h4(&message[..]);
 
             let s1_partial = s1_sk
@@ -1224,11 +1248,16 @@ mod test {
             &message[..],
         );
 
-        aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
-        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
-        aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
+        aggregator
+            .include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public())
+            .unwrap();
+        aggregator
+            .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+            .unwrap();
+        aggregator
+            .include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public())
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let signers = aggregator.state.signers;
 
         // The signers should be deduplicated.
@@ -1493,23 +1522,28 @@ mod test {
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(
-            2,
-            p2_public_comshares.commitments[0],
-            &p2_secret_key.to_public(),
-        );
-        aggregator.include_signer(
-            3,
-            p3_public_comshares.commitments[0],
-            &p3_secret_key.to_public(),
-        );
-        aggregator.include_signer(
-            5,
-            p5_public_comshares.commitments[0],
-            &p5_secret_key.to_public(),
-        );
+        aggregator
+            .include_signer(
+                2,
+                p2_public_comshares.commitments[0],
+                &p2_secret_key.to_public(),
+            )
+            .unwrap();
+        aggregator
+            .include_signer(
+                3,
+                p3_public_comshares.commitments[0],
+                &p3_secret_key.to_public(),
+            )
+            .unwrap();
+        aggregator
+            .include_signer(
+                5,
+                p5_public_comshares.commitments[0],
+                &p5_secret_key.to_public(),
+            )
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p2_partial = p2_secret_key
@@ -1568,10 +1602,13 @@ mod test {
 
         let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
-        aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
+        aggregator
+            .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+            .unwrap();
+        aggregator
+            .include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public())
+            .unwrap();
 
-        aggregator.dedup_signers().unwrap();
         let message_hash = Secp256k1Sha256::h4(&message[..]);
 
         let p1_partial = p1_sk

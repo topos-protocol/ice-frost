@@ -157,11 +157,13 @@ fn criterion_benchmark(c: &mut Criterion) {
     let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
     for i in 1..THRESHOLD_OF_PARTICIPANTS + 1 {
-        aggregator.include_signer(
-            i,
-            participants_public_comshares[(i - 1) as usize].commitments[0],
-            &participants_secret_keys[(i - 1) as usize].to_public(),
-        );
+        aggregator
+            .include_signer(
+                i,
+                participants_public_comshares[(i - 1) as usize].commitments[0],
+                &participants_secret_keys[(i - 1) as usize].to_public(),
+            )
+            .unwrap();
     }
 
     let signers = aggregator.signers().to_vec();
