@@ -94,7 +94,7 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
             Error::IndexMismatch(participant_idx, pubkey_idx) => {
                 write!(
                     f,
-                    "Index mismatch between participant index ({}) and the publick key index ({}).",
+                    "Index mismatch between participant index ({}) and the public key index ({}).",
                     participant_idx, pubkey_idx
                 )
             }
