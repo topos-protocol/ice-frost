@@ -556,10 +556,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
         }
 
         // Ensure that our new state is ordered and deduplicated.
-        self.state.signers = {
-            let signers = self.get_signers().clone();
-            signers
-        };
+        let _ = self.get_signers();
 
         for signer in &self.state.signers {
             if self
