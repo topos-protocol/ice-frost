@@ -750,7 +750,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
 
@@ -792,7 +792,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
 
@@ -830,7 +830,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
 
@@ -880,7 +880,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
         let p3_partial = p3_sk
@@ -889,7 +889,7 @@ mod test {
                 &group_key,
                 &mut p3_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
         let p4_partial = p4_sk
@@ -898,7 +898,7 @@ mod test {
                 &group_key,
                 &mut p4_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
 
@@ -944,7 +944,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
         let p2_partial = p2_sk
@@ -953,7 +953,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
 
@@ -1005,7 +1005,7 @@ mod test {
                     &group_key,
                     &mut d1_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
             let d2_partial = d2_sk
@@ -1014,7 +1014,7 @@ mod test {
                     &group_key,
                     &mut d2_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1054,7 +1054,7 @@ mod test {
                     &group_key,
                     &mut s1_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
             let s2_partial = s2_sk
@@ -1063,7 +1063,7 @@ mod test {
                     &group_key,
                     &mut s2_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1124,7 +1124,7 @@ mod test {
                     &group_key,
                     &mut d1_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
             let d2_partial = d2_sk
@@ -1133,7 +1133,7 @@ mod test {
                     &group_key,
                     &mut d2_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1178,7 +1178,7 @@ mod test {
                     &group_key,
                     &mut s1_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
             let s2_partial = s2_sk
@@ -1187,7 +1187,7 @@ mod test {
                     &group_key,
                     &mut s2_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
             let s3_partial = s3_sk
@@ -1196,7 +1196,7 @@ mod test {
                     &group_key,
                     &mut s3_secret_comshares,
                     0,
-                    &aggregator.signers(),
+                    aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1547,7 +1547,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
         let p3_partial = p3_secret_key
@@ -1556,7 +1556,7 @@ mod test {
                 &group_key,
                 &mut p3_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
         let p5_partial = p5_secret_key
@@ -1565,7 +1565,7 @@ mod test {
                 &group_key,
                 &mut p5_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
 
@@ -1612,7 +1612,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
         let p2_partial = p2_sk
@@ -1621,7 +1621,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                &aggregator.signers(),
+                aggregator.signers(),
             )
             .unwrap();
 
