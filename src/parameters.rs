@@ -24,7 +24,7 @@ impl_serialization_traits!(ThresholdParameters<CipherSuite>);
 impl<C: CipherSuite> ThresholdParameters<C> {
     /// Initialize a new set of threshold parameters.
     ///
-    /// In debug mode, will panic if one of the following condition is met:
+    /// In debug mode, will panic if one of the following conditions is met:
     ///  - n equals 0
     ///  - t equals 0
     ///  - n <= t
