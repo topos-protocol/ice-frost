@@ -373,6 +373,21 @@ pub struct SignatureAggregator<C: CipherSuite, A: Aggregator> {
     pub(crate) aggregator: A,
 }
 
+impl<C, A> SignatureAggregator<C, A>
+where
+    C: CipherSuite,
+    A: Aggregator,
+{
+    /// Get the list of participating [`Signer`]s.
+    ///
+    /// # Returns
+    ///
+    /// A slice of [`Signer`]s.
+    pub fn signers(&self) -> &[Signer<C>] {
+        &self.state.signers
+    }
+}
+
 /// The initial state for a [`SignatureAggregator`], which may include invalid
 /// or non-sensical data.
 #[derive(Debug)]
@@ -469,42 +484,22 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
             participant_index,
             published_commitment_share,
         });
-        self.dedup_signers()?;
+
+        // Deduplicate partipating [`Signer`]s and check that there is
+        // the correct number of signers given the [`ThresholdParameters`].
+        self.state.signers.sort();
+        self.state.signers.dedup();
+        if self.state.signers.len() > self.state.parameters.n as usize {
+            return Err(Error::TooManySigners(
+                self.state.signers.len(),
+                self.state.parameters.n,
+            ));
+        }
+
         self.state
             .public_keys
             .insert(public_key.index, public_key.share);
         Ok(())
-    }
-
-    /// Sort and deduplicate partipating [`Signer`]s and check that there are
-    /// enough unique signers given the [`ThresholdParameters`].
-    ///
-    /// # Returns
-    ///
-    /// [`Ok`] if the set of signers is still valid for the [`ThresholdParameters`]
-    /// of the instance, otherwise [`Err`] .
-    fn dedup_signers(&mut self) -> FrostResult<C, ()> {
-        self.state.signers.sort();
-        self.state.signers.dedup();
-
-        // Sanity check
-        if self.state.signers.len() <= self.state.parameters.n as usize {
-            Ok(())
-        } else {
-            Err(Error::InvalidNumberOfParticipants(
-                self.state.signers.len(),
-                self.state.parameters.n,
-            ))
-        }
-    }
-
-    /// Get the list of participating [`Signer`]s.
-    ///
-    /// # Returns
-    ///
-    /// A slice of [`Signer`]s.
-    pub fn signers(&self) -> &[Signer<C>] {
-        &self.state.signers
     }
 
     /// Helper function to get the remaining signers who were expected to sign,
@@ -521,9 +516,9 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// partial signatures.
     #[must_use]
     pub fn remaining_signers(&self) -> Vec<Signer<C>> {
-        let mut remaining_signers = Vec::with_capacity(self.state.signers.len());
+        let mut remaining_signers = Vec::with_capacity(self.signers().len());
 
-        for signer in &self.state.signers {
+        for signer in self.signers() {
             if self
                 .state
                 .partial_signatures
@@ -572,7 +567,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
             }
         }
 
-        for signer in &self.state.signers {
+        for signer in self.signers() {
             if self
                 .state
                 .public_keys
@@ -606,8 +601,8 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
     /// signers and a description of their misbehaviour.
     pub fn aggregate(&self) -> FrostResult<C, ThresholdSignature<C>> {
         let binding_factor_list =
-            compute_binding_factors(self.aggregator.message_hash.as_ref(), &self.state.signers)?;
-        let group_commitment = compute_group_commitment(&self.state.signers, &binding_factor_list)?;
+            compute_binding_factors(self.aggregator.message_hash.as_ref(), self.signers())?;
+        let group_commitment = compute_group_commitment(self.signers(), &binding_factor_list)?;
         let challenge = compute_challenge::<C>(
             &group_commitment,
             &self.state.group_key,
@@ -625,7 +620,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
 
         // We first combine all partial signatures together, to remove the need for individual
         // signature verification in case the final group signature is valid.
-        for signer in &self.state.signers {
+        for signer in self.signers() {
             let partial_sig = self
                 .state
                 .partial_signatures
@@ -648,7 +643,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
             Ok(signature)
         } else {
             let mut misbehaving_participants = Vec::new();
-            for signer in &self.state.signers {
+            for signer in self.signers() {
                 // This cannot error, since the attempted division by zero in
                 // the calculation of the Lagrange interpolation cannot happen,
                 // because we use the typestate pattern,
@@ -677,7 +672,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Finalized<C>> {
                 let participant_commitment = commitment_for_participant(
                     signer.participant_index,
                     self.aggregator.message_hash.as_ref(),
-                    &self.state.signers,
+                    self.signers(),
                 )?;
 
                 if check != participant_commitment + (pk_i.mul(challenge * lambda)) {
@@ -755,7 +750,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
 
@@ -797,7 +792,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
 
@@ -835,7 +830,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
 
@@ -885,7 +880,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
         let p3_partial = p3_sk
@@ -894,7 +889,7 @@ mod test {
                 &group_key,
                 &mut p3_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
         let p4_partial = p4_sk
@@ -903,7 +898,7 @@ mod test {
                 &group_key,
                 &mut p4_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
 
@@ -949,7 +944,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
         let p2_partial = p2_sk
@@ -958,7 +953,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
 
@@ -1010,7 +1005,7 @@ mod test {
                     &group_key,
                     &mut d1_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
             let d2_partial = d2_sk
@@ -1019,7 +1014,7 @@ mod test {
                     &group_key,
                     &mut d2_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1059,7 +1054,7 @@ mod test {
                     &group_key,
                     &mut s1_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
             let s2_partial = s2_sk
@@ -1068,7 +1063,7 @@ mod test {
                     &group_key,
                     &mut s2_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1129,7 +1124,7 @@ mod test {
                     &group_key,
                     &mut d1_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
             let d2_partial = d2_sk
@@ -1138,7 +1133,7 @@ mod test {
                     &group_key,
                     &mut d2_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1183,7 +1178,7 @@ mod test {
                     &group_key,
                     &mut s1_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
             let s2_partial = s2_sk
@@ -1192,7 +1187,7 @@ mod test {
                     &group_key,
                     &mut s2_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
             let s3_partial = s3_sk
@@ -1201,7 +1196,7 @@ mod test {
                     &group_key,
                     &mut s3_secret_comshares,
                     0,
-                    &aggregator.state.signers,
+                    &aggregator.signers(),
                 )
                 .unwrap();
 
@@ -1258,7 +1253,7 @@ mod test {
             .include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public())
             .unwrap();
 
-        let signers = aggregator.state.signers;
+        let signers = aggregator.signers();
 
         // The signers should be deduplicated.
         assert!(signers.len() == 2);
@@ -1552,7 +1547,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
         let p3_partial = p3_secret_key
@@ -1561,7 +1556,7 @@ mod test {
                 &group_key,
                 &mut p3_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
         let p5_partial = p5_secret_key
@@ -1570,7 +1565,7 @@ mod test {
                 &group_key,
                 &mut p5_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
 
@@ -1617,7 +1612,7 @@ mod test {
                 &group_key,
                 &mut p1_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
         let p2_partial = p2_sk
@@ -1626,7 +1621,7 @@ mod test {
                 &group_key,
                 &mut p2_secret_comshares,
                 0,
-                &aggregator.state.signers,
+                &aggregator.signers(),
             )
             .unwrap();
 

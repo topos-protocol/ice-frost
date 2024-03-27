@@ -47,6 +47,8 @@ pub enum Error<C: CipherSuite> {
     InvalidMSMParameters,
     /// Too many invalid participants, with their indices
     TooManyInvalidParticipants(Vec<u32>),
+    /// Too many unique signers given the [`crate::parameters::ThresholdParameters`].
+    TooManySigners(usize, u32),
     /// The participant is missing commitment shares
     MissingCommitmentShares,
     /// Invalid binding factor
@@ -143,6 +145,13 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
                     f,
                     "Too many invalid participants to continue the Dkg: {:?}",
                     indices
+                )
+            }
+            Error::TooManySigners(signers, n_param) => {
+                write!(
+                    f,
+                    "Too many signers ({}) given the DKG instance parameters ({}).",
+                    signers, n_param
                 )
             }
             Error::MissingCommitmentShares => {
