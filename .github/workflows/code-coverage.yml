@@ -1,10 +1,11 @@
 name: Coverage
 
 on:
-  push:
-    branches: [main]
-  pull_request:
-    branches: [main]
+  # Re-enable when https://github.com/xd009642/tarpaulin/issues/1493 is fixed
+  # push:
+  #   branches: [main]
+  # pull_request:
+  #   branches: [main]
   workflow_dispatch:
 
 jobs:
@@ -25,4 +26,4 @@ jobs:
         uses: codecov/codecov-action@v3.1.1
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
-          fail_ci_if_error: false
+          fail_ci_if_error: true
