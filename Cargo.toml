@@ -24,12 +24,21 @@ ark-ff = { version = "0.4", default-features = false }
 ark-ec = { version = "0.4", default-features = false }
 ark-serialize = { version = "0.4", default-features = false, features = ["derive"] }
 digest = { version = "0.10", default-features = false, features = ["alloc"] }
-getrandom = { version = "0.2", default-features = false }
 rand = { version = "0.8", default-features = false, features = ["alloc", "getrandom", "libc"] }
 sha2 = { version = "0.10", default-features = false }
 aes-gcm = { version = "0.10", default-features = false, features = ["aes", "alloc", "getrandom", "zeroize"] }
 hkdf = { version = "0.12", default-features = false }
 zeroize = { version = "1", default-features = false, features = ["alloc", "zeroize_derive"] }
+
+# Include the "js" feature for wasm32-unknown-unknown
+[target.'cfg(target_family = "wasm")'.dependencies.getrandom]
+version = "0.2"
+default-features = false
+features = ["js"]
+
+[target.'cfg(not(target_family = "wasm"))'.dependencies.getrandom]
+version = "0.2.0"
+default-features = false
 
 [dev-dependencies]
 criterion = { version = "0.5" }
