@@ -476,6 +476,8 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     }
 
     /// Get the list of partipating signers.
+    /// It will internally sort the signers by indices, remove any duplicate,
+    /// and then return a reference to the updated internal list.
     ///
     /// # Returns
     ///

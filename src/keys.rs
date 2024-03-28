@@ -200,7 +200,15 @@ impl<C: CipherSuite> Drop for IndividualSigningKey<C> {
 }
 
 impl<C: CipherSuite> IndividualSigningKey<C> {
-    /// Derive the corresponding public key for this secret key.
+    /// Outputs an [`IndividualSigningKey`] from an isolated secret key.
+    /// This can be useful for single parties owning a public key for
+    /// Schnorr signatures outside of an ICE-FROST context and who would
+    /// like to reshare its corresponding secret key to a set of participants.
+    pub fn from_single_key(key: <C::G as Group>::ScalarField) -> Self {
+        Self { index: 1, key }
+    }
+
+    /// Derives the corresponding public key for this secret key.
     pub fn to_public(&self) -> IndividualVerifyingKey<C> {
         let share = C::G::generator() * self.key;
 
