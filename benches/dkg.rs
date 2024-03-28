@@ -23,7 +23,8 @@ const NUMBER_OF_PARTICIPANTS: u32 = 5;
 const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
 
 fn criterion_benchmark(c: &mut Criterion) {
-    let params = ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS);
+    let params =
+        ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS).unwrap();
     let rng = OsRng;
 
     c.bench_function("Participant creation (dealer)", move |b| {
