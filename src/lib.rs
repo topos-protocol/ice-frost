@@ -1455,7 +1455,7 @@
 //! #
 //! # aggregator.include_signer(1, alice_public_comshares.commitments[0], &alice_public_key);
 //! # aggregator.include_signer(3, carol_public_comshares.commitments[0], &carol_public_key);
-//! let signers = aggregator.get_signers();
+//! let signers = aggregator.signers();
 //! # Ok(()) }
 //! # fn main() { assert!(do_test().is_ok()); }
 //! ```
@@ -1530,7 +1530,7 @@
 //! # aggregator.include_signer(1, alice_public_comshares.commitments[0], &alice_public_key);
 //! # aggregator.include_signer(3, carol_public_comshares.commitments[0], &carol_public_key);
 //! #
-//! # let signers = aggregator.get_signers();
+//! # let signers = aggregator.signers();
 //! # let message_hash = Secp256k1Sha256::h4(&message[..]);
 //!
 //! let alice_partial = alice_secret_key.sign(
