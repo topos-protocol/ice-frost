@@ -557,6 +557,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
 
         // Ensure that our new state is ordered and deduplicated.
         let _ = self.get_signers();
+
         for signer in &self.state.signers {
             if self
                 .state
