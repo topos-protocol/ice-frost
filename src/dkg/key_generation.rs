@@ -666,8 +666,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
     ///
     /// # Inputs
     ///
-    /// * The protocol new instance [`ThresholdParameters`]. These parameters can
-    ///   be different from the previous ICE-FROST session using the same group key.
+    /// * The protocol old instance [`ThresholdParameters`]. These parameters can
+    ///   be different from the current ICE-FROST session which will be having the
+    ///   same group key.
     /// * This participant's [`DiffieHellmanPrivateKey`].
     /// * This participant's `index`.
     /// * The list of `dealers`. These are the participants of the previous ICE-FROST
