@@ -299,15 +299,16 @@ fn resharing_from_non_frost_key() {
     let frost_pk = GroupVerifyingKey::new(single_party_pk);
 
     // Start a resharing phase from this single party to a set of new participants.
-    const N_PARAM: u32 = 5;
-    const T_PARAM: u32 = 3;
+    const NUMBER_OF_PARTICIPANTS: u32 = 5;
+    const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
 
-    let threshold_parameters = ThresholdParameters::new(N_PARAM, T_PARAM);
+    let threshold_parameters =
+        ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS);
 
     let mut signers = Vec::<Participant<Secp256k1Sha256>>::new();
     let mut signers_dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
 
-    for i in 1..=N_PARAM {
+    for i in 1..=NUMBER_OF_PARTICIPANTS {
         let (p, dh_sk) =
             Participant::<Secp256k1Sha256>::new_signer(threshold_parameters, i, rng).unwrap();
 
@@ -316,7 +317,7 @@ fn resharing_from_non_frost_key() {
     }
 
     let mut signers_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<Secp256k1Sha256>>> =
-        (0..N_PARAM).map(|_| Vec::new()).collect();
+        (0..NUMBER_OF_PARTICIPANTS).map(|_| Vec::new()).collect();
 
     let mut signers_states_1 = Vec::<Dkg<_>>::new();
     let mut signers_states_2 = Vec::<Dkg<_>>::new();
@@ -324,7 +325,7 @@ fn resharing_from_non_frost_key() {
     let (single_dealer, dealer_encrypted_shares_for_signers, _participant_lists) =
         Participant::reshare(threshold_parameters, &frost_sk, &signers, rng).unwrap();
 
-    for i in 0..N_PARAM as usize {
+    for i in 0..NUMBER_OF_PARTICIPANTS as usize {
         let (signer_state, _participant_lists) =
             DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
                 simulated_parameters,
@@ -345,7 +346,7 @@ fn resharing_from_non_frost_key() {
         *shares = vec![share_for_signer];
     }
 
-    for i in 0..N_PARAM as usize {
+    for i in 0..NUMBER_OF_PARTICIPANTS as usize {
         let (si_state, complaints) = signers_states_1[i]
             .clone()
             .to_round_two(&signers_encrypted_secret_shares[i], rng)
@@ -368,10 +369,12 @@ fn resharing_from_non_frost_key() {
 
     let message = b"This is a test of the tsunami alert system. This is only a test.";
 
-    let mut signers_public_comshares = Vec::<PublicCommShareList>::with_capacity(N_PARAM as usize);
-    let mut signers_secret_comshares = Vec::<SecretCommShareList>::with_capacity(N_PARAM as usize);
+    let mut signers_public_comshares =
+        Vec::<PublicCommShareList>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
+    let mut signers_secret_comshares =
+        Vec::<SecretCommShareList>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
 
-    for i in 0..T_PARAM {
+    for i in 0..THRESHOLD_OF_PARTICIPANTS {
         let (pi_public_comshares, pi_secret_comshares) =
             generate_commitment_share_lists(&mut OsRng, &signers_secret_keys[i as usize], 1)
                 .unwrap();
@@ -381,7 +384,7 @@ fn resharing_from_non_frost_key() {
 
     let mut aggregator = SignatureAggregator::new(threshold_parameters, frost_pk, &message[..]);
 
-    for i in 0..T_PARAM {
+    for i in 0..THRESHOLD_OF_PARTICIPANTS {
         aggregator.include_signer(
             signers[i as usize].index,
             signers_public_comshares[i as usize].commitments[0],
@@ -392,7 +395,7 @@ fn resharing_from_non_frost_key() {
     let participating_signers = aggregator.get_signers().clone();
     let message_hash = Secp256k1Sha256::h4(&message[..]);
 
-    for i in 0..T_PARAM {
+    for i in 0..THRESHOLD_OF_PARTICIPANTS {
         let pi_partial_signature = signers_secret_keys[i as usize]
             .sign(
                 &message_hash,
