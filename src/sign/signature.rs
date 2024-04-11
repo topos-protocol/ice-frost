@@ -382,7 +382,7 @@ where
     ///
     /// # Returns
     ///
-    /// A slice of [`Signer`]s.
+    /// A reference to the internal list of [`Signer`]s.
     pub fn signers(&self) -> &[Signer<C>] {
         &self.state.signers
     }
@@ -468,7 +468,7 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
     /// [`SignatureAggregator.include_partial_signature`], otherwise the signing
     /// procedure will fail.
     ///
-    /// # Returns error if the [`signer.participant_index`] does not match the
+    /// # Errors if the [`signer.participant_index`] does not match the
     /// [`public_key.index`] .
     pub fn include_signer(
         &mut self,
@@ -485,8 +485,8 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
             published_commitment_share,
         });
 
-        // Deduplicate partipating [`Signer`]s and check that there is
-        // the correct number of signers given the [`ThresholdParameters`].
+        // Deduplicate partipating [`Signer`]s and check that there is not
+        // more signers than the number of participants as set in the [`ThresholdParameters`].
         self.state.signers.sort();
         self.state.signers.dedup();
         if self.state.signers.len() > self.state.parameters.n as usize {
