@@ -264,3 +264,63 @@ impl<C: CipherSuite> GroupVerifyingKey<C> {
         }
     }
 }
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    use crate::testing::Secp256k1Sha256;
+    use crate::utils::Scalar;
+    use crate::{FromBytes, ToBytes};
+    use ark_ff::UniformRand;
+    use rand::{rngs::OsRng, RngCore};
+
+    #[test]
+    fn test_serialization() {
+        let mut rng = OsRng;
+
+        for _ in 0..100 {
+            let skey = DiffieHellmanPrivateKey(Scalar::<Secp256k1Sha256>::rand(&mut rng));
+            let bytes = skey.to_bytes().unwrap();
+            assert!(DiffieHellmanPrivateKey::<Secp256k1Sha256>::from_bytes(&bytes).is_ok());
+            assert_eq!(
+                skey,
+                DiffieHellmanPrivateKey::<Secp256k1Sha256>::from_bytes(&bytes).unwrap()
+            );
+
+            let pkey = DiffieHellmanPublicKey::<Secp256k1Sha256>::new(
+                <Secp256k1Sha256 as CipherSuite>::G::generator().mul(skey.0),
+            );
+            let bytes = pkey.to_bytes().unwrap();
+            assert!(DiffieHellmanPublicKey::<Secp256k1Sha256>::from_bytes(&bytes).is_ok());
+            assert_eq!(
+                pkey,
+                DiffieHellmanPublicKey::<Secp256k1Sha256>::from_bytes(&bytes).unwrap()
+            );
+
+            let skey = IndividualSigningKey::<Secp256k1Sha256> {
+                index: rng.next_u32(),
+                key: Scalar::<Secp256k1Sha256>::rand(&mut rng),
+            };
+            let bytes = skey.to_bytes().unwrap();
+            assert!(IndividualSigningKey::<Secp256k1Sha256>::from_bytes(&bytes).is_ok());
+            assert_eq!(
+                skey,
+                IndividualSigningKey::<Secp256k1Sha256>::from_bytes(&bytes).unwrap()
+            );
+
+            let pkey = skey.to_public();
+            let bytes = pkey.to_bytes().unwrap();
+            assert!(IndividualVerifyingKey::<Secp256k1Sha256>::from_bytes(&bytes).is_ok());
+            assert_eq!(
+                pkey,
+                IndividualVerifyingKey::<Secp256k1Sha256>::from_bytes(&bytes).unwrap()
+            );
+        }
+
+        let bytes = vec![255; 157];
+        assert!(DiffieHellmanPrivateKey::<Secp256k1Sha256>::from_bytes(&bytes).is_err());
+        assert!(DiffieHellmanPublicKey::<Secp256k1Sha256>::from_bytes(&bytes).is_err());
+        assert!(IndividualSigningKey::<Secp256k1Sha256>::from_bytes(&bytes).is_err());
+        assert!(IndividualVerifyingKey::<Secp256k1Sha256>::from_bytes(&bytes).is_err());
+    }
+}

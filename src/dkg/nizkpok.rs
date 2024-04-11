@@ -30,9 +30,9 @@ use rand::Rng;
 #[derive(Clone, Debug, Eq, PartialEq, CanonicalSerialize, CanonicalDeserialize)]
 pub struct NizkPokOfSecretKey<C: CipherSuite> {
     /// The scalar portion of the Schnorr signature encoding the context.
-    s: Scalar<C>,
+    pub(crate) s: Scalar<C>,
     /// The scalar portion of the Schnorr signature which is the actual signature.
-    r: Scalar<C>,
+    pub(crate) r: Scalar<C>,
 }
 
 impl_serialization_traits!(NizkPokOfSecretKey<CipherSuite>);

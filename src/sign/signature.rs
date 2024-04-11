@@ -1186,6 +1186,79 @@ mod test {
         }
     }
 
+    #[should_panic]
+    #[test]
+    fn signer_index_should_match_public_key() {
+        let params = ThresholdParameters::<Secp256k1Sha256>::new(2, 1);
+        let message = b"This is a test of the tsunami alert system. This is only a test.";
+
+        let p1_sk = IndividualSigningKey {
+            index: 1,
+            key: Fr::rand(&mut OsRng),
+        };
+
+        let (p1_public_comshares, _) =
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p1_sk, 1).unwrap();
+
+        let mut aggregator = SignatureAggregator::new(
+            params,
+            GroupVerifyingKey::new(Projective::zero()),
+            &message[..],
+        );
+
+        // The aggregator should panic as the participant index does not match the public key index.
+        aggregator.include_signer(3, p1_public_comshares.commitments[0], &p1_sk.to_public());
+    }
+
+    #[should_panic]
+    #[test]
+    fn aggregator_get_too_many_signers() {
+        let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2);
+        let message = b"This is a test of the tsunami alert system. This is only a test.";
+
+        let p1_sk = IndividualSigningKey {
+            index: 1,
+            key: Fr::rand(&mut OsRng),
+        };
+        let p2_sk = IndividualSigningKey {
+            index: 2,
+            key: Fr::rand(&mut OsRng),
+        };
+        let p3_sk = IndividualSigningKey {
+            index: 3,
+            key: Fr::rand(&mut OsRng),
+        };
+        let p4_sk = IndividualSigningKey {
+            index: 4,
+            key: Fr::rand(&mut OsRng),
+        };
+
+        let (p1_public_comshares, _) =
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p1_sk, 1).unwrap();
+        let (p2_public_comshares, _) =
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p2_sk, 1).unwrap();
+        let (p3_public_comshares, _) =
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p3_sk, 1).unwrap();
+        let (p4_public_comshares, _) =
+            generate_commitment_share_lists::<Secp256k1Sha256>(&mut OsRng, &p4_sk, 1).unwrap();
+
+        let mut aggregator = SignatureAggregator::new(
+            params,
+            GroupVerifyingKey::new(Projective::zero()),
+            &message[..],
+        );
+
+        aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
+        aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
+        aggregator.include_signer(4, p4_public_comshares.commitments[0], &p4_sk.to_public());
+        aggregator.include_signer(3, p3_public_comshares.commitments[0], &p3_sk.to_public());
+        // Duplicates are fine, as we will remove them when gathering the signers list.
+        aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
+
+        // The aggregator should panic as we cannot have 4 signers in a 2-out-of-3 scheme.
+        let _signers = aggregator.get_signers();
+    }
+
     #[test]
     fn aggregator_get_signers() {
         let params = ThresholdParameters::<Secp256k1Sha256>::new(3, 2).unwrap();
@@ -1213,6 +1286,7 @@ mod test {
 
         aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
         aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
+        // Duplicates are fine, as we will remove them when gathering the signers list.
         aggregator.include_signer(2, p2_public_comshares.commitments[0], &p2_sk.to_public());
 
         let signers = aggregator.get_signers();
