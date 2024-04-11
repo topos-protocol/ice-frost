@@ -294,7 +294,7 @@ fn resharing_from_non_frost_key() {
         <<Secp256k1Sha256 as CipherSuite>::G>::generator() * single_party_sk;
 
     // Converts this party's keys into ICE-FROST format, simulating a 1-out-of-1 setup.
-    let simulated_parameters = ThresholdParameters::new(1, 1);
+    let simulated_parameters = ThresholdParameters::new(1, 1).unwrap();
     let frost_sk = IndividualSigningKey::from_single_key(single_party_sk);
     let frost_pk = GroupVerifyingKey::new(single_party_pk);
 
@@ -303,7 +303,7 @@ fn resharing_from_non_frost_key() {
     const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
 
     let threshold_parameters =
-        ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS);
+        ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS).unwrap();
 
     let mut signers = Vec::<Participant<Secp256k1Sha256>>::new();
     let mut signers_dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
