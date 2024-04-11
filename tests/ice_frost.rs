@@ -25,7 +25,7 @@ type SecretCommShareList = SecretCommitmentShareList<Secp256k1Sha256>;
 
 #[test]
 fn signing_and_verification_3_out_of_5() {
-    let params = ThresholdParameters::new(5, 3);
+    let params = ThresholdParameters::new(5, 3).unwrap();
     let rng = OsRng;
 
     let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(params, 1, rng).unwrap();
