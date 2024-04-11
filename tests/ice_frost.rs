@@ -1,12 +1,17 @@
 //! Integration tests for ICE-FROST.
 
+use ark_ec::Group;
+use ark_ff::UniformRand;
+use ice_frost::keys::{DiffieHellmanPrivateKey, GroupVerifyingKey, IndividualSigningKey};
 use rand::rngs::OsRng;
 
 use ice_frost::CipherSuite;
 
-use ice_frost::dkg::{DistributedKeyGeneration, Participant};
+use ice_frost::dkg::{DistributedKeyGeneration, EncryptedSecretShare, Participant, RoundOne};
 use ice_frost::parameters::ThresholdParameters;
-use ice_frost::sign::generate_commitment_share_lists;
+use ice_frost::sign::{
+    generate_commitment_share_lists, PublicCommitmentShareList, SecretCommitmentShareList,
+};
 
 use ice_frost::sign::SignatureAggregator;
 
@@ -15,9 +20,12 @@ use ice_frost::testing::Secp256k1Sha256;
 type ParticipantDKG = Participant<Secp256k1Sha256>;
 type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
 
+type PublicCommShareList = PublicCommitmentShareList<Secp256k1Sha256>;
+type SecretCommShareList = SecretCommitmentShareList<Secp256k1Sha256>;
+
 #[test]
 fn signing_and_verification_3_out_of_5() {
-    let params = ThresholdParameters::new(5, 3);
+    let params = ThresholdParameters::new(5, 3).unwrap();
     let rng = OsRng;
 
     let (p1, p1coeffs, p1_dh_sk) = ParticipantDKG::new_dealer(params, 1, rng).unwrap();
@@ -276,4 +284,139 @@ fn signing_and_verification_3_out_of_5() {
 
     assert!(verification_result1.is_ok());
     assert!(verification_result2.is_ok());
+}
+
+#[test]
+fn resharing_from_non_frost_key() {
+    type SchnorrSecretKey = <<Secp256k1Sha256 as CipherSuite>::G as Group>::ScalarField;
+    type SchnorrPublicKey = <Secp256k1Sha256 as CipherSuite>::G;
+
+    // A single party outside of any ICE-FROST scenario, who owns a keypair to perform
+    // Schnorr signatures.
+    let mut rng = OsRng;
+    let single_party_sk: SchnorrSecretKey = SchnorrSecretKey::rand(&mut rng);
+    let single_party_pk: SchnorrPublicKey =
+        <<Secp256k1Sha256 as CipherSuite>::G>::generator() * single_party_sk;
+
+    // Converts this party's keys into ICE-FROST format, simulating a 1-out-of-1 setup.
+    let simulated_parameters = ThresholdParameters::new(1, 1).unwrap();
+    let frost_sk = IndividualSigningKey::from_single_key(single_party_sk);
+    let frost_pk = GroupVerifyingKey::new(single_party_pk);
+
+    // Start a resharing phase from this single party to a set of new participants.
+    const NUMBER_OF_PARTICIPANTS: u32 = 5;
+    const THRESHOLD_OF_PARTICIPANTS: u32 = 3;
+
+    let threshold_parameters =
+        ThresholdParameters::new(NUMBER_OF_PARTICIPANTS, THRESHOLD_OF_PARTICIPANTS).unwrap();
+
+    let mut signers = Vec::<Participant<Secp256k1Sha256>>::new();
+    let mut signers_dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
+
+    for i in 1..=NUMBER_OF_PARTICIPANTS {
+        let (p, dh_sk) =
+            Participant::<Secp256k1Sha256>::new_signer(threshold_parameters, i, rng).unwrap();
+
+        signers.push(p);
+        signers_dh_secret_keys.push(dh_sk);
+    }
+
+    let mut signers_encrypted_secret_shares: Vec<Vec<EncryptedSecretShare<Secp256k1Sha256>>> =
+        (0..NUMBER_OF_PARTICIPANTS).map(|_| Vec::new()).collect();
+
+    let mut signers_states_1 = Vec::<Dkg<_>>::new();
+    let mut signers_states_2 = Vec::<Dkg<_>>::new();
+
+    let (single_dealer, dealer_encrypted_shares_for_signers, _participant_lists) =
+        Participant::reshare(threshold_parameters, &frost_sk, &signers, rng).unwrap();
+
+    for i in 0..NUMBER_OF_PARTICIPANTS as usize {
+        let (signer_state, _participant_lists) =
+            DistributedKeyGeneration::<RoundOne, Secp256k1Sha256>::new(
+                simulated_parameters,
+                &signers_dh_secret_keys[i],
+                signers[i].index,
+                &[single_dealer.clone()],
+                rng,
+            )
+            .unwrap();
+        signers_states_1.push(signer_state);
+    }
+
+    for (i, shares) in signers_encrypted_secret_shares.iter_mut().enumerate() {
+        let share_for_signer = dealer_encrypted_shares_for_signers
+            .get(&(i as u32 + 1))
+            .unwrap()
+            .clone();
+        *shares = vec![share_for_signer];
+    }
+
+    for i in 0..NUMBER_OF_PARTICIPANTS as usize {
+        let (si_state, complaints) = signers_states_1[i]
+            .clone()
+            .to_round_two(&signers_encrypted_secret_shares[i], rng)
+            .unwrap();
+        assert!(complaints.is_empty());
+
+        signers_states_2.push(si_state);
+    }
+
+    let mut signers_secret_keys = Vec::<IndividualSigningKey<Secp256k1Sha256>>::new();
+
+    for signers_state in &signers_states_2 {
+        let (si_group_key, si_sk) = signers_state.clone().finish().unwrap();
+        signers_secret_keys.push(si_sk);
+
+        // Assert that each signer's individual group key matches the converted
+        // single's party public key.
+        assert!(si_group_key == frost_pk);
+    }
+
+    let message = b"This is a test of the tsunami alert system. This is only a test.";
+
+    let mut signers_public_comshares =
+        Vec::<PublicCommShareList>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
+    let mut signers_secret_comshares =
+        Vec::<SecretCommShareList>::with_capacity(NUMBER_OF_PARTICIPANTS as usize);
+
+    for i in 0..THRESHOLD_OF_PARTICIPANTS {
+        let (pi_public_comshares, pi_secret_comshares) =
+            generate_commitment_share_lists(&mut OsRng, &signers_secret_keys[i as usize], 1)
+                .unwrap();
+        signers_public_comshares.push(pi_public_comshares);
+        signers_secret_comshares.push(pi_secret_comshares);
+    }
+
+    let mut aggregator = SignatureAggregator::new(threshold_parameters, frost_pk, &message[..]);
+
+    for i in 0..THRESHOLD_OF_PARTICIPANTS {
+        aggregator
+            .include_signer(
+                signers[i as usize].index,
+                signers_public_comshares[i as usize].commitments[0],
+                &signers_secret_keys[i as usize].to_public(),
+            )
+            .unwrap();
+    }
+
+    let message_hash = Secp256k1Sha256::h4(&message[..]);
+
+    for i in 0..THRESHOLD_OF_PARTICIPANTS {
+        let pi_partial_signature = signers_secret_keys[i as usize]
+            .sign(
+                &message_hash,
+                &frost_pk,
+                &mut signers_secret_comshares[i as usize],
+                0,
+                aggregator.signers(),
+            )
+            .unwrap();
+        aggregator.include_partial_signature(&pi_partial_signature);
+    }
+
+    let aggregator = aggregator.finalize().unwrap();
+
+    let threshold_signature = aggregator.aggregate().unwrap();
+
+    assert!(threshold_signature.verify(&frost_pk, &message_hash).is_ok());
 }

@@ -61,7 +61,7 @@
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
 //! // Set up key shares for a threshold signature scheme which needs at least
 //! // 2-out-of-3 signers.
-//! let params = ThresholdParameters::new(3,2);
+//! let params = ThresholdParameters::new(3, 2)?;
 //! let mut rng = OsRng;
 //!
 //! // Alice, Bob, and Carol each generate their secret polynomial coefficients
@@ -204,7 +204,7 @@
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
 //! // Set up key shares for a threshold signature scheme which needs at least
 //! // 2-out-of-3 signers.
-//! let params = ThresholdParameters::new(3,2);
+//! let params = ThresholdParameters::new(3, 2)?;
 //! let mut rng = OsRng;
 //!
 //! // Alice, Bob, and Carol each generate their secret polynomial coefficients
@@ -320,7 +320,7 @@
 //! assert!(carol_group_key == bob_group_key);
 //!
 //! // Instantiate another configuration of threshold signature.
-//! let new_params = ThresholdParameters::new(4,3);
+//! let new_params = ThresholdParameters::new(4,3)?;
 //!
 //! // Alexis, Barbara, Claire and David each generate their Diffie-Hellman
 //! // private key, as well as a zero-knowledge proof to it.
@@ -666,8 +666,9 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
     ///
     /// # Inputs
     ///
-    /// * The protocol new instance [`ThresholdParameters`]. These parameters can
-    ///   be different from the previous ICE-FROST session using the same group key.
+    /// * The protocol old instance [`ThresholdParameters`]. These parameters can
+    ///   be different from the current ICE-FROST session which will be having the
+    ///   same group key.
     /// * This participant's [`DiffieHellmanPrivateKey`].
     /// * This participant's `index`.
     /// * The list of `dealers`. These are the participants of the previous ICE-FROST
@@ -789,7 +790,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
             let parameters = ThresholdParameters::new(
                 parameters.n - misbehaving_participants.len() as u32,
                 parameters.t,
-            );
+            )?;
 
             let state = ActualState {
                 parameters,
@@ -851,7 +852,7 @@ impl<C: CipherSuite> DistributedKeyGeneration<RoundOne, C> {
         let parameters = ThresholdParameters::new(
             parameters.n - misbehaving_participants.len() as u32,
             parameters.t,
-        );
+        )?;
 
         let state = ActualState {
             parameters,
@@ -1213,7 +1214,7 @@ pub(crate) mod test {
     > {
         type Dkg<T> = DistributedKeyGeneration<T, Secp256k1Sha256>;
 
-        let params = ThresholdParameters::new(n1, t1);
+        let params = ThresholdParameters::new(n1, t1)?;
         let rng = OsRng;
 
         let mut participants = Vec::<Participant<Secp256k1Sha256>>::new();
@@ -1305,7 +1306,7 @@ pub(crate) mod test {
         }
 
         if let (Some(n2), Some(t2)) = (n2, t2) {
-            let new_params = ThresholdParameters::new(n2, t2);
+            let new_params = ThresholdParameters::new(n2, t2)?;
 
             let mut signers = Vec::<Participant<Secp256k1Sha256>>::new();
             let mut signers_dh_secret_keys = Vec::<DiffieHellmanPrivateKey<Secp256k1Sha256>>::new();
@@ -1389,7 +1390,7 @@ pub(crate) mod test {
 
     #[test]
     fn nizk_of_secret_key() {
-        let params = ThresholdParameters::new(3, 2);
+        let params = ThresholdParameters::new(3, 2).unwrap();
         let rng = OsRng;
 
         let (p, _, _) = Participant::<Secp256k1Sha256>::new_dealer(params, 1, rng).unwrap();
@@ -1495,7 +1496,7 @@ pub(crate) mod test {
     #[test]
     fn keygen_2_out_of_3_with_malicious_party_high_degree_commitment_polynomial() {
         fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-            let params = ThresholdParameters::new(3, 2);
+            let params = ThresholdParameters::new(3, 2)?;
             let rng = OsRng;
 
             let (p1, p1coeffs, p1_dh_sk) =
@@ -1549,7 +1550,7 @@ pub(crate) mod test {
     #[test]
     fn keygen_static_2_out_of_3_with_common_participants() {
         fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-            let params = ThresholdParameters::new(3, 2);
+            let params = ThresholdParameters::new(3, 2)?;
             let rng = OsRng;
 
             let (dealer1, dealer1coeffs, dealer1_dh_sk) =
@@ -1827,7 +1828,7 @@ pub(crate) mod test {
     #[test]
     fn keygen_verify_complaint() {
         fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-            let params = ThresholdParameters::new(3, 2);
+            let params = ThresholdParameters::new(3, 2)?;
             let rng = OsRng;
 
             let (p1, p1coeffs, dh_sk1) =
@@ -2092,7 +2093,7 @@ pub(crate) mod test {
     #[test]
     fn keygen_verify_complaint_during_resharing() {
         fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-            let params_dealers = ThresholdParameters::new(3, 2);
+            let params_dealers = ThresholdParameters::new(3, 2)?;
             let rng = OsRng;
 
             let (dealer1, dealer1coeffs, dealer1_dh_sk) =
@@ -2213,7 +2214,7 @@ pub(crate) mod test {
             assert!(dealer1_group_key == dealer2_group_key);
             assert!(dealer2_group_key == dealer3_group_key);
 
-            let params_signers = ThresholdParameters::<Secp256k1Sha256>::new(5, 3);
+            let params_signers = ThresholdParameters::<Secp256k1Sha256>::new(5, 3)?;
             let (signer1, signer1_dh_sk) = Participant::new_signer(params_signers, 1, rng).unwrap();
             let (signer2, signer2_dh_sk) = Participant::new_signer(params_signers, 2, rng).unwrap();
             let (signer3, signer3_dh_sk) = Participant::new_signer(params_signers, 3, rng).unwrap();
@@ -2408,7 +2409,7 @@ pub(crate) mod test {
     #[test]
     fn test_serialization() {
         fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-            let params = ThresholdParameters::new(3, 2);
+            let params = ThresholdParameters::new(3, 2)?;
             let rng = OsRng;
 
             let (p1, p1coeffs, p1_dh_sk) = Participant::new_dealer(params, 1, rng).unwrap();
@@ -2617,7 +2618,7 @@ pub(crate) mod test {
     #[test]
     fn individual_public_key_share() {
         fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-            let params = ThresholdParameters::new(3, 2);
+            let params = ThresholdParameters::new(3, 2)?;
             let rng = OsRng;
 
             let (p1, p1coeffs, p1_dh_sk) =

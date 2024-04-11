@@ -80,7 +80,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! // All ICE-FROST methods requiring a source of entropy should use a cryptographic pseudorandom
@@ -111,7 +111,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -151,7 +151,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -180,7 +180,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -199,7 +199,7 @@
 //!     )?;
 //! # Ok(()) }
 //! # fn do_test2() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -232,7 +232,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -251,7 +251,7 @@
 //!     )?;
 //! # Ok(()) }
 //! # fn do_test2() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -284,7 +284,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -342,7 +342,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -406,7 +406,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -470,7 +470,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -560,7 +560,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -603,7 +603,7 @@
 //! # assert!(carol_group_key == bob_group_key);
 //! #
 //! // Instantiate new configuration parameters and create a new set of signers
-//! let new_params = ThresholdParameters::new(4,3);
+//! let new_params = ThresholdParameters::new(4, 3)?;
 //!
 //! let (alexis, alexis_dh_sk) = Participant::new_signer(new_params, 1, &mut rng)?;
 //! let (barbara, barbara_dh_sk) = Participant::new_signer(new_params, 2, &mut rng)?;
@@ -640,7 +640,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -681,7 +681,7 @@
 //! # assert!(carol_group_key == bob_group_key);
 //! #
 //! # // Instantiate new configuration parameters and create a set of signers
-//! # let new_params = ThresholdParameters::new(4,3);
+//! # let new_params = ThresholdParameters::new(4, 3)?;
 //! #
 //! # let (alexis, alexis_dh_sk) = Participant::new_signer(new_params, 1, &mut rng)?;
 //! # let (barbara, barbara_dh_sk) = Participant::new_signer(new_params, 2, &mut rng)?;
@@ -755,7 +755,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -796,7 +796,7 @@
 //! # assert!(carol_group_key == bob_group_key);
 //! #
 //! # // Instantiate new configuration parameters and create a set of signers
-//! # let new_params = ThresholdParameters::new(4,3);
+//! # let new_params = ThresholdParameters::new(4, 3)?;
 //! #
 //! # let (alexis, alexis_dh_sk) = Participant::new_signer(new_params, 1, &mut rng)?;
 //! # let (barbara, barbara_dh_sk) = Participant::new_signer(new_params, 2, &mut rng)?;
@@ -872,7 +872,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -912,7 +912,7 @@
 //! # assert!(alice_group_key == bob_group_key);
 //! # assert!(carol_group_key == bob_group_key);
 //! #
-//! # let new_params = ThresholdParameters::new(4,3);
+//! # let new_params = ThresholdParameters::new(4, 3)?;
 //! #
 //! # let (alexis, alexis_dh_sk) = Participant::new_signer(new_params, 1, &mut rng)?;
 //! # let (barbara, barbara_dh_sk) = Participant::new_signer(new_params, 2, &mut rng)?;
@@ -992,7 +992,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -1041,7 +1041,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -1095,7 +1095,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! // Alice, Bob and Carol run the first round of the DKG without trouble...
 //! #
@@ -1167,7 +1167,7 @@
 //! # use ice_frost::testing::Secp256k1Sha256;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! // Alice, Bob and Carol run the first round of the DKG without trouble...
 //! #
@@ -1248,7 +1248,7 @@
 //!
 //! use rand::rngs::OsRng;
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -1327,7 +1327,7 @@
 //! # use rand::rngs::OsRng;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -1401,7 +1401,7 @@
 //! # use rand::rngs::OsRng;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;
@@ -1475,7 +1475,7 @@
 //! # use rand::rngs::OsRng;
 //! #
 //! # fn do_test() -> FrostResult<Secp256k1Sha256, ()> {
-//! # let params = ThresholdParameters::new(3,2);
+//! # let params = ThresholdParameters::new(3,2)?;
 //! # let mut rng = OsRng;
 //! #
 //! # let (alice, alice_coefficients, alice_dh_sk) = Participant::new_dealer(params, 1, &mut rng)?;

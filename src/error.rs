@@ -59,6 +59,9 @@ pub enum Error<C: CipherSuite> {
     InvalidSignature,
     /// Misbehaving participants
     MisbehavingParticipants(Vec<u32>),
+    /// A valid [`ThresholdParams`] requires non-zero participants, non-zero
+    /// threshold and more participants than the threshold.
+    InvalidThresholdParams,
     /// Custom error
     Custom(String),
 }
@@ -66,119 +69,74 @@ pub enum Error<C: CipherSuite> {
 impl<C: CipherSuite> core::fmt::Display for Error<C> {
     fn fmt(&self, f: &mut core::fmt::Formatter) -> core::fmt::Result {
         match self {
-            Error::SerializationError => {
-                write!(f, "An error happened while serializing.")
-            }
-            Error::DeserializationError => {
-                write!(f, "An error happened while deserializing.")
-            }
-            Error::CompressionError => {
-                write!(f, "An error happened while compressing a point.")
-            }
+            Error::SerializationError => write!(f, "An error happened while serializing."),
+            Error::DeserializationError => write!(f, "An error happened while deserializing."),
+            Error::CompressionError => write!(f, "An error happened while compressing a point."),
             Error::DecompressionError => {
                 write!(f, "An error happened while decompressing a point.")
             }
-            Error::DecryptionError => {
-                write!(f, "Could not decrypt encrypted share.")
-            }
-            Error::EncryptionError => {
-                write!(f, "Could not encrypt secret share.")
-            }
-            Error::ShareVerificationError => {
-                write!(f, "The secret share is not correct.")
-            }
-            Error::ComplaintVerificationError => {
-                write!(f, "The complaint is not correct.")
-            }
-            Error::IndexIsZero => {
-                write!(f, "The index of a participant cannot be 0.")
-            }
-            Error::IndexMismatch(participant_idx, pubkey_idx) => {
-                write!(
-                    f,
-                    "Index mismatch between participant index ({}) and the public key index ({}).",
-                    participant_idx, pubkey_idx
-                )
-            }
-            Error::InvalidGroupKey => {
-                write!(
-                    f,
-                    "Could not generate a valid group key with the given commitments."
-                )
-            }
-            Error::InvalidProofOfKnowledge => {
-                write!(
-                    f,
-                    "The NiZK proof of knowledge of the secret key is not correct."
-                )
-            }
-            Error::InvalidCommitmentLength => {
-                write!(
-                    f,
-                    "The length of this commitment does not correspond to the threshold parameter."
-                )
-            }
-            Error::MissingShares => {
-                write!(f, "Some shares are missing.")
-            }
-            Error::NoEncryptedShares => {
-                write!(f, "Could not retrieve encrypted shares.")
-            }
-            Error::Complaint(complaints) => {
-                write!(f, "{:?}", complaints)
-            }
-            Error::InvalidMSMParameters => {
-                write!(
-                    f,
-                    "The provided slices of points and scalars do not match in length."
-                )
-            }
-            Error::InvalidNumberOfParticipants(nb, n_params) => {
-                write!(
-                    f,
-                    "The number of participants {} does not match Dkg instance parameters {}.",
-                    nb, n_params
-                )
-            }
-            Error::TooManyInvalidParticipants(indices) => {
-                write!(
-                    f,
-                    "Too many invalid participants to continue the Dkg: {:?}",
-                    indices
-                )
-            }
+            Error::DecryptionError => write!(f, "Could not decrypt encrypted share."),
+            Error::EncryptionError => write!(f, "Could not encrypt secret share."),
+            Error::ShareVerificationError => write!(f, "The secret share is not correct."),
+            Error::ComplaintVerificationError => write!(f, "The complaint is not correct."),
+            Error::IndexIsZero => write!(f, "The indexs of a participant cannot be 0."),
+            Error::IndexMismatch(participant_idx, pubkey_idx) => write!(
+                f,
+                "Index mismatch between participant index ({}) and the public key index ({}).",
+                participant_idx, pubkey_idx
+            ),
+            Error::InvalidGroupKey => write!(
+                f,
+                "Could not generate a valid group key with the given commitments."
+            ),
             Error::TooManySigners(signers, n_param) => {
                 write!(
                     f,
-                    "Too many signers ({}) given the DKG instance parameters ({}).",
+                    "Too many signers ({}) given the DKG instance parameters (total participants set to {}).",
                     signers, n_param
                 )
             }
-            Error::MissingCommitmentShares => {
-                write!(
-                    f,
-                    "The participant is missing commitment shares for signing."
-                )
-            }
+            Error::InvalidProofOfKnowledge => write!(
+                f,
+                "The NiZK proof of knowledge of the secret key is not correct."
+            ),
+            Error::InvalidCommitmentLength => write!(
+                f,
+                "The length of this commitment does not correspond to the threshold parameter."
+            ),
+            Error::MissingShares => write!(f, "Some shares are missing."),
+            Error::NoEncryptedShares => write!(f, "Could not retrieve encrypted shares."),
+            Error::Complaint(complaints) => write!(f, "{:?}", complaints),
+            Error::InvalidMSMParameters => write!(
+                f,
+                "The provided slices of points and scalars do not match in length."
+            ),
+            Error::InvalidNumberOfParticipants(nb, n_params) => write!(
+                f,
+                "The number of participants {} does not match Dkg instance parameters {}.",
+                nb, n_params
+            ),
+            Error::TooManyInvalidParticipants(indices) => write!(
+                f,
+                "Too many invalid participants to continue the Dkg: {:?}",
+                indices
+            ),
+            Error::MissingCommitmentShares => write!(
+                f,
+                "The participant is missing commitment shares for signing."
+            ),
             Error::InvalidBindingFactor => {
                 write!(f, "Could not compute the participant binding factor.")
             }
-            Error::InvalidChallenge => {
-                write!(f, "Could not compute the signature challenge.")
-            }
-            Error::InvalidSignature => {
-                write!(f, "The threshold signature is not correct.")
-            }
-            Error::MisbehavingParticipants(indices) => {
-                write!(
-                    f,
-                    "These participants provided invalid partial signatures: {:?}",
-                    indices
-                )
-            }
-            Error::Custom(string) => {
-                write!(f, "{:?}", string)
-            }
+            Error::InvalidChallenge => write!(f, "Could not compute the signature challenge."),
+            Error::InvalidSignature => write!(f, "The threshold signature is not correct."),
+            Error::MisbehavingParticipants(indices) => write!(
+                f,
+                "These participants provided invalid partial signatures: {:?}",
+                indices
+            ),
+            Error::InvalidThresholdParams => write!(f, "Invalid threshold parameters"),
+            Error::Custom(string) => write!(f, "{:?}", string),
         }
     }
 }

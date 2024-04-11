@@ -38,7 +38,7 @@ pub(crate) type Scalar<C> = <<C as CipherSuite>::G as Group>::ScalarField;
 /// * `my_index` is 0;
 /// * `all_indices` contains 0;
 /// * `all_indices` does not contain `my_index`;
-/// * `all_indices` contains duplicated indices.
+/// * `all_indices` contains duplicate indices.
 pub(crate) fn calculate_lagrange_coefficients<C: CipherSuite>(
     my_index: u32,
     all_indices: &[u32],
