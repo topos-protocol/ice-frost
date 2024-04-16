@@ -485,8 +485,8 @@ impl<C: CipherSuite> SignatureAggregator<C, Initial<'_>> {
             published_commitment_share,
         });
 
-        // Deduplicate partipating [`Signer`]s and check that there is not
-        // more signers than the number of participants as set in the [`ThresholdParameters`].
+        // Deduplicate partipating [`Signer`]s and check that there are no
+        // more signers than participants as set in the [`ThresholdParameters`].
         self.state.signers.sort();
         self.state.signers.dedup();
         if self.state.signers.len() > self.state.parameters.n as usize {
