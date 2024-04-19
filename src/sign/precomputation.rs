@@ -135,7 +135,7 @@ impl<C: CipherSuite> PartialEq for CommitmentShare<C> {
 
 impl<C: CipherSuite> CommitmentShare<C> {
     /// Publish the public commitments in this [`CommitmentShare`].
-    pub fn publish(&self) -> (C::G, C::G) {
+    pub const fn publish(&self) -> (C::G, C::G) {
         (self.hiding.commit, self.binding.commit)
     }
 }

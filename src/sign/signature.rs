@@ -78,7 +78,7 @@ impl_serialization_traits!(ThresholdSignature<CipherSuite>);
 struct BindingFactors<C: CipherSuite>(pub(crate) BTreeMap<u32, Scalar<C>>);
 
 impl<C: CipherSuite> BindingFactors<C> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self(BTreeMap::new())
     }
 }
@@ -103,7 +103,7 @@ impl<C: CipherSuite> DerefMut for BindingFactors<C> {
 pub(crate) struct PartialThresholdSignatures<C: CipherSuite>(pub(crate) BTreeMap<u32, Scalar<C>>);
 
 impl<C: CipherSuite> PartialThresholdSignatures<C> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self(BTreeMap::new())
     }
 }
@@ -128,7 +128,7 @@ impl<C: CipherSuite> DerefMut for PartialThresholdSignatures<C> {
 pub(crate) struct IndividualPublicKeys<C: CipherSuite>(pub(crate) BTreeMap<u32, C::G>);
 
 impl<C: CipherSuite> IndividualPublicKeys<C> {
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self(BTreeMap::new())
     }
 }

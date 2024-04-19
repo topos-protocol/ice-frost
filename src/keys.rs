@@ -42,7 +42,7 @@ impl_serialization_traits!(DiffieHellmanPublicKey<CipherSuite>);
 
 impl<C: CipherSuite> DiffieHellmanPublicKey<C> {
     /// Instantiates a new [`DiffieHellmanPublicKey`] key.
-    pub fn new(key: C::G) -> Self {
+    pub const fn new(key: C::G) -> Self {
         Self {
             key,
             _phantom: PhantomData,
@@ -204,7 +204,7 @@ impl<C: CipherSuite> IndividualSigningKey<C> {
     /// This can be useful for single parties owning a public key for
     /// Schnorr signatures outside of an ICE-FROST context and who would
     /// like to reshare its corresponding secret key to a set of participants.
-    pub fn from_single_key(key: <C::G as Group>::ScalarField) -> Self {
+    pub const fn from_single_key(key: <C::G as Group>::ScalarField) -> Self {
         Self { index: 1, key }
     }
 
@@ -236,7 +236,7 @@ impl_serialization_traits!(GroupVerifyingKey<CipherSuite>);
 
 impl<C: CipherSuite> GroupVerifyingKey<C> {
     /// Instantiates a new [`GroupVerifyingKey`] key.
-    pub fn new(key: C::G) -> Self {
+    pub const fn new(key: C::G) -> Self {
         Self {
             key,
             _phantom: PhantomData,
