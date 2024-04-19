@@ -27,6 +27,8 @@ pub enum Error<C: CipherSuite> {
     ComplaintVerificationError,
     /// The index of a participant is zero
     IndexIsZero,
+    /// The index of a signer does not match the index in the public key
+    IndexMismatch(u32, u32),
     /// GroupVerifyingKey generation failure
     InvalidGroupKey,
     /// Invalid NiZK proof of knowledge
@@ -45,6 +47,8 @@ pub enum Error<C: CipherSuite> {
     InvalidMSMParameters,
     /// Too many invalid participants, with their indices
     TooManyInvalidParticipants(Vec<u32>),
+    /// Too many unique signers given the [`crate::parameters::ThresholdParameters`].
+    TooManySigners(usize, u32),
     /// The participant is missing commitment shares
     MissingCommitmentShares,
     /// Invalid binding factor
@@ -76,10 +80,22 @@ impl<C: CipherSuite> core::fmt::Display for Error<C> {
             Error::ShareVerificationError => write!(f, "The secret share is not correct."),
             Error::ComplaintVerificationError => write!(f, "The complaint is not correct."),
             Error::IndexIsZero => write!(f, "The indexs of a participant cannot be 0."),
+            Error::IndexMismatch(participant_idx, pubkey_idx) => write!(
+                f,
+                "Index mismatch between participant index ({}) and the public key index ({}).",
+                participant_idx, pubkey_idx
+            ),
             Error::InvalidGroupKey => write!(
                 f,
                 "Could not generate a valid group key with the given commitments."
             ),
+            Error::TooManySigners(signers, n_param) => {
+                write!(
+                    f,
+                    "Too many signers ({}) given the DKG instance parameters (total participants set to {}).",
+                    signers, n_param
+                )
+            }
             Error::InvalidProofOfKnowledge => write!(
                 f,
                 "The NiZK proof of knowledge of the secret key is not correct."

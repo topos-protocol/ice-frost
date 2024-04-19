@@ -233,13 +233,18 @@ fn signing_and_verification_3_out_of_5() {
 
     let mut aggregator = SignatureAggregator::new(params, group_key, &message[..]);
 
-    aggregator.include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public());
-    aggregator.include_signer(3, p3_public_comshares.commitments[0], &p3_sk.to_public());
-    aggregator.include_signer(4, p4_public_comshares.commitments[0], &p4_sk.to_public());
+    aggregator
+        .include_signer(1, p1_public_comshares.commitments[0], &p1_sk.to_public())
+        .unwrap();
+    aggregator
+        .include_signer(3, p3_public_comshares.commitments[0], &p3_sk.to_public())
+        .unwrap();
+    aggregator
+        .include_signer(4, p4_public_comshares.commitments[0], &p4_sk.to_public())
+        .unwrap();
 
-    let signers = aggregator.get_signers();
     let message_hash = Secp256k1Sha256::h4(&message[..]);
-
+    let signers = aggregator.signers();
     let p1_partial = p1_sk
         .sign(
             &message_hash,
@@ -385,14 +390,15 @@ fn resharing_from_non_frost_key() {
     let mut aggregator = SignatureAggregator::new(threshold_parameters, frost_pk, &message[..]);
 
     for i in 0..THRESHOLD_OF_PARTICIPANTS {
-        aggregator.include_signer(
-            signers[i as usize].index,
-            signers_public_comshares[i as usize].commitments[0],
-            &signers_secret_keys[i as usize].to_public(),
-        );
+        aggregator
+            .include_signer(
+                signers[i as usize].index,
+                signers_public_comshares[i as usize].commitments[0],
+                &signers_secret_keys[i as usize].to_public(),
+            )
+            .unwrap();
     }
 
-    let participating_signers = aggregator.get_signers().clone();
     let message_hash = Secp256k1Sha256::h4(&message[..]);
 
     for i in 0..THRESHOLD_OF_PARTICIPANTS {
@@ -402,7 +408,7 @@ fn resharing_from_non_frost_key() {
                 &frost_pk,
                 &mut signers_secret_comshares[i as usize],
                 0,
-                &participating_signers,
+                aggregator.signers(),
             )
             .unwrap();
         aggregator.include_partial_signature(&pi_partial_signature);
